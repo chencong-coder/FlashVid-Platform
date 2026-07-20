@@ -6,6 +6,10 @@ init:
 build:
 	go build -ldflags="-s -w" -o ./bin/server ./cmd/server
 
+.PHONY: run
+run:
+	go run ./cmd/server
+
 .PHONY: swag
 swag:
 	swag init  -g cmd/server/main.go -o ./docs

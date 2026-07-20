@@ -18,11 +18,11 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 	r.Use(cors.New(corsCfg)) // CORS 跨域中间件，简单粗暴，直接放行所有跨域请求
 	apiV1 := r.Group("/api/v1")
 	{
-		auth := apiV1.Group("/auth")
-		{
-			auth.POST("/register", auth.RegisterHandler)
-			auth.POST("/login", auth.LoginHandler)
-			auth.POST("/refresh", auth.RefreshHandler)
+		authUser := apiV1.Group("/auth")
+		{	
+			authUser.POST("/register", auth.RegisterHandler)
+			authUser.POST("/login", auth.LoginHandler)
+			authUser.POST("/refresh", auth.RefreshHandler)
 		}
 	}
 

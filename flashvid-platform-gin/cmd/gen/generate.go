@@ -30,19 +30,17 @@ func main() {
 		// 若一定要使用可以通过ModelPkgPath单独指定model package的名称
 		OutPath:      "../../internal/dao/query",
 		ModelPkgPath: "../../internal/model",
-
-		// gen.WithoutContext：禁用WithContext模式
-		// gen.WithDefaultQuery：生成一个全局Query对象Q
-		// gen.WithQueryInterface：生成Query接口
-		Mode: gen.WithDefaultQuery | gen.WithQueryInterface,
+		Mode:         gen.WithDefaultQuery | gen.WithQueryInterface,
 	})
 
 	// 通常复用项目中已有的SQL连接配置db(*gorm.DB)
 	// 非必需，但如果需要复用连接时的gorm.Config或需要连接数据库同步表信息则必须设置
+	db := connectDB(MySQLDSN)
+	g.UseDB(db)
+
 	g.UseDB(connectDB(MySQLDSN))
 
 	// 从连接的数据库为所有表生成Model结构体和CRUD代码
-	// 也可以手动指定需要生成代码的数据表
 	g.ApplyBasic(g.GenerateAllTable()...)
 
 	// 执行并生成代码

@@ -16,15 +16,24 @@ func RegisterHandler(c *gin.Context) {
 		return
 	}
 	// 2. 调用service层
-	output, err := service.Register(&req)
+	output, code, err := service.Register(c, &req, c.ClientIP())
 	if err != nil {
-		
+		api.ResponseError(c, code)
 		return
 	}
 	// 3. 返回响应
 	api.ResponseSuccess(c, v1.RegisterResp{
 		UserID:   output.UserID,
 		Username: output.Username,
-		Token:    output.Token,
 	})
+}
+
+// 用户登录接口
+func LoginHandler(c *gin.Context) {
+	
+}
+
+// 刷新Token接口
+func RefreshHandler(c *gin.Context) {
+	
 }
