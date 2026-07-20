@@ -36,7 +36,7 @@ const navigate = async (name: string): Promise<void> => {
       v-for="item in items.slice(0, 2)"
       :key="item.name"
       type="button"
-      class="flex h-12 min-w-14 flex-col items-center justify-center gap-1"
+      class="flex h-12 min-w-14 flex-col items-center justify-center gap-1 transition-all duration-200"
       :class="activeTab === item.tab ? 'text-white' : 'text-neutral-500'"
       @click="navigate(item.name)"
     >
@@ -47,7 +47,7 @@ const navigate = async (name: string): Promise<void> => {
     <button
       type="button"
       aria-label="发布视频"
-      class="mt-1 flex h-9 w-14 items-center justify-center rounded-md bg-primary text-xl text-white shadow-lg active:scale-95"
+      class="-mt-2 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-pink-500 to-purple-600 text-2xl text-white shadow-[0_0_20px_rgba(236,72,153,0.5)] transition-all duration-300 hover:shadow-[0_0_30px_rgba(236,72,153,0.7)] active:scale-90"
       @click="navigate('publish')"
     >
       <i class="fa-solid fa-plus" />
@@ -57,7 +57,7 @@ const navigate = async (name: string): Promise<void> => {
       v-for="item in items.slice(2)"
       :key="item.name"
       type="button"
-      class="flex h-12 min-w-14 flex-col items-center justify-center gap-1"
+      class="flex h-12 min-w-14 flex-col items-center justify-center gap-1 transition-all duration-200"
       :class="activeTab === item.tab ? 'text-white' : 'text-neutral-500'"
       @click="navigate(item.name)"
     >

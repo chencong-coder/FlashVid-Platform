@@ -117,41 +117,43 @@ onBeforeUnmount(() => {
       </div>
     </Transition>
 
-    <!-- 视频信息区域 - 更现代的毛玻璃设计 -->
-    <div class="absolute bottom-20 left-0 right-16 z-20 px-4 pb-2">
+    <!-- 视频信息区域 - 纯文字透明设计 -->
+    <div class="absolute bottom-[4.5rem] left-0 right-16 z-20 px-4 pb-1">
       <!-- 作者信息 -->
-      <div class="mb-3 flex items-center gap-2">
-        <div class="text-[16px] font-bold text-white drop-shadow-lg">
+      <div class="mb-2.5 flex items-center gap-2">
+        <div class="text-[16px] font-bold text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
           @{{ video.author.nickname }}
         </div>
         <div
           v-if="video.city"
-          class="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1 text-xs backdrop-blur-md"
+          class="inline-flex items-center gap-1 rounded-full bg-black/30 px-2.5 py-0.5 text-xs backdrop-blur-sm"
         >
           <i class="fa-solid fa-location-dot text-rose-400" />
-          <span class="font-medium">{{ video.city }}</span>
+          <span class="font-medium text-white/90">{{ video.city }}</span>
         </div>
       </div>
 
-      <!-- 视频描述 -->
-      <div
-        class="mb-3 max-w-[85%] rounded-2xl bg-gradient-to-br from-black/40 to-black/20 p-3 backdrop-blur-md"
-      >
-        <p class="line-clamp-3 text-[15px] leading-relaxed text-white">
+      <!-- 视频描述 - 去掉背景框 -->
+      <div class="mb-2.5 max-w-[85%]">
+        <p
+          class="line-clamp-3 text-[15px] leading-relaxed text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]"
+        >
           {{ video.description }}
-          <span v-for="topic in video.topics" :key="topic" class="ml-1 font-semibold text-cyan-400">
+          <span v-for="topic in video.topics" :key="topic" class="ml-1 font-semibold text-cyan-300">
             #{{ topic }}
           </span>
         </p>
       </div>
 
-      <!-- 音乐信息 - 带动画的卡片 -->
+      <!-- 音乐信息 - 极简透明设计 -->
       <div
-        class="inline-flex max-w-[75%] items-center gap-2 rounded-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 px-3 py-1.5 backdrop-blur-md"
+        class="inline-flex max-w-[75%] items-center gap-2 rounded-full bg-black/30 px-3 py-1 backdrop-blur-sm"
       >
-        <i class="fa-solid fa-music text-sm text-purple-300" />
+        <i class="fa-solid fa-music text-xs text-white/80" />
         <div class="overflow-hidden">
-          <span class="inline-block animate-[marquee_12s_linear_infinite] text-sm font-medium">
+          <span
+            class="inline-block animate-[marquee_12s_linear_infinite] text-xs font-medium text-white/90"
+          >
             {{ video.music }}
           </span>
         </div>
