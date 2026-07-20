@@ -28,12 +28,13 @@ const commentVideoId = ref('')
 const commentsVisible = ref(false)
 const searchVisible = ref(false)
 const dragging = ref(false)
+const wheelLocked = ref(false)
 let scrollEndTimer: number | undefined
 let wheelResetTimer: number | undefined
 let wheelUnlockTimer: number | undefined
 let wheelDelta = 0
-let wheelLocked = false
 let wheelTargetIndex = 0
+let lastWheelTime = 0 // 上次滚轮事件的时间
 let dragSettleTimer: number | undefined
 let dragSettling = false
 let dragTargetIndex = 0
@@ -113,7 +114,7 @@ const finishWheelNavigation = (): void => {
   }
   syncActiveVideo(targetIndex)
   window.clearTimeout(scrollEndTimer)
-  wheelLocked = false
+  wheelLocked.value = false
 }
 
 const handleWheel = (event: WheelEvent): void => {
@@ -121,8 +122,15 @@ const handleWheel = (event: WheelEvent): void => {
   if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) return
   if (dragging.value || dragSettling || touchSettling) return
 
-  if (wheelLocked) {
-    // 锁定期间重置 wheelDelta，防止累积触发
+  const now = Date.now()
+  const timeSinceLastWheel = now - lastWheelTime
+
+  // 如果距离上次滚轮事件小于 300ms，忽略（防止连续滚动）
+  if (timeSinceLastWheel < 300 && lastWheelTime > 0) {
+    return
+  }
+
+  if (wheelLocked.value) {
     wheelDelta = 0
     return
   }
@@ -140,17 +148,20 @@ const handleWheel = (event: WheelEvent): void => {
   wheelDelta = 0
   if (nextIndex === currentIndex.value) return
 
+  // 记录本次滚轮事件时间
+  lastWheelTime = now
+
   // 立即清除任何待处理的定时器，防止旧的 finishWheelNavigation 触发
   window.clearTimeout(wheelUnlockTimer)
   window.clearTimeout(scrollEndTimer)
   window.clearTimeout(wheelResetTimer)
 
-  wheelLocked = true
+  wheelLocked.value = true
   wheelTargetIndex = nextIndex
   scrollToIndex(nextIndex)
 
-  // 使用更长的 1200ms 延迟，确保所有滚轮事件都被过滤
-  wheelUnlockTimer = window.setTimeout(finishWheelNavigation, 1200)
+  // 使用 1500ms 延迟，在滚动动画完成和用户可能的后续滚动之间取得平衡
+  wheelUnlockTimer = window.setTimeout(finishWheelNavigation, 1500)
 }
 
 const isInteractiveTarget = (target: EventTarget | null): boolean => {
@@ -227,7 +238,7 @@ const handleMouseMove = (event: MouseEvent): void => {
 const handleMouseDown = (event: MouseEvent): void => {
   if (
     event.button !== 0 ||
-    wheelLocked ||
+    wheelLocked.value ||
     dragSettling ||
     touchSettling ||
     isInteractiveTarget(event.target)
@@ -279,7 +290,8 @@ const settleTouchAtIndex = (index: number): void => {
 }
 
 const handleTouchStart = (event: TouchEvent): void => {
-  if (wheelLocked || dragSettling || touchSettling || isInteractiveTarget(event.target)) return
+  if (wheelLocked.value || dragSettling || touchSettling || isInteractiveTarget(event.target))
+    return
   const scroller = getScroller()
   const touch = event.touches[0]
   if (!scroller || !touch) return
