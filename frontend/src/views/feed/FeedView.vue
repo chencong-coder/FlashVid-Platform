@@ -33,7 +33,6 @@ let wheelResetTimer: number | undefined
 let wheelUnlockTimer: number | undefined
 let wheelDelta = 0
 let wheelLocked = false
-let wheelStartedAt = 0
 let wheelTargetIndex = 0
 let dragSettleTimer: number | undefined
 let dragSettling = false
@@ -86,25 +85,24 @@ const scrollToIndex = (index: number, behavior: ScrollBehavior = 'smooth'): void
   scroller.scrollTo({ top: targetTop, behavior })
 }
 
-const snapToNearestVideo = (): void => {
-  const scroller = getScroller()
-  if (!scroller || wheelLocked || dragging.value || dragSettling || touchSettling) return
-  const index = Math.round(scroller.scrollTop / itemHeight.value)
-  const targetTop = index * itemHeight.value
-  if (Math.abs(scroller.scrollTop - targetTop) <= 2) {
-    syncActiveVideo(index)
-    return
-  }
-  scroller.scrollTo({ top: targetTop, behavior: 'smooth' })
-  // 立即同步索引，避免重复调用
-  syncActiveVideo(index)
-}
+// 禁用自动吸附功能，避免在滚动动画期间计算出错误的索引导致跳视频
+// const snapToNearestVideo = (): void => {
+//   const scroller = getScroller()
+//   if (!scroller || wheelLocked || dragging.value || dragSettling || touchSettling) return
+//   const index = Math.round(scroller.scrollTop / itemHeight.value)
+//   console.log('[snapToNearestVideo] scrollTop:', scroller.scrollTop, 'itemHeight:', itemHeight.value, 'calculated index:', index, 'current:', currentIndex.value)
+//   const targetTop = index * itemHeight.value
+//   if (Math.abs(scroller.scrollTop - targetTop) <= 2) {
+//     syncActiveVideo(index)
+//     return
+//   }
+//   scroller.scrollTo({ top: targetTop, behavior: 'smooth' })
+// }
 
 const handleScroll = (): void => {
-  // 如果正在进行滚轮导航、拖动或触摸滑动，不要触发自动吸附
-  if (wheelLocked || touchHasMoved || touchSettling) return
-  window.clearTimeout(scrollEndTimer)
-  scrollEndTimer = window.setTimeout(snapToNearestVideo, 120)
+  // 完全禁用自动吸附，只依赖精确的滚轮/拖动/触摸控制
+  // 这样可以避免 snapToNearestVideo 在滚动动画期间计算出错误的索引
+  return
 }
 
 const finishWheelNavigation = (): void => {
@@ -114,24 +112,17 @@ const finishWheelNavigation = (): void => {
     scrollerElement.scrollTo({ top: targetTop, behavior: 'auto' })
   }
   syncActiveVideo(targetIndex)
-  // 清除任何待处理的 scroll 定时器，防止 snapToNearestVideo 被误触发
   window.clearTimeout(scrollEndTimer)
   wheelLocked = false
-}
-
-const scheduleWheelUnlock = (): void => {
-  window.clearTimeout(wheelUnlockTimer)
-  const elapsed = Date.now() - wheelStartedAt
-  wheelUnlockTimer = window.setTimeout(finishWheelNavigation, Math.max(180, 520 - elapsed))
 }
 
 const handleWheel = (event: WheelEvent): void => {
   event.preventDefault()
   if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) return
   if (dragging.value || dragSettling || touchSettling) return
+
   if (wheelLocked) {
-    scheduleWheelUnlock()
-    return
+    return // 完全忽略，不重新调度
   }
 
   wheelDelta += event.deltaY
@@ -147,12 +138,16 @@ const handleWheel = (event: WheelEvent): void => {
   wheelDelta = 0
   if (nextIndex === currentIndex.value) return
 
-  wheelLocked = true
-  wheelStartedAt = Date.now()
-  wheelTargetIndex = nextIndex
+  // 立即清除任何待处理的定时器，防止旧的 finishWheelNavigation 触发
+  window.clearTimeout(wheelUnlockTimer)
   window.clearTimeout(scrollEndTimer)
+
+  wheelLocked = true
+  wheelTargetIndex = nextIndex
   scrollToIndex(nextIndex)
-  scheduleWheelUnlock()
+
+  // 使用固定的 800ms 延迟解锁，确保滚动动画完成
+  wheelUnlockTimer = window.setTimeout(finishWheelNavigation, 800)
 }
 
 const isInteractiveTarget = (target: EventTarget | null): boolean => {
