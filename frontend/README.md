@@ -58,11 +58,11 @@ npm run preview
 
 ## 环境配置
 
-| 文件 | 用途 |
-| --- | --- |
+| 文件               | 用途         |
+| ------------------ | ------------ |
 | `.env.development` | 本地开发环境 |
-| `.env.test` | 测试环境 |
-| `.env.production` | 生产环境 |
+| `.env.test`        | 测试环境     |
+| `.env.production`  | 生产环境     |
 
 接口基础地址通过 `VITE_API_BASE_URL` 配置。开发环境默认使用 `/api`，需要由本地代理或后端服务提供对应接口。
 
