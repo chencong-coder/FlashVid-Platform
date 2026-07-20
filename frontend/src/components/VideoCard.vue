@@ -38,6 +38,7 @@ const options = computed(() => ({
   volume: 0.7,
   control: false,
   playsinline: true,
+  preload: 'auto', // 自动预加载视频
 }))
 
 const getVideoElement = (): HTMLVideoElement | null =>
@@ -95,15 +96,8 @@ onBeforeUnmount(() => {
 
 <template>
   <article class="relative h-full w-full overflow-hidden bg-black" @click="togglePlayback">
-    <img
-      v-if="!active"
-      :src="video.poster"
-      :alt="video.description"
-      loading="lazy"
-      draggable="false"
-      class="absolute inset-0 h-full w-full object-cover"
-    />
-    <div v-else ref="playerRoot" class="flash-video-player absolute inset-0 h-full w-full">
+    <!-- 始终渲染视频播放器，实现预加载 -->
+    <div ref="playerRoot" class="flash-video-player absolute inset-0 h-full w-full">
       <videoPlay v-bind="options" />
     </div>
 
