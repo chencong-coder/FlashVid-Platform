@@ -456,13 +456,21 @@ onBeforeUnmount(() => {
     </RecycleScroller>
 
     <TabHeader :active="feed" @change="switchFeed" @search="searchVisible = true" />
+
+    <!-- 静音按钮 - 更现代的设计 -->
     <button
       type="button"
       :aria-label="videoStore.muted ? '打开声音' : '静音'"
-      class="safe-top absolute left-3 top-3 z-40 flex h-8 w-8 items-center justify-center rounded-full bg-black/30 text-xs text-white backdrop-blur-sm"
+      class="safe-top absolute left-4 top-4 z-40 flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-white/20 to-white/5 text-base text-white backdrop-blur-xl transition-all duration-300 hover:scale-110 hover:from-white/30 hover:to-white/10 active:scale-95"
       @click="videoStore.toggleMuted"
     >
-      <i class="fa-solid" :class="videoStore.muted ? 'fa-volume-xmark' : 'fa-volume-high'" />
+      <i
+        class="fa-solid transition-transform duration-300"
+        :class="[
+          videoStore.muted ? 'fa-volume-xmark' : 'fa-volume-high',
+          videoStore.muted ? '' : 'animate-pulse',
+        ]"
+      />
     </button>
 
     <CommentDrawer v-model:show="commentsVisible" :total="commentTotal" />

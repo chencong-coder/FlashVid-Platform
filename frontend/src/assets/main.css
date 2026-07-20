@@ -57,6 +57,10 @@
     text-shadow: 0 1px 3px rgb(0 0 0 / 72%);
   }
 
+  .text-shadow-strong {
+    text-shadow: 0 2px 8px rgb(0 0 0 / 90%);
+  }
+
   .video-gradient {
     background: linear-gradient(
       180deg,
@@ -65,6 +69,33 @@
       transparent 58%,
       rgb(0 0 0 / 68%) 100%
     );
+  }
+
+  /* 心跳动画 */
+  @keyframes heart-beat {
+    0%,
+    100% {
+      transform: scale(1);
+    }
+    25% {
+      transform: scale(1.2);
+    }
+    50% {
+      transform: scale(1);
+    }
+  }
+
+  .animate-heart-beat {
+    animation: heart-beat 0.6s ease-in-out;
+  }
+
+  /* 操作按钮悬停效果 */
+  .action-item {
+    transition: transform 0.2s ease;
+  }
+
+  .action-item:active {
+    transform: scale(0.9);
   }
 }
 

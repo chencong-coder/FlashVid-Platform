@@ -111,31 +111,49 @@ onBeforeUnmount(() => {
     >
       <div
         v-if="showStatus"
-        class="pointer-events-none absolute left-1/2 top-1/2 z-20 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-2xl backdrop-blur-sm"
+        class="pointer-events-none absolute left-1/2 top-1/2 z-20 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/20 text-3xl backdrop-blur-xl"
       >
         <i class="fa-solid" :class="playing ? 'fa-play' : 'fa-pause'" />
       </div>
     </Transition>
 
-    <div class="absolute bottom-6 left-3 z-20 w-[72%] text-white text-shadow-video">
-      <div class="mb-2 text-[15px] font-bold">@{{ video.author.nickname }}</div>
-      <p class="line-clamp-3 text-[14px] leading-[1.45]">
-        {{ video.description }}
-        <span v-for="topic in video.topics" :key="topic" class="ml-1 font-semibold"
-          >#{{ topic }}</span
+    <!-- 视频信息区域 - 更现代的毛玻璃设计 -->
+    <div class="absolute bottom-20 left-0 right-16 z-20 px-4 pb-2">
+      <!-- 作者信息 -->
+      <div class="mb-3 flex items-center gap-2">
+        <div class="text-[16px] font-bold text-white drop-shadow-lg">
+          @{{ video.author.nickname }}
+        </div>
+        <div
+          v-if="video.city"
+          class="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1 text-xs backdrop-blur-md"
         >
-      </p>
-      <div
-        v-if="video.city"
-        class="mt-2 inline-flex items-center gap-1 rounded bg-black/30 px-1.5 py-0.5 text-xs"
-      >
-        <i class="fa-solid fa-location-dot" />
-        {{ video.city }}
+          <i class="fa-solid fa-location-dot text-rose-400" />
+          <span class="font-medium">{{ video.city }}</span>
+        </div>
       </div>
-      <div class="mt-2 flex items-center gap-2 text-xs">
-        <i class="fa-solid fa-music" />
-        <div class="max-w-[14rem] overflow-hidden whitespace-nowrap">
-          <span class="inline-block animate-[marquee_8s_linear_infinite]">{{ video.music }}</span>
+
+      <!-- 视频描述 -->
+      <div
+        class="mb-3 max-w-[85%] rounded-2xl bg-gradient-to-br from-black/40 to-black/20 p-3 backdrop-blur-md"
+      >
+        <p class="line-clamp-3 text-[15px] leading-relaxed text-white">
+          {{ video.description }}
+          <span v-for="topic in video.topics" :key="topic" class="ml-1 font-semibold text-cyan-400">
+            #{{ topic }}
+          </span>
+        </p>
+      </div>
+
+      <!-- 音乐信息 - 带动画的卡片 -->
+      <div
+        class="inline-flex max-w-[75%] items-center gap-2 rounded-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 px-3 py-1.5 backdrop-blur-md"
+      >
+        <i class="fa-solid fa-music text-sm text-purple-300" />
+        <div class="overflow-hidden">
+          <span class="inline-block animate-[marquee_12s_linear_infinite] text-sm font-medium">
+            {{ video.music }}
+          </span>
         </div>
       </div>
     </div>
