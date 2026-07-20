@@ -96,9 +96,13 @@ const snapToNearestVideo = (): void => {
     return
   }
   scroller.scrollTo({ top: targetTop, behavior: 'smooth' })
+  // 立即同步索引，避免重复调用
+  syncActiveVideo(index)
 }
 
 const handleScroll = (): void => {
+  // 如果正在进行滚轮导航、拖动或触摸滑动，不要触发自动吸附
+  if (wheelLocked || touchHasMoved || touchSettling) return
   window.clearTimeout(scrollEndTimer)
   scrollEndTimer = window.setTimeout(snapToNearestVideo, 120)
 }
@@ -110,6 +114,8 @@ const finishWheelNavigation = (): void => {
     scrollerElement.scrollTo({ top: targetTop, behavior: 'auto' })
   }
   syncActiveVideo(targetIndex)
+  // 清除任何待处理的 scroll 定时器，防止 snapToNearestVideo 被误触发
+  window.clearTimeout(scrollEndTimer)
   wheelLocked = false
 }
 
@@ -169,6 +175,8 @@ const finishDragNavigation = (): void => {
     scrollerElement.scrollTo({ top: targetTop, behavior: 'auto' })
   }
   syncActiveVideo(dragTargetIndex)
+  // 清除任何待处理的 scroll 定时器
+  window.clearTimeout(scrollEndTimer)
   dragSettling = false
 }
 
@@ -219,7 +227,14 @@ const handleMouseMove = (event: MouseEvent): void => {
 }
 
 const handleMouseDown = (event: MouseEvent): void => {
-  if (event.button !== 0 || wheelLocked || dragSettling || touchSettling || isInteractiveTarget(event.target)) return
+  if (
+    event.button !== 0 ||
+    wheelLocked ||
+    dragSettling ||
+    touchSettling ||
+    isInteractiveTarget(event.target)
+  )
+    return
   const scroller = getScroller()
   if (!scroller) return
 
@@ -247,6 +262,8 @@ const finishTouchNavigation = (): void => {
     scrollerElement.scrollTo({ top: targetTop, behavior: 'auto' })
   }
   syncActiveVideo(touchTargetIndex)
+  // 清除任何待处理的 scroll 定时器
+  window.clearTimeout(scrollEndTimer)
   touchSettling = false
 }
 
@@ -292,12 +309,12 @@ const handleTouchMove = (event: TouchEvent): void => {
 
   if (!touchHasMoved) return
 
-  const minTop = Math.max(0, (touchStartIndex - 1) * itemHeight.value)
-  const maxTop = Math.min(
-    (videos.value.length - 1) * itemHeight.value,
-    (touchStartIndex + 1) * itemHeight.value,
-  )
-  scroller.scrollTop = Math.max(minTop, Math.min(touchStartScrollTop + distance, maxTop))
+  // 严格限制只能滚动到相邻视频，不允许跨越多个视频
+  const maxDistance = itemHeight.value * 1.5
+  const clampedDistance = Math.max(-maxDistance, Math.min(distance, maxDistance))
+  const targetScrollTop = touchStartScrollTop + clampedDistance
+
+  scroller.scrollTop = targetScrollTop
 }
 
 const handleTouchEnd = (): void => {
