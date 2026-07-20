@@ -46,6 +46,14 @@ let mouseHasMoved = false
 let suppressClick = false
 let resizeObserver: ResizeObserver | undefined
 let scrollerElement: HTMLElement | null = null
+let touchStartY = 0
+let touchStartScrollTop = 0
+let touchStartIndex = 0
+let touchDistance = 0
+let touchHasMoved = false
+let touchSettleTimer: number | undefined
+let touchSettling = false
+let touchTargetIndex = 0
 
 const videos = computed(() => videoStore.feeds[props.feed].items)
 const currentVideo = computed(() => videos.value[currentIndex.value])
@@ -80,7 +88,7 @@ const scrollToIndex = (index: number, behavior: ScrollBehavior = 'smooth'): void
 
 const snapToNearestVideo = (): void => {
   const scroller = getScroller()
-  if (!scroller || wheelLocked || dragging.value || dragSettling) return
+  if (!scroller || wheelLocked || dragging.value || dragSettling || touchSettling) return
   const index = Math.round(scroller.scrollTop / itemHeight.value)
   const targetTop = index * itemHeight.value
   if (Math.abs(scroller.scrollTop - targetTop) <= 2) {
@@ -114,7 +122,7 @@ const scheduleWheelUnlock = (): void => {
 const handleWheel = (event: WheelEvent): void => {
   event.preventDefault()
   if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) return
-  if (dragging.value || dragSettling) return
+  if (dragging.value || dragSettling || touchSettling) return
   if (wheelLocked) {
     scheduleWheelUnlock()
     return
@@ -211,7 +219,7 @@ const handleMouseMove = (event: MouseEvent): void => {
 }
 
 const handleMouseDown = (event: MouseEvent): void => {
-  if (event.button !== 0 || wheelLocked || dragSettling || isInteractiveTarget(event.target)) return
+  if (event.button !== 0 || wheelLocked || dragSettling || touchSettling || isInteractiveTarget(event.target)) return
   const scroller = getScroller()
   if (!scroller) return
 
@@ -233,15 +241,93 @@ const handleClickCapture = (event: MouseEvent): void => {
   suppressClick = false
 }
 
+const finishTouchNavigation = (): void => {
+  const targetTop = touchTargetIndex * itemHeight.value
+  if (scrollerElement && Math.abs(scrollerElement.scrollTop - targetTop) > 2) {
+    scrollerElement.scrollTo({ top: targetTop, behavior: 'auto' })
+  }
+  syncActiveVideo(touchTargetIndex)
+  touchSettling = false
+}
+
+const settleTouchAtIndex = (index: number): void => {
+  const boundedIndex = Math.max(0, Math.min(index, videos.value.length - 1))
+  const scroller = getScroller()
+  if (!scroller) return
+
+  touchSettling = true
+  touchTargetIndex = boundedIndex
+  window.clearTimeout(scrollEndTimer)
+  scroller.scrollTo({ top: boundedIndex * itemHeight.value, behavior: 'smooth' })
+  window.clearTimeout(touchSettleTimer)
+  touchSettleTimer = window.setTimeout(finishTouchNavigation, 560)
+}
+
+const handleTouchStart = (event: TouchEvent): void => {
+  if (wheelLocked || dragSettling || touchSettling || isInteractiveTarget(event.target)) return
+  const scroller = getScroller()
+  const touch = event.touches[0]
+  if (!scroller || !touch) return
+
+  touchStartY = touch.clientY
+  touchStartScrollTop = scroller.scrollTop
+  touchStartIndex = currentIndex.value
+  touchDistance = 0
+  touchHasMoved = false
+}
+
+const handleTouchMove = (event: TouchEvent): void => {
+  const scroller = getScroller()
+  const touch = event.touches[0]
+  if (!scroller || !touch) return
+
+  const currentY = touch.clientY
+  const distance = touchStartY - currentY
+  touchDistance = distance
+
+  if (Math.abs(distance) > 10) {
+    touchHasMoved = true
+    event.preventDefault()
+  }
+
+  if (!touchHasMoved) return
+
+  const minTop = Math.max(0, (touchStartIndex - 1) * itemHeight.value)
+  const maxTop = Math.min(
+    (videos.value.length - 1) * itemHeight.value,
+    (touchStartIndex + 1) * itemHeight.value,
+  )
+  scroller.scrollTop = Math.max(minTop, Math.min(touchStartScrollTop + distance, maxTop))
+}
+
+const handleTouchEnd = (): void => {
+  if (!touchHasMoved) return
+
+  suppressClick = true
+  const crossedThreshold = Math.abs(touchDistance) >= itemHeight.value / 2
+  const direction = touchDistance > 0 ? 1 : -1
+  settleTouchAtIndex(touchStartIndex + (crossedThreshold ? direction : 0))
+  window.setTimeout(() => (suppressClick = false), 0)
+
+  touchHasMoved = false
+  touchDistance = 0
+}
+
 const bindScrollerEvents = (): void => {
   scrollerElement = getScroller()
   scrollerElement?.addEventListener('wheel', handleWheel, { passive: false })
   scrollerElement?.addEventListener('mousedown', handleMouseDown)
+  scrollerElement?.addEventListener('touchstart', handleTouchStart, { passive: true })
+  scrollerElement?.addEventListener('touchmove', handleTouchMove, { passive: false })
+  scrollerElement?.addEventListener('touchend', handleTouchEnd, { passive: true })
 }
 
 const unbindScrollerEvents = (): void => {
   scrollerElement?.removeEventListener('wheel', handleWheel)
   scrollerElement?.removeEventListener('mousedown', handleMouseDown)
+  scrollerElement?.removeEventListener('touchstart', handleTouchStart)
+  scrollerElement?.removeEventListener('touchmove', handleTouchMove)
+  scrollerElement?.removeEventListener('touchend', handleTouchEnd)
   scrollerElement = null
 }
 
@@ -303,9 +389,11 @@ onBeforeUnmount(() => {
   window.clearTimeout(wheelResetTimer)
   window.clearTimeout(wheelUnlockTimer)
   window.clearTimeout(dragSettleTimer)
+  window.clearTimeout(touchSettleTimer)
   removeMouseDragListeners()
   dragging.value = false
   dragSettling = false
+  touchSettling = false
   videoStore.setActiveVideo('')
 })
 </script>
