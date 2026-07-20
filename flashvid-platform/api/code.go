@@ -53,6 +53,13 @@ const (
 	CodeCommentTooShort    ResCode = 30004 // 评论内容过短
 	CodeCommentSensitive   ResCode = 30005 // 评论包含敏感词
 	CodeCommentTooFrequent ResCode = 30006 // 评论过于频繁
+	CodeCannotReplyDeleted ResCode = 30007 // 无法回复已删除的评论
+
+	// ==================== 消息相关错误 35000-35999 ====================
+	CodeMessageNotExist    ResCode = 35001 // 消息不存在
+	CodeCannotSendToSelf   ResCode = 35002 // 不能给自己发消息
+	CodeMessageTooLong     ResCode = 35003 // 消息内容过长
+	CodeMessageTooFrequent ResCode = 35004 // 消息发送过于频繁
 
 	// ==================== 系统错误 40000-49999 ====================
 	CodeInvalidParam       ResCode = 40001 // 请求参数错误
@@ -63,6 +70,9 @@ const (
 	CodeMethodNotAllowed   ResCode = 40006 // 请求方法不允许
 	CodeDatabaseError      ResCode = 40007 // 数据库错误
 	CodeCacheError         ResCode = 40008 // 缓存错误
+	CodeInternalError      ResCode = 40009 // 服务器内部错误
+	CodeFileReadError      ResCode = 40010 // 文件读取错误
+	CodeFileWriteError     ResCode = 40011 // 文件写入错误
 
 	// ==================== 第三方服务错误 50000-59999 ====================
 	CodeServerBusy         ResCode = 50001 // 服务繁忙
@@ -115,6 +125,13 @@ var codeMsgMap = map[ResCode]string{
 	CodeCommentTooShort:    "评论内容过短",
 	CodeCommentSensitive:   "评论包含敏感词",
 	CodeCommentTooFrequent: "评论过于频繁",
+	CodeCannotReplyDeleted: "无法回复已删除的评论",
+
+	// ==================== 消息相关错误 ====================
+	CodeMessageNotExist:    "消息不存在",
+	CodeCannotSendToSelf:   "不能给自己发消息",
+	CodeMessageTooLong:     "消息内容过长",
+	CodeMessageTooFrequent: "消息发送过于频繁",
 
 	// ==================== 系统错误 ====================
 	CodeInvalidParam:      "请求参数错误",
@@ -125,6 +142,9 @@ var codeMsgMap = map[ResCode]string{
 	CodeMethodNotAllowed:  "请求方法不允许",
 	CodeDatabaseError:     "数据库错误",
 	CodeCacheError:        "缓存错误",
+	CodeInternalError:     "服务器内部错误",
+	CodeFileReadError:     "文件读取错误",
+	CodeFileWriteError:    "文件写入错误",
 
 	// ==================== 第三方服务错误 ====================
 	CodeServerBusy:      "服务繁忙",

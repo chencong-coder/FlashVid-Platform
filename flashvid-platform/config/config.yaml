@@ -1,11 +1,11 @@
 server:
-  name: "appname"
+  name: "flashvid-platform"
   mode: "dev"
   port: 8089
   version: "v0.0.1"
 
 snowflake:
-  start_time: "2025-07-01"
+  start_time: "2026-07-19"
   machine_id: 1
 
 jwt:
@@ -24,9 +24,9 @@ log:
 mysql:
   host: 127.0.0.1
   port: 3306
-  user: "user"
-  password: "password"
-  dbname: "dbname"
+  user: "root"
+  password: "chencong"
+  dbname: "flashvid_platform"
   max_open_conns: 200
   max_idle_conns: 50
   max_lifetime: 1h 

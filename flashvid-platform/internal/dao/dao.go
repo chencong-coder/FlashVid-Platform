@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"time"
-
+	"flashvid-platform/internal/dao/query"
 	"github.com/redis/go-redis/v9"
 	"github.com/spf13/viper"
 	"gorm.io/driver/mysql"
@@ -37,8 +37,12 @@ func MustInitMySQL(cfg *viper.Viper) {
 	sqlDB.SetMaxIdleConns(cfg.GetInt("mysql.max_idle_conns"))
 	sqlDB.SetMaxOpenConns(cfg.GetInt("mysql.max_open_conns"))
 	sqlDB.SetConnMaxLifetime(cfg.GetDuration("mysql.max_lifetime"))
-	// query.SetDefault(db)
+
+	// 初始化 GORM Gen Query（使用 Gen 自动生成的全局 Q）
+	query.SetDefault(db)
+	DB = db
 }
+ 
 
 // MustInitRedis 初始化 Redis 连接
 func MustInitRedis(conf *viper.Viper) {

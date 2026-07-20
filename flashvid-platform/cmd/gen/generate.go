@@ -11,7 +11,7 @@ import (
 	"gorm.io/gen"
 )
 
-const MySQLDSN = "user:pwd@tcp(ip:port)/db?charset=utf8mb4&parseTime=True"
+const MySQLDSN = "root:chencong@tcp(127.0.0.1:3306)/flashvid_platform?charset=utf8mb4&parseTime=True"
 
 func connectDB(dsn string) *gorm.DB {
 	db, err := gorm.Open(mysql.Open(dsn))

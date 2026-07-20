@@ -1,29 +1,42 @@
 package repository
 
-import (
-	"flashvid-platform/internal/dao"
-	"flashvid-platform/internal/model"
-)
+// import (
+// 	"flashvid-platform/internal/dao"
+// 	"flashvid-platform/internal/model"
+// )
 
 // VideoRepository 视频数据访问接口
 // 用于处理复杂的视频相关查询（推荐算法、统计、联表等）
+//
+// 使用场景：
+// - 多表联查（JOIN 2个以上表）
+// - 聚合统计（GROUP BY, HAVING, COUNT, SUM）
+// - 复杂算法（推荐算法、权重计算）
+// - 地理位置查询（Haversine 公式）
+// - 性能优化（原生 SQL + 索引优化）
+//
+// 简单查询请使用 Gen 生成的 query：
+//   import "flashvid-platform/internal/dao/query"
+//   v := query.Video
+//   video, err := v.Where(v.ID.Eq(videoID)).First()
 type VideoRepository interface {
-	// 在这里添加复杂的自定义查询方法
-	// 例如：
+	// 需要时在这里添加复杂查询方法
 	// GetRecommendVideos(userID int64, limit int) ([]*model.Video, error)
 	// GetHotVideos(days int, limit int) ([]*model.Video, error)
 	// GetNearbyVideos(lat, lng float64, radiusKM int, limit int) ([]*model.Video, error)
 }
 
 // videoRepository 实现
-type videoRepository struct{}
+// type videoRepository struct{}
 
 // NewVideoRepository 创建视频仓储实例
-func NewVideoRepository() VideoRepository {
-	return &videoRepository{}
-}
+// func NewVideoRepository() VideoRepository {
+// 	return &videoRepository{}
+// }
 
-// 示例：基于用户兴趣的推荐视频（复杂查询）
+// ==================== 示例：复杂查询实现 ====================
+
+// 示例1：基于用户兴趣的推荐视频（复杂查询）
 // func (r *videoRepository) GetRecommendVideos(userID int64, limit int) ([]*model.Video, error) {
 // 	var videos []*model.Video
 //
@@ -51,7 +64,7 @@ func NewVideoRepository() VideoRepository {
 // 	return videos, err
 // }
 
-// 示例：附近的视频（地理位置查询）
+// 示例2：附近的视频（地理位置查询）
 // func (r *videoRepository) GetNearbyVideos(lat, lng float64, radiusKM int, limit int) ([]*model.Video, error) {
 // 	var videos []*model.Video
 //
@@ -75,4 +88,25 @@ func NewVideoRepository() VideoRepository {
 //
 // 	err := dao.DB.Raw(sql, lat, lng, lat, radiusKM, limit).Scan(&videos).Error
 // 	return videos, err
+// }
+
+// 示例3：热门视频统计（聚合查询）
+// func (r *videoRepository) GetHotVideos(days int, limit int) ([]map[string]interface{}, error) {
+// 	var results []map[string]interface{}
+//
+// 	sql := `
+// 		SELECT v.id, v.title, v.cover_url,
+// 		       (v.like_count + v.comment_count * 2 + v.share_count * 3) as hot_score,
+// 		       v.view_count, v.like_count, v.comment_count
+// 		FROM videos v
+// 		WHERE v.created_at > DATE_SUB(NOW(), INTERVAL ? DAY)
+// 		  AND v.status = 2
+// 		  AND v.deleted_at IS NULL
+// 		GROUP BY v.id
+// 		ORDER BY hot_score DESC
+// 		LIMIT ?
+// 	`
+//
+// 	err := dao.DB.Raw(sql, days, limit).Scan(&results).Error
+// 	return results, err
 // }
