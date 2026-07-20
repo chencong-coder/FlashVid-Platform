@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>闪视 - 短视频APP原型</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#FE2C55', // 抖音风格主红色，作为闪视主色
+                        darkBg: '#000000',
+                        bottomNav: '#121212'
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .no-scrollbar::-webkit-scrollbar { display: none; }
+            .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+            .video-full { height: calc(100vh - 64px); }
+            .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+        }
+    </style>
+</head>
+<body class="bg-darkBg text-white overflow-hidden select-none">
+    <!-- 主容器 -->
+    <div id="app" class="relative w-full h-screen flex flex-col">
+        <!-- 视频滚动区域（核心Feed流，可上下滑动切换视频） -->
+        <div id="feedContainer" class="flex-1 overflow-y-auto no-scrollbar snap-y snap-mandatory">
+            <!-- 视频卡片1，对应截图里动漫视频场景 -->
+            <section class="w-full video-full snap-start relative">
+                <!-- 视频背景图使用Unsplash影视插画素材 -->
+                <img src="https://images.unsplash.com/photo-1578662996442-48f60103fc96?q=80&w=1470&auto=format&fit=crop" class="w-full h-full object-cover" alt="视频画面">
+                <!-- 顶部导航栏 -->
+                <div class="absolute top-0 left-0 w-full px-4 py-3 flex items-center justify-between bg-gradient-to-b from-black/70 to-transparent">
+                    <div class="flex gap-6 text-base font-medium">
+                        <span class="opacity-60">关注</span>
+                        <span class="border-b-2 border-white pb-1">推荐</span>
+                        <span class="opacity-60">同城</span>
+                    </div>
+                    <i class="fa-solid fa-magnifying-glass text-lg"></i>
+                </div>
+                <!-- 右侧互动按钮栏（点赞、评论、收藏、转发、头像） -->
+                <div class="absolute right-3 bottom-24 flex flex-col items-center gap-6">
+                    <!-- 用户头像 -->
+                    <div class="relative">
+                        <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf3774f2?q=80&w=1480&auto=format&fit=crop" class="w-10 h-10 rounded-full border-2 border-white object-cover">
+                        <div class="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-primary rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                            <i class="fa-solid fa-plus"></i>
+                        </div>
+                    </div>
+                    <!-- 点赞 -->
+                    <div class="flex flex-col items-center gap-1">
+                        <i class="fa-solid fa-heart text-2xl"></i>
+                        <span class="text-xs">6.8万</span>
+                    </div>
+                    <!-- 评论 -->
+                    <div class="flex flex-col items-center gap-1">
+                        <i class="fa-solid fa-comment-dots text-2xl"></i>
+                        <span class="text-xs">1385</span>
+                    </div>
+                    <!-- 收藏 -->
+                    <div class="flex flex-col items-center gap-1">
+                        <i class="fa-solid fa-star text-2xl"></i>
+                        <span class="text-xs">2.2万</span>
+                    </div>
+                    <!-- 分享 -->
+                    <div class="flex flex-col items-center gap-1">
+                        <i class="fa-solid fa-share text-2xl"></i>
+                        <span class="text-xs">9539</span>
+                    </div>
+                    <!-- 音乐旋转碟片 -->
+                    <div class="w-10 h-10 rounded-full border border-white animate-[spin_4s_linear_infinite] overflow-hidden">
+                        <img src="https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=1470&auto=format&fit=crop" class="w-full h-full object-cover">
+                    </div>
+                </div>
+                <!-- 左下角视频文案、作者信息 -->
+                <div class="absolute left-3 bottom-20 w-[70%] flex flex-col gap-2">
+                    <div class="font-bold text-base">@凌晨睡不着</div>
+                    <div class="text-sm leading-relaxed">第27集：中了一张高级住宅住房券，刚搬进去就发现了不对劲...全文已完结，宝子们放心观看哦 #一口气看完系列 #全文已完结</div>
+                    <div class="flex items-center gap-2 text-xs mt-1">
+                        <i class="fa-solid fa-music"></i>
+                        <span>原声 - 凌晨睡不着</span>
+                    </div>
+                </div>
+            </section>
+            <!-- 备用第二视频卡片，实现上下滑动切换效果 -->
+            <section class="w-full video-full snap-start relative">
+                <img src="https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=1470&auto=format&fit=crop" class="w-full h-full object-cover" alt="视频画面">
+                <div class="absolute top-0 left-0 w-full px-4 py-3 flex items-center justify-between bg-gradient-to-b from-black/70 to-transparent">
+                    <div class="flex gap-6 text-base font-medium">
+                        <span class="opacity-60">关注</span>
+                        <span class="border-b-2 border-white pb-1">推荐</span>
+                        <span class="opacity-60">同城</span>
+                    </div>
+                    <i class="fa-solid fa-magnifying-glass text-lg"></i>
+                </div>
+                <div class="absolute right-3 bottom-24 flex flex-col items-center gap-6">
+                    <div class="relative">
+                        <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=1470&auto=format&fit=crop" class="w-10 h-10 rounded-full border-2 border-white object-cover">
+                        <div class="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-primary rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                            <i class="fa-solid fa-plus"></i>
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-center gap-1">
+                        <i class="fa-solid fa-heart text-2xl"></i>
+                        <span class="text-xs">3.2万</span>
+                    </div>
+                    <div class="flex flex-col items-center gap-1">
+                        <i class="fa-solid fa-comment-dots text-2xl"></i>
+                        <span class="text-xs">562</span>
+                    </div>
+                    <div class="flex flex-col items-center gap-1">
+                        <i class="fa-solid fa-star text-2xl"></i>
+                        <span class="text-xs">8700</span>
+                    </div>
+                    <div class="flex flex-col items-center gap-1">
+                        <i class="fa-solid fa-share text-2xl"></i>
+                        <span class="text-xs">2140</span>
+                    </div>
+                    <div class="w-10 h-10 rounded-full border border-white animate-[spin_4s_linear_infinite] overflow-hidden">
+                        <img src="https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=1470&auto=format&fit=crop" class="w-full h-full object-cover">
+                    </div>
+                </div>
+                <div class="absolute left-3 bottom-20 w-[70%] flex flex-col gap-2">
+                    <div class="font-bold text-base">@户外旅行家</div>
+                    <div class="text-sm leading-relaxed">海边日落实况，沉浸式感受晚风 #旅行 #海边日落 #日常vlog</div>
+                    <div class="flex items-center gap-2 text-xs mt-1">
+                        <i class="fa-solid fa-music"></i>
+                        <span>轻音乐 - 海边晚风</span>
+                    </div>
+                </div>
+            </section>
+        </div>
+        <!-- 底部导航栏 -->
+        <nav class="w-full h-16 safe-bottom bg-bottomNav flex items-center justify-around text-sm z-20">
+            <div class="flex flex-col items-center gap-1 text-white">
+                <i class="fa-solid fa-house text-lg"></i>
+                <span>首页</span>
+            </div>
+            <div class="flex flex-col items-center gap-1 text-gray-400">
+                <i class="fa-solid fa-compass text-lg"></i>
+                <span>发现</span>
+            </div>
+            <!-- 发布按钮 -->
+            <div class="bg-primary px-4 py-2 rounded-lg">
+                <i class="fa-solid fa-plus text-xl"></i>
+            </div>
+            <div class="flex flex-col items-center gap-1 text-gray-400">
+                <i class="fa-solid fa-message text-lg"></i>
+                <span>消息</span>
+            </div>
+            <div class="flex flex-col items-center gap-1 text-gray-400">
+                <i class="fa-solid fa-user text-lg"></i>
+                <span>我的</span>
+            </div>
+        </nav>
+    </div>
+    <script>
+        // 简单交互逻辑：点击视频区域暂停/播放模拟
+        const feedContainer = document.getElementById('feedContainer');
+        feedContainer.addEventListener('click', (e)=>{
+            if(!e.target.closest('i') && !e.target.closest('div[class*="absolute right"]') && !e.target.closest('div[class*="absolute left"]')) {
+                alert('模拟视频播放/暂停切换');
+            }
+        })
+        // 底部导航切换模拟
+        const navItems = document.querySelectorAll('nav > div');
+        navItems.forEach((item,index)=>{
+            if(index===2) return; // 跳过发布按钮
+            item.addEventListener('click',()=>{
+                navItems.forEach(nav=>{
+                    if(nav!==navItems[2]) nav.classList.remove('text-white');
+                    if(nav!==navItems[2]) nav.classList.add('text-gray-400');
+                })
+                item.classList.remove('text-gray-400');
+                item.classList.add('text-white');
+            })
+        })
+    </script>
+</body>
+</html>
