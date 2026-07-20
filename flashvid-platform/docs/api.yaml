@@ -1,0 +1,2726 @@
+openapi: 3.0.3
+info:
+  title: FlashVid Platform API
+  description: |
+    FlashVid Platform 短视频社交平台 RESTful API 文档
+
+    ## 功能模块
+    - 认证模块：用户注册、登录、Token刷新
+    - 用户模块：用户信息管理、作品列表、喜欢列表、收藏列表
+    - 关注模块：关注、取消关注、关注列表、粉丝列表
+    - 视频模块：视频详情、发布视频、删除视频、搜索视频
+    - 视频流模块：推荐流、关注流、附近流
+    - 互动模块：点赞、收藏、分享
+    - 评论模块：评论列表、发表评论、删除评论、点赞评论
+    - 话题模块：话题列表、话题详情、话题视频列表、搜索话题
+    - 消息模块：消息列表、对话消息、发送消息、标记已读、删除消息
+    - 上传模块：获取上传凭证、上传文件
+    - 音乐模块：音乐列表、搜索音乐
+
+    ## 认证方式
+    使用 JWT Token 认证，在请求头中添加：
+    ```
+    Authorization: Bearer <access_token>
+    ```
+
+    ## 错误码
+    - 0: 成功
+    - 10000-19999: 用户相关错误
+    - 20000-29999: 视频相关错误
+    - 30000-39999: 评论相关错误
+    - 40000-49999: 系统错误
+    - 50000-59999: 第三方服务错误
+  version: 1.0.0
+  contact:
+    name: FlashVid Platform API Support
+    email: support@flashvid.com
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+
+servers:
+  - url: https://api.flashvid.com/api/v1
+    description: 生产环境
+  - url: https://api-staging.flashvid.com/api/v1
+    description: 测试环境
+  - url: http://localhost:8080/api/v1
+    description: 本地开发环境
+
+tags:
+  - name: 认证
+    description: 用户认证相关接口
+  - name: 用户
+    description: 用户信息管理
+  - name: 关注
+    description: 用户关注关系管理
+  - name: 视频
+    description: 视频相关操作
+  - name: 视频流
+    description: 视频推荐流
+  - name: 互动
+    description: 点赞、收藏、分享等互动操作
+  - name: 评论
+    description: 评论相关操作
+  - name: 话题
+    description: 话题相关操作
+  - name: 消息
+    description: 私信消息管理
+  - name: 上传
+    description: 文件上传
+  - name: 音乐
+    description: 音乐相关操作
+
+paths:
+  # ==================== 认证模块 ====================
+  /auth/register:
+    post:
+      tags:
+        - 认证
+      summary: 用户注册
+      description: 用户通过手机号和验证码注册账号
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+                - phone
+                - code
+              properties:
+                username:
+                  type: string
+                  minLength: 4
+                  maxLength: 32
+                  description: 用户名，4-32字符
+                  example: testuser
+                password:
+                  type: string
+                  minLength: 6
+                  maxLength: 20
+                  description: 密码，6-20字符
+                  example: password123
+                phone:
+                  type: string
+                  pattern: '^1[3-9]\d{9}$'
+                  description: 手机号
+                  example: '13800138000'
+                code:
+                  type: string
+                  description: 短信验证码
+                  example: '123456'
+      responses:
+        '200':
+          description: 注册成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          user_id:
+                            type: integer
+                            format: int64
+                            example: 123456
+                          username:
+                            type: string
+                            example: testuser
+                          token:
+                            type: string
+                            example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /auth/login:
+    post:
+      tags:
+        - 认证
+      summary: 用户登录
+      description: 用户通过用户名或手机号登录
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                  description: 用户名或手机号
+                  example: testuser
+                password:
+                  type: string
+                  description: 密码
+                  example: password123
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          user_id:
+                            type: integer
+                            format: int64
+                            example: 123456
+                          username:
+                            type: string
+                            example: testuser
+                          nickname:
+                            type: string
+                            example: 测试用户
+                          avatar:
+                            type: string
+                            format: uri
+                            example: https://cdn.flashvid.com/avatar/123456.jpg
+                          token:
+                            type: string
+                            example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                          refresh_token:
+                            type: string
+                            example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/refresh:
+    post:
+      tags:
+        - 认证
+      summary: 刷新Token
+      description: 使用refresh_token刷新access_token
+      operationId: refreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refresh_token
+              properties:
+                refresh_token:
+                  type: string
+                  description: 刷新令牌
+                  example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+      responses:
+        '200':
+          description: 刷新成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          token:
+                            type: string
+                            example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                          refresh_token:
+                            type: string
+                            example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+
+  # ==================== 用户模块 ====================
+  /users/{id}:
+    get:
+      tags:
+        - 用户
+      summary: 获取用户信息
+      description: 获取指定用户的详细信息
+      operationId: getUserById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 用户ID
+          schema:
+            type: integer
+            format: int64
+            example: 123456
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/UserProfile'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+
+    put:
+      tags:
+        - 用户
+      summary: 更新用户信息
+      description: 更新当前用户的个人信息
+      operationId: updateUser
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 用户ID
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nickname:
+                  type: string
+                  maxLength: 32
+                  example: 新昵称
+                avatar:
+                  type: string
+                  format: uri
+                  example: https://cdn.flashvid.com/avatar/new.jpg
+                bio:
+                  type: string
+                  maxLength: 200
+                  example: 这是我的个人简介
+                gender:
+                  type: integer
+                  enum: [0, 1, 2]
+                  description: 性别 0-未知 1-男 2-女
+                  example: 1
+                birthday:
+                  type: string
+                  format: date
+                  example: '2000-01-01'
+                city:
+                  type: string
+                  example: 深圳
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/UserProfile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+      security:
+        - BearerAuth: []
+
+  /users/{id}/videos:
+    get:
+      tags:
+        - 用户
+      summary: 获取用户作品列表
+      description: 获取指定用户发布的视频列表
+      operationId: getUserVideos
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 用户ID
+          schema:
+            type: integer
+            format: int64
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Video'
+                          pagination:
+                            $ref: '#/components/schemas/Pagination'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+
+  /users/{id}/likes:
+    get:
+      tags:
+        - 用户
+      summary: 获取用户喜欢列表
+      description: 获取用户点赞过的视频列表
+      operationId: getUserLikes
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 用户ID
+          schema:
+            type: integer
+            format: int64
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Video'
+                          pagination:
+                            $ref: '#/components/schemas/Pagination'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+
+  /users/{id}/favorites:
+    get:
+      tags:
+        - 用户
+      summary: 获取用户收藏列表
+      description: 获取用户收藏的视频列表
+      operationId: getUserFavorites
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 用户ID
+          schema:
+            type: integer
+            format: int64
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Video'
+                          pagination:
+                            $ref: '#/components/schemas/Pagination'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+
+
+  # ==================== 关注模块 ====================
+  /users/{id}/follow:
+    post:
+      tags:
+        - 关注
+      summary: 关注用户
+      description: 关注指定用户
+      operationId: followUser
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 用户ID
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 关注成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          is_following:
+                            type: boolean
+                            example: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: 已经关注该用户
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+      security:
+        - BearerAuth: []
+
+    delete:
+      tags:
+        - 关注
+      summary: 取消关注
+      description: 取消关注指定用户
+      operationId: unfollowUser
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 用户ID
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 取消关注成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          is_following:
+                            type: boolean
+                            example: false
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+
+  /users/{id}/following:
+    get:
+      tags:
+        - 关注
+      summary: 获取关注列表
+      description: 获取用户关注的用户列表
+      operationId: getUserFollowing
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 用户ID
+          schema:
+            type: integer
+            format: int64
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/UserProfile'
+                          pagination:
+                            $ref: '#/components/schemas/Pagination'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+
+  /users/{id}/followers:
+    get:
+      tags:
+        - 关注
+      summary: 获取粉丝列表
+      description: 获取用户的粉丝列表
+      operationId: getUserFollowers
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 用户ID
+          schema:
+            type: integer
+            format: int64
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/UserProfile'
+                          pagination:
+                            $ref: '#/components/schemas/Pagination'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+
+
+  # ==================== 视频流模块 ====================
+  /feed/recommend:
+    get:
+      tags:
+        - 视频流
+      summary: 获取推荐视频流
+      description: 获取个性化推荐的视频列表
+      operationId: getRecommendFeed
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Count'
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Video'
+                          cursor:
+                            type: string
+                            description: 下一页游标
+                            example: next_cursor_token
+                          has_more:
+                            type: boolean
+                            description: 是否还有更多数据
+                            example: true
+      security:
+        - BearerAuth: []
+
+  /feed/following:
+    get:
+      tags:
+        - 视频流
+      summary: 获取关注视频流
+      description: 获取关注用户发布的视频列表
+      operationId: getFollowingFeed
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Count'
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Video'
+                          cursor:
+                            type: string
+                            example: next_cursor_token
+                          has_more:
+                            type: boolean
+                            example: true
+      security:
+        - BearerAuth: []
+
+  /feed/nearby:
+    get:
+      tags:
+        - 视频流
+      summary: 获取附近视频流
+      description: 获取附近用户发布的视频列表
+      operationId: getNearbyFeed
+      parameters:
+        - name: latitude
+          in: query
+          required: true
+          description: 纬度
+          schema:
+            type: number
+            format: double
+            example: 22.5431
+        - name: longitude
+          in: query
+          required: true
+          description: 经度
+          schema:
+            type: number
+            format: double
+            example: 114.0579
+        - name: radius
+          in: query
+          description: 半径（公里），默认10
+          schema:
+            type: integer
+            default: 10
+            example: 10
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Count'
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Video'
+                          cursor:
+                            type: string
+                            example: next_cursor_token
+                          has_more:
+                            type: boolean
+                            example: true
+      security:
+        - BearerAuth: []
+
+
+  # ==================== 视频模块 ====================
+  /videos:
+    post:
+      tags:
+        - 视频
+      summary: 发布视频
+      description: 发布新视频
+      operationId: publishVideo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+                - cover_url
+                - video_url
+                - duration
+                - width
+                - height
+                - file_size
+              properties:
+                title:
+                  type: string
+                  maxLength: 100
+                  description: 视频标题
+                  example: 我的第一个短视频
+                description:
+                  type: string
+                  maxLength: 500
+                  description: 视频描述
+                  example: 这是一个测试视频
+                cover_url:
+                  type: string
+                  format: uri
+                  description: 封面URL（已上传）
+                  example: https://cdn.flashvid.com/cover/123.jpg
+                video_url:
+                  type: string
+                  format: uri
+                  description: 视频URL（已上传）
+                  example: https://cdn.flashvid.com/video/123.mp4
+                duration:
+                  type: integer
+                  description: 视频时长（秒）
+                  example: 30
+                width:
+                  type: integer
+                  description: 视频宽度
+                  example: 1080
+                height:
+                  type: integer
+                  description: 视频高度
+                  example: 1920
+                file_size:
+                  type: integer
+                  format: int64
+                  description: 文件大小（字节）
+                  example: 5242880
+                music_id:
+                  type: integer
+                  format: int64
+                  description: 音乐ID
+                  example: 456
+                music_name:
+                  type: string
+                  description: 背景音乐名称
+                  example: 背景音乐
+                city:
+                  type: string
+                  description: 城市
+                  example: 深圳
+                location:
+                  type: string
+                  description: 具体位置
+                  example: 南山区
+                latitude:
+                  type: number
+                  format: double
+                  description: 纬度
+                  example: 22.5431
+                longitude:
+                  type: number
+                  format: double
+                  description: 经度
+                  example: 114.0579
+                topic_ids:
+                  type: array
+                  items:
+                    type: integer
+                    format: int64
+                  description: 话题ID列表
+                  example: [1, 2, 3]
+      responses:
+        '200':
+          description: 发布成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          video_id:
+                            type: integer
+                            format: int64
+                            example: 12345
+                          status:
+                            type: integer
+                            description: 1-审核中
+                            example: 1
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+      security:
+        - BearerAuth: []
+
+  /videos/{id}:
+    get:
+      tags:
+        - 视频
+      summary: 获取视频详情
+      description: 获取指定视频的详细信息
+      operationId: getVideoById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 视频ID
+          schema:
+            type: integer
+            format: int64
+            example: 12345
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/VideoDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+
+    delete:
+      tags:
+        - 视频
+      summary: 删除视频
+      description: 删除自己发布的视频
+      operationId: deleteVideo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 视频ID
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+
+  /videos/search:
+    get:
+      tags:
+        - 视频
+      summary: 搜索视频
+      description: 根据关键词搜索视频
+      operationId: searchVideos
+      parameters:
+        - name: keyword
+          in: query
+          required: true
+          description: 搜索关键词
+          schema:
+            type: string
+            example: 旅行
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: 搜索成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Video'
+                          pagination:
+                            $ref: '#/components/schemas/Pagination'
+      security:
+        - BearerAuth: []
+
+
+  # ==================== 互动模块 ====================
+  /videos/{id}/like:
+    post:
+      tags:
+        - 互动
+      summary: 点赞视频
+      description: 点赞指定视频
+      operationId: likeVideo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 视频ID
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 点赞成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          is_liked:
+                            type: boolean
+                            example: true
+                          like_count:
+                            type: integer
+                            format: int64
+                            example: 1001
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+
+    delete:
+      tags:
+        - 互动
+      summary: 取消点赞
+      description: 取消点赞指定视频
+      operationId: unlikeVideo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 视频ID
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 取消点赞成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          is_liked:
+                            type: boolean
+                            example: false
+                          like_count:
+                            type: integer
+                            format: int64
+                            example: 1000
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+
+  /videos/{id}/favorite:
+    post:
+      tags:
+        - 互动
+      summary: 收藏视频
+      description: 收藏指定视频
+      operationId: favoriteVideo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 视频ID
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 收藏成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          is_favorited:
+                            type: boolean
+                            example: true
+                          favorite_count:
+                            type: integer
+                            format: int64
+                            example: 201
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+
+    delete:
+      tags:
+        - 互动
+      summary: 取消收藏
+      description: 取消收藏指定视频
+      operationId: unfavoriteVideo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 视频ID
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 取消收藏成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          is_favorited:
+                            type: boolean
+                            example: false
+                          favorite_count:
+                            type: integer
+                            format: int64
+                            example: 200
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+
+  /videos/{id}/share:
+    post:
+      tags:
+        - 互动
+      summary: 分享视频
+      description: 分享视频到指定平台
+      operationId: shareVideo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 视频ID
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - platform
+              properties:
+                platform:
+                  type: string
+                  enum: [wechat, qq, weibo, link]
+                  description: 分享平台
+                  example: wechat
+      responses:
+        '200':
+          description: 分享成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          share_url:
+                            type: string
+                            format: uri
+                            example: https://flashvid.com/video/12345
+                          share_count:
+                            type: integer
+                            format: int64
+                            example: 51
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+
+
+  # ==================== 评论模块 ====================
+  /videos/{id}/comments:
+    get:
+      tags:
+        - 评论
+      summary: 获取视频评论列表
+      description: 获取指定视频的评论列表
+      operationId: getVideoComments
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 视频ID
+          schema:
+            type: integer
+            format: int64
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: sort
+          in: query
+          description: 排序方式
+          schema:
+            type: string
+            enum: [latest, hot]
+            default: latest
+            example: latest
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Comment'
+                          pagination:
+                            $ref: '#/components/schemas/Pagination'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+
+    post:
+      tags:
+        - 评论
+      summary: 发表评论
+      description: 对指定视频发表评论或回复
+      operationId: createComment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 视频ID
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - content
+              properties:
+                content:
+                  type: string
+                  maxLength: 500
+                  description: 评论内容
+                  example: 这个视频太棒了！
+                parent_id:
+                  type: integer
+                  format: int64
+                  description: 父评论ID，0为一级评论
+                  default: 0
+                  example: 0
+                reply_to_user_id:
+                  type: integer
+                  format: int64
+                  description: 回复的用户ID
+                  default: 0
+                  example: 0
+      responses:
+        '200':
+          description: 评论成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          comment_id:
+                            type: integer
+                            format: int64
+                            example: 789
+                          content:
+                            type: string
+                            example: 这个视频太棒了！
+                          created_at:
+                            type: string
+                            format: date-time
+                            example: '2024-01-01T12:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+      security:
+        - BearerAuth: []
+
+  /comments/{id}:
+    delete:
+      tags:
+        - 评论
+      summary: 删除评论
+      description: 删除自己发表的评论
+      operationId: deleteComment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 评论ID
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+
+  /comments/{id}/like:
+    post:
+      tags:
+        - 评论
+      summary: 点赞评论
+      description: 点赞指定评论
+      operationId: likeComment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 评论ID
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 点赞成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          is_liked:
+                            type: boolean
+                            example: true
+                          like_count:
+                            type: integer
+                            format: int64
+                            example: 11
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+
+    delete:
+      tags:
+        - 评论
+      summary: 取消点赞评论
+      description: 取消点赞指定评论
+      operationId: unlikeComment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 评论ID
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 取消点赞成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          is_liked:
+                            type: boolean
+                            example: false
+                          like_count:
+                            type: integer
+                            format: int64
+                            example: 10
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+
+
+  # ==================== 话题模块 ====================
+  /topics:
+    get:
+      tags:
+        - 话题
+      summary: 获取话题列表
+      description: 获取热门话题列表
+      operationId: getTopics
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: sort
+          in: query
+          description: 排序方式
+          schema:
+            type: string
+            enum: [hot, latest]
+            default: hot
+            example: hot
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Topic'
+                          pagination:
+                            $ref: '#/components/schemas/Pagination'
+      security:
+        - BearerAuth: []
+
+  /topics/{id}:
+    get:
+      tags:
+        - 话题
+      summary: 获取话题详情
+      description: 获取指定话题的详细信息
+      operationId: getTopicById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 话题ID
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Topic'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+
+  /topics/{id}/videos:
+    get:
+      tags:
+        - 话题
+      summary: 获取话题视频列表
+      description: 获取指定话题下的视频列表
+      operationId: getTopicVideos
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 话题ID
+          schema:
+            type: integer
+            format: int64
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/Sort'
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Video'
+                          pagination:
+                            $ref: '#/components/schemas/Pagination'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+
+  /topics/search:
+    get:
+      tags:
+        - 话题
+      summary: 搜索话题
+      description: 根据关键词搜索话题
+      operationId: searchTopics
+      parameters:
+        - name: keyword
+          in: query
+          required: true
+          description: 搜索关键词
+          schema:
+            type: string
+            example: 旅行
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: 搜索成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Topic'
+                          pagination:
+                            $ref: '#/components/schemas/Pagination'
+      security:
+        - BearerAuth: []
+
+
+  # ==================== 消息模块 ====================
+  /messages:
+    get:
+      tags:
+        - 消息
+      summary: 获取消息列表
+      description: 获取当前用户的消息列表
+      operationId: getMessages
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Message'
+                          pagination:
+                            $ref: '#/components/schemas/Pagination'
+                          unread_count:
+                            type: integer
+                            description: 未读消息数量
+                            example: 10
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      security:
+        - BearerAuth: []
+
+    post:
+      tags:
+        - 消息
+      summary: 发送消息
+      description: 向指定用户发送消息
+      operationId: sendMessage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - to_user_id
+                - message_type
+                - content
+              properties:
+                to_user_id:
+                  type: integer
+                  format: int64
+                  description: 接收用户ID
+                  example: 456
+                message_type:
+                  type: integer
+                  description: 消息类型 1-文本 2-图片 3-视频
+                  enum: [1, 2, 3]
+                  example: 1
+                content:
+                  type: string
+                  maxLength: 500
+                  description: 消息内容
+                  example: 你好，很高兴认识你
+                media_url:
+                  type: string
+                  format: uri
+                  description: 媒体URL（图片、视频）
+                  example: ''
+      responses:
+        '200':
+          description: 发送成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Message'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+      security:
+        - BearerAuth: []
+
+  /messages/conversations/{user_id}:
+    get:
+      tags:
+        - 消息
+      summary: 获取对话消息
+      description: 获取与指定用户的对话消息
+      operationId: getConversation
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: 对话用户ID
+          schema:
+            type: integer
+            format: int64
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Count'
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Message'
+                          cursor:
+                            type: string
+                            example: next_cursor_token
+                          has_more:
+                            type: boolean
+                            example: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+
+  /messages/{id}/read:
+    put:
+      tags:
+        - 消息
+      summary: 标记消息已读
+      description: 标记指定消息为已读
+      operationId: markMessageAsRead
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 消息ID
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 标记成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+
+  /messages/{id}:
+    delete:
+      tags:
+        - 消息
+      summary: 删除消息
+      description: 删除指定消息
+      operationId: deleteMessage
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 消息ID
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+
+
+  # ==================== 上传模块 ====================
+  /upload/token:
+    get:
+      tags:
+        - 上传
+      summary: 获取上传凭证
+      description: 获取文件上传凭证和上传URL
+      operationId: getUploadToken
+      parameters:
+        - name: file_type
+          in: query
+          required: true
+          description: 文件类型
+          schema:
+            type: string
+            enum: [image, video, audio]
+            example: video
+        - name: file_name
+          in: query
+          required: true
+          description: 文件名
+          schema:
+            type: string
+            example: my_video.mp4
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          token:
+                            type: string
+                            description: 上传令牌
+                            example: upload_token_abc123
+                          upload_url:
+                            type: string
+                            format: uri
+                            description: 上传URL
+                            example: https://upload.flashvid.com
+                          expires_at:
+                            type: string
+                            format: date-time
+                            description: 过期时间
+                            example: '2024-01-01T13:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+      security:
+        - BearerAuth: []
+
+  /upload:
+    post:
+      tags:
+        - 上传
+      summary: 上传文件
+      description: 上传图片、视频或音频文件
+      operationId: uploadFile
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+                - file_type
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: 文件数据
+                file_type:
+                  type: string
+                  enum: [image, video, audio]
+                  description: 文件类型
+                  example: video
+      responses:
+        '200':
+          description: 上传成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          file_url:
+                            type: string
+                            format: uri
+                            description: 文件URL
+                            example: https://cdn.flashvid.com/video/xxx.mp4
+                          file_size:
+                            type: integer
+                            format: int64
+                            description: 文件大小（字节）
+                            example: 5242880
+                          file_type:
+                            type: string
+                            description: 文件类型
+                            example: video
+                          duration:
+                            type: integer
+                            description: 视频/音频时长（秒）
+                            example: 30
+                          width:
+                            type: integer
+                            description: 视频/图片宽度
+                            example: 1080
+                          height:
+                            type: integer
+                            description: 视频/图片高度
+                            example: 1920
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '413':
+          description: 文件过大
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+      security:
+        - BearerAuth: []
+
+
+  # ==================== 音乐模块 ====================
+  /music:
+    get:
+      tags:
+        - 音乐
+      summary: 获取音乐列表
+      description: 获取热门音乐列表
+      operationId: getMusicList
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: sort
+          in: query
+          description: 排序方式
+          schema:
+            type: string
+            enum: [hot, latest]
+            default: hot
+            example: hot
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Music'
+                          pagination:
+                            $ref: '#/components/schemas/Pagination'
+      security:
+        - BearerAuth: []
+
+  /music/search:
+    get:
+      tags:
+        - 音乐
+      summary: 搜索音乐
+      description: 根据关键词搜索音乐
+      operationId: searchMusic
+      parameters:
+        - name: keyword
+          in: query
+          required: true
+          description: 搜索关键词
+          schema:
+            type: string
+            example: 告白气球
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: 搜索成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Music'
+                          pagination:
+                            $ref: '#/components/schemas/Pagination'
+      security:
+        - BearerAuth: []
+
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT Token 认证，格式：Bearer <token>
+
+  parameters:
+    Page:
+      name: page
+      in: query
+      description: 页码，从1开始
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+        example: 1
+
+    PageSize:
+      name: page_size
+      in: query
+      description: 每页数量
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+        example: 20
+
+    Cursor:
+      name: cursor
+      in: query
+      description: 游标，用于分页
+      schema:
+        type: string
+        example: next_cursor_token
+
+    Count:
+      name: count
+      in: query
+      description: 返回数量
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 10
+        example: 10
+
+    Sort:
+      name: sort
+      in: query
+      description: 排序方式
+      schema:
+        type: string
+        enum: [latest, popular]
+        default: latest
+        example: latest
+
+  schemas:
+    Response:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          description: 响应码，0表示成功
+          example: 0
+        message:
+          type: string
+          description: 响应消息
+          example: success
+        data:
+          type: object
+          nullable: true
+          description: 响应数据
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+          description: 当前页码
+          example: 1
+        page_size:
+          type: integer
+          description: 每页数量
+          example: 20
+        total:
+          type: integer
+          format: int64
+          description: 总记录数
+          example: 100
+        total_pages:
+          type: integer
+          description: 总页数
+          example: 5
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: 用户ID
+          example: 123456
+        username:
+          type: string
+          description: 用户名
+          example: testuser
+        nickname:
+          type: string
+          description: 昵称
+          example: 测试用户
+        avatar:
+          type: string
+          format: uri
+          description: 头像URL
+          example: https://cdn.flashvid.com/avatar/123456.jpg
+        bio:
+          type: string
+          description: 个人简介
+          example: 这是我的个人简介
+        gender:
+          type: integer
+          enum: [0, 1, 2]
+          description: 性别 0-未知 1-男 2-女
+          example: 1
+        birthday:
+          type: string
+          format: date
+          description: 生日
+          example: '2000-01-01'
+        city:
+          type: string
+          description: 城市
+          example: 深圳
+        follower_count:
+          type: integer
+          format: int64
+          description: 粉丝数
+          example: 1000
+        following_count:
+          type: integer
+          format: int64
+          description: 关注数
+          example: 500
+        video_count:
+          type: integer
+          format: int64
+          description: 作品数
+          example: 50
+        like_count:
+          type: integer
+          format: int64
+          description: 获赞数
+          example: 10000
+        is_following:
+          type: boolean
+          description: 当前用户是否关注了该用户
+          example: false
+        created_at:
+          type: string
+          format: date-time
+          description: 注册时间
+          example: '2024-01-01T12:00:00Z'
+
+
+    Video:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: 视频ID
+          example: 12345
+        title:
+          type: string
+          description: 视频标题
+          example: 我的第一个短视频
+        description:
+          type: string
+          description: 视频描述
+          example: 这是一个测试视频
+        cover_url:
+          type: string
+          format: uri
+          description: 封面URL
+          example: https://cdn.flashvid.com/cover/12345.jpg
+        video_url:
+          type: string
+          format: uri
+          description: 视频URL
+          example: https://cdn.flashvid.com/video/12345.mp4
+        duration:
+          type: integer
+          description: 视频时长（秒）
+          example: 30
+        width:
+          type: integer
+          description: 视频宽度
+          example: 1080
+        height:
+          type: integer
+          description: 视频高度
+          example: 1920
+        music_name:
+          type: string
+          description: 背景音乐名称
+          example: 背景音乐
+        city:
+          type: string
+          description: 城市
+          example: 深圳
+        topics:
+          type: array
+          items:
+            type: string
+          description: 话题标签
+          example: ['旅行', '美食']
+        author:
+          type: object
+          description: 作者信息
+          properties:
+            id:
+              type: integer
+              format: int64
+              example: 123
+            username:
+              type: string
+              example: author
+            nickname:
+              type: string
+              example: 作者
+            avatar:
+              type: string
+              format: uri
+              example: https://cdn.flashvid.com/avatar/123.jpg
+        stats:
+          type: object
+          description: 统计信息
+          properties:
+            view_count:
+              type: integer
+              format: int64
+              description: 播放数
+              example: 10000
+            like_count:
+              type: integer
+              format: int64
+              description: 点赞数
+              example: 1000
+            comment_count:
+              type: integer
+              format: int64
+              description: 评论数
+              example: 100
+            share_count:
+              type: integer
+              format: int64
+              description: 分享数
+              example: 50
+            favorite_count:
+              type: integer
+              format: int64
+              description: 收藏数
+              example: 200
+        user_interaction:
+          type: object
+          description: 用户互动状态
+          properties:
+            is_liked:
+              type: boolean
+              description: 是否已点赞
+              example: false
+            is_favorited:
+              type: boolean
+              description: 是否已收藏
+              example: false
+            is_following:
+              type: boolean
+              description: 是否关注作者
+              example: false
+        created_at:
+          type: string
+          format: date-time
+          description: 创建时间
+          example: '2024-01-01T12:00:00Z'
+
+    VideoDetail:
+      allOf:
+        - $ref: '#/components/schemas/Video'
+        - type: object
+          properties:
+            music_id:
+              type: integer
+              format: int64
+              description: 音乐ID
+              example: 456
+            location:
+              type: string
+              description: 具体位置
+              example: 南山区
+            topics:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    format: int64
+                    example: 1
+                  name:
+                    type: string
+                    example: 旅行
+            published_at:
+              type: string
+              format: date-time
+              description: 发布时间
+              example: '2024-01-01T12:00:00Z'
+
+
+    Comment:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: 评论ID
+          example: 789
+        content:
+          type: string
+          description: 评论内容
+          example: 这个视频太棒了！
+        user:
+          type: object
+          description: 评论用户
+          properties:
+            id:
+              type: integer
+              format: int64
+              example: 123
+            username:
+              type: string
+              example: commenter
+            nickname:
+              type: string
+              example: 评论者
+            avatar:
+              type: string
+              format: uri
+              example: https://cdn.flashvid.com/avatar/123.jpg
+        like_count:
+          type: integer
+          format: int64
+          description: 点赞数
+          example: 10
+        reply_count:
+          type: integer
+          format: int64
+          description: 回复数
+          example: 2
+        is_liked:
+          type: boolean
+          description: 是否已点赞
+          example: false
+        is_author:
+          type: boolean
+          description: 是否为视频作者
+          example: false
+        replies:
+          type: array
+          description: 回复列表
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                format: int64
+                example: 790
+              content:
+                type: string
+                example: 回复内容
+              user:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    format: int64
+                    example: 456
+                  username:
+                    type: string
+                    example: replier
+                  nickname:
+                    type: string
+                    example: 回复者
+                  avatar:
+                    type: string
+                    format: uri
+                    example: https://cdn.flashvid.com/avatar/456.jpg
+              reply_to_user:
+                type: object
+                nullable: true
+                properties:
+                  id:
+                    type: integer
+                    format: int64
+                    example: 123
+                  nickname:
+                    type: string
+                    example: 评论者
+              like_count:
+                type: integer
+                format: int64
+                example: 5
+              is_liked:
+                type: boolean
+                example: false
+              created_at:
+                type: string
+                format: date-time
+                example: '2024-01-01T12:05:00Z'
+        created_at:
+          type: string
+          format: date-time
+          description: 评论时间
+          example: '2024-01-01T12:00:00Z'
+
+    Topic:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: 话题ID
+          example: 1
+        name:
+          type: string
+          description: 话题名称
+          example: 旅行
+        description:
+          type: string
+          description: 话题描述
+          example: 分享你的旅行故事
+        cover_url:
+          type: string
+          format: uri
+          description: 话题封面
+          example: https://cdn.flashvid.com/topic/1.jpg
+        view_count:
+          type: integer
+          format: int64
+          description: 浏览量
+          example: 1000000
+        video_count:
+          type: integer
+          format: int64
+          description: 视频数量
+          example: 5000
+        created_at:
+          type: string
+          format: date-time
+          description: 创建时间
+          example: '2024-01-01T12:00:00Z'
+
+    Message:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: 消息ID
+          example: 1
+        from_user:
+          type: object
+          description: 发送用户
+          properties:
+            id:
+              type: integer
+              format: int64
+              example: 123
+            username:
+              type: string
+              example: sender
+            nickname:
+              type: string
+              example: 发送者
+            avatar:
+              type: string
+              format: uri
+              example: https://cdn.flashvid.com/avatar/123.jpg
+        message_type:
+          type: integer
+          description: 消息类型 1-文本 2-图片 3-视频
+          enum: [1, 2, 3]
+          example: 1
+        content:
+          type: string
+          description: 消息内容
+          example: 你好，很高兴认识你
+        media_url:
+          type: string
+          format: uri
+          description: 媒体URL
+          example: ''
+        is_read:
+          type: boolean
+          description: 是否已读
+          example: false
+        created_at:
+          type: string
+          format: date-time
+          description: 发送时间
+          example: '2024-01-01T12:00:00Z'
+
+    Music:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: 音乐ID
+          example: 456
+        name:
+          type: string
+          description: 音乐名称
+          example: 告白气球
+        artist:
+          type: string
+          description: 艺术家
+          example: 周杰伦
+        cover_url:
+          type: string
+          format: uri
+          description: 封面URL
+          example: https://cdn.flashvid.com/music/456.jpg
+        music_url:
+          type: string
+          format: uri
+          description: 音乐URL
+          example: https://cdn.flashvid.com/music/456.mp3
+        duration:
+          type: integer
+          description: 音乐时长（秒）
+          example: 200
+        use_count:
+          type: integer
+          format: int64
+          description: 使用次数
+          example: 10000
+        created_at:
+          type: string
+          format: date-time
+          description: 创建时间
+          example: '2024-01-01T12:00:00Z'
+
+
+  responses:
+    BadRequest:
+      description: 请求参数错误
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Response'
+              - type: object
+                properties:
+                  code:
+                    example: 40000
+                  message:
+                    example: 请求参数错误
+                  data:
+                    example: null
+
+    Unauthorized:
+      description: 未登录或Token失效
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Response'
+              - type: object
+                properties:
+                  code:
+                    example: 40001
+                  message:
+                    example: 未登录或Token失效
+                  data:
+                    example: null
+
+    Forbidden:
+      description: 无权限访问
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Response'
+              - type: object
+                properties:
+                  code:
+                    example: 40003
+                  message:
+                    example: 无权限访问
+                  data:
+                    example: null
+
+    NotFound:
+      description: 资源不存在
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Response'
+              - type: object
+                properties:
+                  code:
+                    example: 40004
+                  message:
+                    example: 资源不存在
+                  data:
+                    example: null
+
+    ValidationError:
+      description: 请求参数验证失败
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Response'
+              - type: object
+                properties:
+                  code:
+                    example: 42200
+                  message:
+                    example: 请求参数验证失败
+                  data:
+                    type: object
+                    properties:
+                      errors:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field:
+                              type: string
+                              example: username
+                            message:
+                              type: string
+                              example: 用户名不能为空
+
+    TooManyRequests:
+      description: 请求过于频繁
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Response'
+              - type: object
+                properties:
+                  code:
+                    example: 42900
+                  message:
+                    example: 请求过于频繁，请稍后再试
+                  data:
+                    type: object
+                    properties:
+                      retry_after:
+                        type: integer
+                        description: 重试间隔（秒）
+                        example: 60
+
+    InternalServerError:
+      description: 服务器内部错误
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Response'
+              - type: object
+                properties:
+                  code:
+                    example: 50000
+                  message:
+                    example: 服务器内部错误
+                  data:
+                    example: null
+
