@@ -122,7 +122,9 @@ const handleWheel = (event: WheelEvent): void => {
   if (dragging.value || dragSettling || touchSettling) return
 
   if (wheelLocked) {
-    return // 完全忽略，不重新调度
+    // 锁定期间重置 wheelDelta，防止累积触发
+    wheelDelta = 0
+    return
   }
 
   wheelDelta += event.deltaY
@@ -141,13 +143,14 @@ const handleWheel = (event: WheelEvent): void => {
   // 立即清除任何待处理的定时器，防止旧的 finishWheelNavigation 触发
   window.clearTimeout(wheelUnlockTimer)
   window.clearTimeout(scrollEndTimer)
+  window.clearTimeout(wheelResetTimer)
 
   wheelLocked = true
   wheelTargetIndex = nextIndex
   scrollToIndex(nextIndex)
 
-  // 使用固定的 800ms 延迟解锁，确保滚动动画完成
-  wheelUnlockTimer = window.setTimeout(finishWheelNavigation, 800)
+  // 使用更长的 1200ms 延迟，确保所有滚轮事件都被过滤
+  wheelUnlockTimer = window.setTimeout(finishWheelNavigation, 1200)
 }
 
 const isInteractiveTarget = (target: EventTarget | null): boolean => {
