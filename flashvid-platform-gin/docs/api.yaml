@@ -106,12 +106,24 @@ paths:
                 phone:
                   type: string
                   pattern: '^1[3-9]\d{9}$'
-                  description: 手机号
+                  description: 手机号（11位）
                   example: '13800138000'
                 code:
                   type: string
-                  description: 短信验证码
+                  minLength: 6
+                  maxLength: 6
+                  description: 短信验证码（6位）
                   example: '123456'
+                birthday:
+                  type: string
+                  format: date
+                  description: 生日（可选，格式：YYYY-MM-DD）
+                  example: '2000-01-01'
+                email:
+                  type: string
+                  format: email
+                  description: 邮箱（可选）
+                  example: test@example.com
       responses:
         '200':
           description: 注册成功
@@ -125,16 +137,13 @@ paths:
                       data:
                         type: object
                         properties:
-                          user_id:
+                          userId:
                             type: integer
                             format: int64
                             example: 123456
                           username:
                             type: string
                             example: testuser
-                          token:
-                            type: string
-                            example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
         '400':
           $ref: '#/components/responses/BadRequest'
         '422':
@@ -154,12 +163,12 @@ paths:
             schema:
               type: object
               required:
-                - username
+                - account
                 - password
               properties:
-                username:
+                account:
                   type: string
-                  description: 用户名或手机号
+                  description: 账号（用户名或手机号）
                   example: testuser
                 password:
                   type: string
@@ -178,7 +187,7 @@ paths:
                       data:
                         type: object
                         properties:
-                          user_id:
+                          userId:
                             type: integer
                             format: int64
                             example: 123456
@@ -192,10 +201,10 @@ paths:
                             type: string
                             format: uri
                             example: https://cdn.flashvid.com/avatar/123456.jpg
-                          token:
+                          accessToken:
                             type: string
                             example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-                          refresh_token:
+                          refreshToken:
                             type: string
                             example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
         '400':
@@ -208,7 +217,7 @@ paths:
       tags:
         - 认证
       summary: 刷新Token
-      description: 使用refresh_token刷新access_token
+      description: 使用refreshToken刷新accessToken
       operationId: refreshToken
       requestBody:
         required: true
@@ -217,9 +226,9 @@ paths:
             schema:
               type: object
               required:
-                - refresh_token
+                - refreshToken
               properties:
-                refresh_token:
+                refreshToken:
                   type: string
                   description: 刷新令牌
                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
@@ -236,10 +245,10 @@ paths:
                       data:
                         type: object
                         properties:
-                          token:
+                          accessToken:
                             type: string
                             example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-                          refresh_token:
+                          refreshToken:
                             type: string
                             example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
         '401':
@@ -252,7 +261,7 @@ paths:
       tags:
         - 用户
       summary: 获取用户信息
-      description: 获取指定用户的详细信息
+      description: 获取指定用户的详细信息（公开）
       operationId: getUserById
       parameters:
         - name: id
@@ -280,78 +289,12 @@ paths:
       security:
         - BearerAuth: []
 
-    put:
-      tags:
-        - 用户
-      summary: 更新用户信息
-      description: 更新当前用户的个人信息
-      operationId: updateUser
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: 用户ID
-          schema:
-            type: integer
-            format: int64
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                nickname:
-                  type: string
-                  maxLength: 32
-                  example: 新昵称
-                avatar:
-                  type: string
-                  format: uri
-                  example: https://cdn.flashvid.com/avatar/new.jpg
-                bio:
-                  type: string
-                  maxLength: 200
-                  example: 这是我的个人简介
-                gender:
-                  type: integer
-                  enum: [0, 1, 2]
-                  description: 性别 0-未知 1-男 2-女
-                  example: 1
-                birthday:
-                  type: string
-                  format: date
-                  example: '2000-01-01'
-                city:
-                  type: string
-                  example: 深圳
-      responses:
-        '200':
-          description: 更新成功
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/Response'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/UserProfile'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-      security:
-        - BearerAuth: []
-
-  /users/{id}/videos:
+  /user/{id}/videos:
     get:
       tags:
         - 用户
       summary: 获取用户作品列表
-      description: 获取指定用户发布的视频列表
+      description: 获取指定用户发布的视频列表（公开）
       operationId: getUserVideos
       parameters:
         - name: id
@@ -387,26 +330,51 @@ paths:
       security:
         - BearerAuth: []
 
-  /users/{id}/likes:
-    get:
+  /user/profile:
+    put:
       tags:
         - 用户
-      summary: 获取用户喜欢列表
-      description: 获取用户点赞过的视频列表
-      operationId: getUserLikes
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: 用户ID
-          schema:
-            type: integer
-            format: int64
-        - $ref: '#/components/parameters/Page'
-        - $ref: '#/components/parameters/PageSize'
+      summary: 更新用户信息
+      description: 更新当前登录用户的个人信息
+      operationId: updateUserProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nickname:
+                  type: string
+                  maxLength: 32
+                  example: 新昵称
+                avatar:
+                  type: string
+                  format: uri
+                  example: https://cdn.flashvid.com/avatar/new.jpg
+                bio:
+                  type: string
+                  maxLength: 200
+                  example: 这是我的个人简介
+                gender:
+                  type: integer
+                  enum: [0, 1, 2]
+                  description: 性别 0-未知 1-男 2-女
+                  example: 1
+                birthday:
+                  type: string
+                  format: date
+                  example: '2000-01-01'
+                city:
+                  type: string
+                  example: 深圳
+                email:
+                  type: string
+                  format: email
+                  example: test@example.com
       responses:
         '200':
-          description: 获取成功
+          description: 更新成功
           content:
             application/json:
               schema:
@@ -415,34 +383,22 @@ paths:
                   - type: object
                     properties:
                       data:
-                        type: object
-                        properties:
-                          list:
-                            type: array
-                            items:
-                              $ref: '#/components/schemas/Video'
-                          pagination:
-                            $ref: '#/components/schemas/Pagination'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                        $ref: '#/components/schemas/UserProfile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
       security:
         - BearerAuth: []
 
-  /users/{id}/favorites:
+  /user/profile/likes:
     get:
       tags:
         - 用户
-      summary: 获取用户收藏列表
-      description: 获取用户收藏的视频列表
-      operationId: getUserFavorites
+      summary: 获取我的点赞列表
+      description: 获取当前登录用户的点赞视频列表（私有）
+      operationId: getMyLikes
       parameters:
-        - name: id
-          in: path
-          required: true
-          description: 用户ID
-          schema:
-            type: integer
-            format: int64
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/PageSize'
       responses:
@@ -464,8 +420,42 @@ paths:
                               $ref: '#/components/schemas/Video'
                           pagination:
                             $ref: '#/components/schemas/Pagination'
-        '404':
-          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      security:
+        - BearerAuth: []
+
+  /user/profile/favorites:
+    get:
+      tags:
+        - 用户
+      summary: 获取我的收藏列表
+      description: 获取当前登录用户的收藏视频列表（私有）
+      operationId: getMyFavorites
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Video'
+                          pagination:
+                            $ref: '#/components/schemas/Pagination'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
       security:
         - BearerAuth: []
 
