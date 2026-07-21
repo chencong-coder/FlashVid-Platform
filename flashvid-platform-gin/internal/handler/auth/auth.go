@@ -16,7 +16,7 @@ func RegisterHandler(c *gin.Context) {
 		return
 	}
 	// 2. 调用service层
-	output, code, err := service.Register(c, &req, c.ClientIP())
+	output, code, err := auth.Register(c, &req, c.ClientIP())
 	if err != nil {
 		api.ResponseError(c, code)
 		return
@@ -37,7 +37,7 @@ func LoginHandler(c *gin.Context) {
 		return
 	}
 	// 2. 调用业务逻辑
-	output, code, err := service.Login(c, &req)
+	output, code, err := auth.Login(c, &req)
 	if err != nil {
 		api.ResponseError(c, code)
 		return
@@ -60,7 +60,7 @@ func RefreshHandler(c *gin.Context) {
 		api.ResponseError(c, api.CodeInvalidParam)
 		return
 	}
-	output, code, err := service.RefreshToken(c, &req)
+	output, code, err := auth.RefreshToken(c, &req)
 	if err != nil {
 		api.ResponseError(c, code)
 		return

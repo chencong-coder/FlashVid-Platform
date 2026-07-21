@@ -32,9 +32,9 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 		{
 			userR.GET("/:id", user.GetUserInfoHandler) // 获取用户信息
 			userR.PUT("/:id", user.UpdateUserInfoHandler) // 更新用户信息
-			userR.GET("/:id}/videos", user.GetUserVideosHandler) // 获取用户发布的视频
-			userR.GET("/:id}/likes", user.GetUserLikesHandler) // 获取用户点赞的视频
-			userR.GET("/:id}/favorites", user.GetUserFavoritesHandler) // 获取用户收藏的视频
+			userR.GET("/:id/videos", user.GetUserVideosHandler) // 获取用户发布的视频
+			userR.GET("/:id/likes", user.GetUserLikesHandler) // 获取用户点赞的视频
+			userR.GET("/:id/favorites", user.GetUserFavoritesHandler) // 获取用户收藏的视频
 		}
 	}
 
