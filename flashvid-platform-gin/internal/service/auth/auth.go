@@ -173,3 +173,40 @@ func Login(ctx context.Context, req *v1.LoginReq) (*model.LoginOutput, api.ResCo
 	}, api.CodeSuccess, nil
 }
 
+// 刷新Token业务逻辑
+func RefreshToken(ctx context.Context, req *v1.RefreshReq) (*model.RefreshOutput, api.ResCode, error) {
+	// 1. 解析并验证RefreshToken
+	claims, err := jwt.ParseRefreshToken(req.RefreshToken)
+	if err != nil {
+		if errors.Is(err, jwt.ErrExpiredToken) {
+			// RefreshToken 过期，要求用户重新登录
+			return nil, api.CodeNeedLogin, nil
+		}
+		return nil, api.CodeInvalidToken, nil
+	}
+	// 2. 如果有效 查询用户信息，确保用户存在且状态正常
+	user, err := query.User.WithContext(ctx).
+		Where(query.User.ID.Eq(claims.UserId)).
+		First()
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, api.CodeUserNotExist, nil
+		}
+		zap.L().Error("failed to query user", zap.Error(err))
+		return nil, api.CodeInternalError, err
+	}
+	if user.Status != 1 {
+		return nil, api.CodeUserBanned, nil
+	}
+	// 3. 生成新的AccessToken
+	newAccessToken, err := jwt.GenAccessToken(user.ID, user.Username)
+	if err != nil {
+		zap.L().Error("failed to generate new access token", zap.Error(err))
+		return nil, api.CodeInternalError, err
+	}
+	// 4. 返回新的AccessToken
+	return &model.RefreshOutput{
+		AccessToken:  newAccessToken,
+		RefreshToken: req.RefreshToken, // 刷新Token不变
+	}, api.CodeSuccess, nil
+}

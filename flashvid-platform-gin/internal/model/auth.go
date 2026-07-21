@@ -15,3 +15,9 @@ type LoginOutput struct {
 	AccessToken  string `json:"accessToken"`   // JWT Token
 	RefreshToken string `json:"refreshToken"`  // 刷新Token
 }
+
+// 刷新Token输出
+type RefreshOutput struct {
+	AccessToken  string `json:"accessToken"`  // 新的JWT Token
+	RefreshToken string `json:"refreshToken"` // 新的刷新Token
+}

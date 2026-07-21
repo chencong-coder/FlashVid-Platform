@@ -33,5 +33,13 @@ type LoginResp struct {
 }
 
 // RefreshReq 刷新Token请求
+type RefreshReq struct {
+	RefreshToken string `json:"refreshToken" binding:"required"` // 刷新Token
+}
 
+// RefreshResp 刷新Token响应
+type RefreshResp struct {
+	AccessToken  string `json:"accessToken"`  // 新的JWT Token
+	RefreshToken string `json:"refreshToken"` // 新的刷新Token
+}
 

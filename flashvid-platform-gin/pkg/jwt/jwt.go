@@ -3,7 +3,6 @@ package jwt
 import (
 	"errors"
 	"time"
-
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
@@ -99,6 +98,9 @@ func (j *JWT) parseToken(tokenString string, typ tokenType) (*CustomClaims, erro
 			}
 		})
 	if err != nil {
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			return nil, ErrExpiredToken
+		}
 		return nil, err
 	}
 

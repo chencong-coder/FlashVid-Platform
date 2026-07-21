@@ -55,5 +55,18 @@ func LoginHandler(c *gin.Context) {
 
 // 刷新Token接口
 func RefreshHandler(c *gin.Context) {
-	
+	var req v1.RefreshReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.ResponseError(c, api.CodeInvalidParam)
+		return
+	}
+	output, code, err := service.RefreshToken(c, &req)
+	if err != nil {
+		api.ResponseError(c, code)
+		return
+	}
+	api.ResponseSuccess(c, v1.RefreshResp{
+		AccessToken:  output.AccessToken,
+		RefreshToken: output.RefreshToken,
+	})
 }
