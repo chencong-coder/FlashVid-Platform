@@ -4,7 +4,7 @@ package v1
 type RegisterReq struct {
 	Username string `json:"username" binding:"required,min=4,max=32"`  // 用户名（4-32字符）
 	Password string `json:"password" binding:"required,min=6,max=20"`  // 密码（6-20字符）
-	Phone    string `json:"phone" binding:"required,len=11"`           // 手机号（11位）
+	Phone    string `json:"phone" binding:"required,len=11,numeric"`           // 手机号（11位）
 	Code     string `json:"code" binding:"required,len=6"`             // 验证码（6位）
 }
 
@@ -13,4 +13,8 @@ type RegisterResp struct {
 	UserID   int64  `json:"user_id"`  // 用户ID
 	Username string `json:"username"` // 用户名
 }
+
+// LoginReq 用户登录请求
+
+// LoginReq 用户登录请求
 
