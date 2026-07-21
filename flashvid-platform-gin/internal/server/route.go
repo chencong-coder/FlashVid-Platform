@@ -22,19 +22,23 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 	apiV1 := r.Group("/api/v1")
 	{
 		authUser := apiV1.Group("/auth")
-		{	
+		{
 			authUser.POST("/register", auth.RegisterHandler) // 注册
 			authUser.POST("/login", auth.LoginHandler) // 登录
 			authUser.POST("/refresh", auth.RefreshHandler) // 刷新Token
 		}
-		authUser.Use(middleware.Auth()) // 需要登录 用Token验证身份
+
+		// 需要登录的路由组
 		userR := apiV1.Group("/user")
+		userR.Use(middleware.Auth())
 		{
-			userR.GET("/:id", user.GetUserInfoHandler) // 获取用户信息
-			userR.PUT("/:id", user.UpdateUserInfoHandler) // 更新用户信息
-			userR.GET("/:id/videos", user.GetUserVideosHandler) // 获取用户发布的视频
-			userR.GET("/:id/likes", user.GetUserLikesHandler) // 获取用户点赞的视频
-			userR.GET("/:id/favorites", user.GetUserFavoritesHandler) // 获取用户收藏的视频
+			// 静态路由优先（避免和 /:id 冲突）
+			userR.PUT("/profile", user.UpdateUserInfoHandler)             // 更新自己的信息
+			userR.GET("/profile/likes", user.GetUserLikesHandler)         // 查看自己的点赞列表（私有）
+			userR.GET("/profile/favorites", user.GetUserFavoritesHandler) // 查看自己的收藏列表（私有）
+			// 动态路由
+			userR.GET("/:id", user.GetUserInfoHandler)                    // 查看任意用户主页（公开）
+			userR.GET("/:id/videos", user.GetUserVideosHandler)           // 查看用户发布的视频（公开）
 		}
 	}
 

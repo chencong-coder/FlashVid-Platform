@@ -10,7 +10,7 @@ import (
 )
 
 // 获取用户信息服务
-func GetUserInfoService(ctx context.Context, userId int64) (*model.UserInfoOutput, api.ResCode, error) {
+func GetUserInfo(ctx context.Context, userId int64) (*model.UserInfoOutput, api.ResCode, error) {
 	// 1.根据userid来查询判断用户是否存在
 	user, err := query.User.WithContext(ctx).
 		Where(query.User.ID.Eq(userId)).

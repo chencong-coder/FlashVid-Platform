@@ -17,7 +17,7 @@ func GetUserInfoHandler(c *gin.Context) {
 		return
 	}
 	// 2. 调用服务层获取用户信息
-	output, rescode, err := user.GetUserInfoService(c, userId)
+	output, rescode, err := user.GetUserInfo(c, userId)
 	if err != nil {
 		api.ResponseError(c, rescode)
 		return
@@ -46,7 +46,9 @@ func GetUserInfoHandler(c *gin.Context) {
 func GetUserVideosHandler(c *gin.Context) {}
 
 // 更新用户信息接口
-func UpdateUserInfoHandler(c *gin.Context) {}
+func UpdateUserInfoHandler(c *gin.Context) {
+	
+}
 
 // 获取用户点赞的视频接口
 func GetUserLikesHandler(c *gin.Context) {}
