@@ -1,15 +1,21 @@
 package service
 
 import (
+	"context"
+	"time"
+
 	"flashvid-platform-gin/api"
-	"flashvid-platform-gin/api/auth/v1"
+	v1 "flashvid-platform-gin/api/auth/v1"
 	"flashvid-platform-gin/internal/dao/query"
 	"flashvid-platform-gin/internal/model"
-	"context"
-	"golang.org/x/crypto/bcrypt"
 	"flashvid-platform-gin/pkg/snowflake"
+
+	"golang.org/x/crypto/bcrypt"
 	"go.uber.org/zap"
+	"gorm.io/gen/field"
 )
+
+const userAvatarDefault = "https://img1.baidu.com/it/u=470345945,3074368414&fm=253&app=138&f=JPEG?w=800&h=1319"
 
 func Register(ctx context.Context, req *v1.RegisterReq, ip string) (*model.RegisterOutput, api.ResCode, error) {
 	// 1. 校验验证码
@@ -50,18 +56,32 @@ func Register(ctx context.Context, req *v1.RegisterReq, ip string) (*model.Regis
 		zap.L().Error("failed to generate user ID", zap.Error(err))
 		return nil, api.CodeInternalError, err
 	}
-	// 6. 创建用户
-	user := &model.User{
-		ID:       userID,
-		Username: req.Username,
-		Password: string(hashedPassword),
-		Nickname: req.Username, // 默认昵称等于用户名
-		Phone:    req.Phone,
-		Status:    1,  // 1-正常
-		IPAddress: ip, // 注册IP
+
+	// 6. 解析生日（可选）
+	var birthday time.Time
+	if req.Birthday != "" {
+		birthday, err = time.Parse("2006-01-02", req.Birthday)
+		if err != nil {
+			zap.L().Error("failed to parse birthday", zap.Error(err))
+			return nil, api.CodeInvalidBirthday, nil
+		}
 	}
-	// 只插入指定字段，避免 birthday/last_login_at 零值问题
-	err = query.User.WithContext(ctx).Select(
+
+	// 7. 创建用户
+	user := &model.User{
+		ID:        userID,
+		Username:  req.Username,
+		Password:  string(hashedPassword),
+		Nickname:  req.Username, // 默认昵称等于用户名
+		Phone:     req.Phone,
+		Status:    1,              // 1-正常
+		IPAddress: ip,             // 注册IP
+		Email:     req.Email,      // 邮箱（可选）
+		Avatar:    userAvatarDefault,
+	}
+
+	// 构建要插入的字段列表
+	selectFields := []field.Expr{
 		query.User.ID,
 		query.User.Username,
 		query.User.Password,
@@ -69,7 +89,22 @@ func Register(ctx context.Context, req *v1.RegisterReq, ip string) (*model.Regis
 		query.User.Phone,
 		query.User.Status,
 		query.User.IPAddress,
-	).Create(user)
+		query.User.Avatar,
+	}
+
+	// 如果提供了邮箱，加入插入列表
+	if req.Email != "" {
+		selectFields = append(selectFields, query.User.Email)
+	}
+
+	// 如果提供了生日，设置并加入插入列表
+	if req.Birthday != "" {
+		user.Birthday = birthday
+		selectFields = append(selectFields, query.User.Birthday)
+	}
+
+	// 只插入指定字段，避免 last_login_at 零值问题
+	err = query.User.WithContext(ctx).Select(selectFields...).Create(user)
 	if err != nil {
 		zap.L().Error("failed to create user", zap.Error(err))
 		return nil, api.CodeInternalError, err

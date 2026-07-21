@@ -1,11 +1,13 @@
 package server
 
 import (
-	"net/http"
 	"flashvid-platform-gin/internal/handler/auth"
+	"flashvid-platform-gin/internal/middleware"
+	"flashvid-platform-gin/pkg/logging"
+	"net/http"
+
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"flashvid-platform-gin/pkg/logging"
 	"github.com/spf13/viper"
 )
 
@@ -24,6 +26,8 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 			authUser.POST("/login", auth.LoginHandler)
 			authUser.POST("/refresh", auth.RefreshHandler)
 		}
+		authUser.Use(middleware.Auth()) // 需要登录 用Token验证身份
+		
 	}
 
 	r.NoRoute(func(c *gin.Context) {

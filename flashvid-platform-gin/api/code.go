@@ -30,6 +30,7 @@ const (
 	CodeInvalidToken       ResCode = 10014 // 无效的Token
 	CodeNeedLogin          ResCode = 10015 // 需要登录
 	CodePermissionDenied   ResCode = 10016 // 无权限操作
+	CodeInvalidBirthday    ResCode = 10017 // 生日格式错误
 
 	// ==================== 视频相关错误 20000-29999 ====================
 	CodeVideoNotExist      ResCode = 20001 // 视频不存在
@@ -102,6 +103,7 @@ var codeMsgMap = map[ResCode]string{
 	CodeInvalidToken:       "无效的Token",
 	CodeNeedLogin:          "需要登录",
 	CodePermissionDenied:   "无权限操作",
+	CodeInvalidBirthday:    "生日格式错误",
 
 	// ==================== 视频相关错误 ====================
 	CodeVideoNotExist:      "视频不存在",
