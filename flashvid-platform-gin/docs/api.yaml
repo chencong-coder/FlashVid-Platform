@@ -247,7 +247,7 @@ paths:
 
 
   # ==================== 用户模块 ====================
-  /users/{id}:
+  /user/{id}:
     get:
       tags:
         - 用户
@@ -2138,7 +2138,7 @@ components:
     UserProfile:
       type: object
       properties:
-        id:
+        userId:
           type: integer
           format: int64
           description: 用户ID
@@ -2161,10 +2161,9 @@ components:
           description: 个人简介
           example: 这是我的个人简介
         gender:
-          type: integer
-          enum: [0, 1, 2]
+          type: string
           description: 性别 0-未知 1-男 2-女
-          example: 1
+          example: '1'
         birthday:
           type: string
           format: date
@@ -2174,31 +2173,32 @@ components:
           type: string
           description: 城市
           example: 深圳
-        follower_count:
+        phone:
+          type: string
+          description: 手机号
+          example: '13800138000'
+        email:
+          type: string
+          format: email
+          description: 邮箱
+          example: test@example.com
+        followersCount:
           type: integer
-          format: int64
           description: 粉丝数
           example: 1000
-        following_count:
+        followingCount:
           type: integer
-          format: int64
           description: 关注数
           example: 500
-        video_count:
+        videosCount:
           type: integer
-          format: int64
-          description: 作品数
+          description: 发布视频数
           example: 50
-        like_count:
+        likesCount:
           type: integer
-          format: int64
           description: 获赞数
           example: 10000
-        is_following:
-          type: boolean
-          description: 当前用户是否关注了该用户
-          example: false
-        created_at:
+        createdAt:
           type: string
           format: date-time
           description: 注册时间
