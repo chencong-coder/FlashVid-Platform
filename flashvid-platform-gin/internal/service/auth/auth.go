@@ -4,19 +4,23 @@ import (
 	"context"
 	"time"
 
+	"errors"
 	"flashvid-platform-gin/api"
 	v1 "flashvid-platform-gin/api/auth/v1"
 	"flashvid-platform-gin/internal/dao/query"
 	"flashvid-platform-gin/internal/model"
+	"flashvid-platform-gin/pkg/jwt"
 	"flashvid-platform-gin/pkg/snowflake"
 
-	"golang.org/x/crypto/bcrypt"
 	"go.uber.org/zap"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gen/field"
+	"gorm.io/gorm"
 )
 
 const userAvatarDefault = "https://img1.baidu.com/it/u=470345945,3074368414&fm=253&app=138&f=JPEG?w=800&h=1319"
 
+// 注册业务逻辑
 func Register(ctx context.Context, req *v1.RegisterReq, ip string) (*model.RegisterOutput, api.ResCode, error) {
 	// 1. 校验验证码
 	if req.Code != "123456" {
@@ -115,3 +119,57 @@ func Register(ctx context.Context, req *v1.RegisterReq, ip string) (*model.Regis
 		Username: user.Username,
 	}, api.CodeSuccess, nil
 }
+
+// 登录业务逻辑
+func Login(ctx context.Context, req *v1.LoginReq) (*model.LoginOutput, api.ResCode, error) {
+	// 1. 查询用户是否存在（用户名或手机号）
+	user, err := query.User.WithContext(ctx).
+		Where(query.User.Username.Eq(req.Account)).
+		Or(query.User.Phone.Eq(req.Account)).
+		First()
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, api.CodeUserNotExist, nil
+		}
+		zap.L().Error("failed to query user", zap.Error(err))
+		return nil, api.CodeInternalError, err
+	}
+	// 2. 检查用户状态
+	if user.Status != 1 {
+		return nil, api.CodeUserBanned, nil
+	}
+	// 3. 校验密码
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password))
+	if err != nil {
+		return nil, api.CodeInvalidPassword, nil
+	}
+	// 4. 生成JWT Token和刷新Token
+	accessToken, err := jwt.GenAccessToken(user.ID, user.Username)
+	if err != nil {
+		zap.L().Error("failed to generate access token", zap.Error(err))
+		return nil, api.CodeInternalError, err
+	}
+	refreshToken, err := jwt.GenRefreshToken(user.ID, user.Username)
+	if err != nil {
+		zap.L().Error("failed to generate refresh token", zap.Error(err))
+		return nil, api.CodeInternalError, err
+	}
+	// 5. 更新用户最后登录时间
+	if _, err := query.User.WithContext(ctx).
+		Where(query.User.ID.Eq(user.ID)).
+		Update(query.User.LastLoginAt, time.Now()); err != nil {
+		zap.L().Warn("failed to update last login time", zap.Error(err))
+		// 不影响登录，继续
+	}
+
+	// 6. 返回登录结果
+	return &model.LoginOutput{
+		UserID:       user.ID,
+		Username:     user.Username,
+		Nickname:     user.Nickname,
+		Avatar:       user.Avatar,
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}, api.CodeSuccess, nil
+}
+

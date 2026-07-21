@@ -12,23 +12,26 @@ type RegisterReq struct {
 
 // RegisterResp 用户注册响应
 type RegisterResp struct {
-	UserID   int64  `json:"user_id"`  // 用户ID
+	UserID   int64  `json:"userId"`  // 用户ID
 	Username string `json:"username"` // 用户名
 }
 
 // LoginReq 用户登录请求
 type LoginReq struct {
-	Username string `json:"username" binding:"required"` // 用户名
+	Account string `json:"account" binding:"required"` // 账号（用户名或手机号）
 	Password string `json:"password" binding:"required"` // 密码
 }
 
 // LoginResp 用户登录响应
 type LoginResp struct {
-	UserID   int64  `json:"user_id"`  // 用户ID
+	UserID   int64  `json:"userId"`  // 用户ID
 	Username string `json:"username"` // 用户名
 	Nickname string `json:"nickname"` // 昵称
 	Avatar   string `json:"avatar"`   // 头像
 	AccessToken    string `json:"accessToken"`    // JWT Token
 	RefreshToken   string `json:"refreshToken"`   // 刷新Token
 }
+
+// RefreshReq 刷新Token请求
+
 
