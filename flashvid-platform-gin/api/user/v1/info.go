@@ -13,7 +13,7 @@ type UserInfoResp struct {
 	VideosCount    int    `json:"videosCount"`       // 发布视频数
 	LikesCount     int    `json:"likesCount"`        // 喜欢数
 	Phone    string `json:"phone"`        // 手机号
-	Gender   string `json:"gender"`       // 性别
+	Gender   int32  `json:"gender"`       // 性别：0-未知 1-男 2-女
 	Birthday string `json:"birthday"`     // 生日
 	Email    string `json:"email"`        // 邮箱
 	CreatedAt string `json:"createdAt"`    // 创建时间
