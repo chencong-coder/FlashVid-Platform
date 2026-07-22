@@ -82,6 +82,7 @@ const (
 	CodeSMSFailed          ResCode = 50003 // 短信发送失败
 	CodeOSSError           ResCode = 50004 // 对象存储错误
 	CodeThirdPartyError    ResCode = 50005 // 第三方服务错误
+	CodeValueNotExist 	ResCode = 50006 // 值不存在
 )
 
 var codeMsgMap = map[ResCode]string{
@@ -156,6 +157,7 @@ var codeMsgMap = map[ResCode]string{
 	CodeSMSFailed:       "短信发送失败",
 	CodeOSSError:        "对象存储错误",
 	CodeThirdPartyError: "第三方服务错误",
+	CodeValueNotExist: "值不存在",
 }
 
 func (c ResCode) Msg() string {
