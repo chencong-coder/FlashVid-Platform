@@ -49,5 +49,7 @@ type UpdateUserInfoResp struct {
 	Gender         int32  `json:"gender"`         // 性别：0-未知 1-男 2-女
 	Birthday       string `json:"birthday"`       // 生日（格式：YYYY-MM-DD）
 	Email          string `json:"email"`          // 邮箱
-	UpdatedAt      string `json:"UpdatedAt"`      // 更新时间（格式：YYYY-MM-DD HH:mm:ss）
+	UpdatedAt      string `json:"updatedAt"`      // 更新时间（格式：YYYY-MM-DD HH:mm:ss）
 }
+
+

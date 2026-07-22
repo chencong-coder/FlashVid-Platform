@@ -34,8 +34,8 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 		{
 			// 静态路由优先（避免和 /:id 冲突）
 			userR.PUT("/profile", user.UpdateUserInfoHandler)             // 更新自己的信息
-			userR.GET("/profile/likes", user.GetUserLikesHandler)         // 查看自己的点赞列表（私有）
-			userR.GET("/profile/favorites", user.GetUserFavoritesHandler) // 查看自己的收藏列表（私有）
+			//userR.GET("/profile/likes", user.GetUserLikesHandler)         // 查看自己的点赞列表（私有）
+			//userR.GET("/profile/favorites", user.GetUserFavoritesHandler) // 查看自己的收藏列表（私有）
 			// 动态路由
 			userR.GET("/:id", user.GetUserInfoHandler)                    // 查看任意用户主页（公开）
 			userR.GET("/:id/videos", user.GetUserVideosHandler)           // 查看用户发布的视频（公开）
