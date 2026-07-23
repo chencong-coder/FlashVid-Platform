@@ -8,8 +8,8 @@ import (
 	v1 "flashvid-platform-gin/api/user/v1"
 )
 
-func GetUserLikesHandler(c *gin.Context) {
-	// 1. 获取用户ID 查看登录用户的点赞列表
+func GetUserFavoritesHandler(c *gin.Context) {
+	// 1. 获取用户ID 查看登录用户的收藏列表
 	userId, exists := c.Get(middleware.CtxKeyUserID)
 	if !exists {
 		api.ResponseError(c, api.CodeValueNotExist)
@@ -21,7 +21,7 @@ func GetUserLikesHandler(c *gin.Context) {
 		return
 	}
 	// 2. 获取分页参数
-	var req v1.GetUserLikesReq
+	var req v1.GetUserFavoritesReq
 	if err := c.ShouldBindQuery(&req); err != nil {
 		api.ResponseError(c, api.CodeInvalidParam)
 		return
@@ -32,14 +32,14 @@ func GetUserLikesHandler(c *gin.Context) {
 	if req.PageSize <= 0 {
 		req.PageSize = 10
 	}
-	// 3. 调用service获取用户点赞列表
-	output, resCode, err := user.GetUserLikes1(c, userIdInt64, req.Page, req.PageSize)
+	// 3. 调用service获取用户收藏列表
+	output, resCode, err := user.GetUserFavorites(c, userIdInt64, req.Page, req.PageSize)
 	if err != nil {
 		api.ResponseError(c, resCode)
 		return
 	}
 	// 3. 返回响应
-	api.ResponseSuccess(c, v1.GetUserLikesVideosResp{
+	api.ResponseSuccess(c, v1.GetUserFavoritesVideosResp{
 		Videos:     output.Videos,
 		Pagination: output.Pagination,
 	})
