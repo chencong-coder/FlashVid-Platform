@@ -1,9 +1,5 @@
 package model
 
-import (
-	"time"
-)
-
 // 视频作者信息
 type VideoAuthor struct {
 	ID       int64  `json:"id"`       // 用户ID
@@ -37,7 +33,7 @@ type VideoInfo struct {
 	Topics          []string        `json:"topics"`           // 话题标签
 	Author          VideoAuthor     `json:"author"`           // 作者信息
 	Stats           VideoStats      `json:"stats"`            // 统计数据
-	PublishedAt      	time.Time          `json:"publishedAt"`       // 发布时间（ISO8601格式）
+	PublishedAt      	string         `json:"publishedAt"`       // "2006-01-02 15:04:05" 
 }
 
 // 分页信息

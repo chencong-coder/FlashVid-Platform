@@ -103,7 +103,7 @@ func GetUserVideos(ctx context.Context, userId int64, page, pageSize int) (*mode
 				ShareCount:    video.ShareCount,
 				FavoriteCount: video.FavoriteCount,
 			},
-			PublishedAt: video.PublishedAt,
+			PublishedAt: video.PublishedAt.Format("2006-01-02 15:04:05"),
 		}
 		videoInfos = append(videoInfos, videoInfo)
 	}
