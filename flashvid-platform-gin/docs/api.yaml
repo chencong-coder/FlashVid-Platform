@@ -319,7 +319,7 @@ paths:
                       data:
                         type: object
                         properties:
-                          list:
+                          videos:
                             type: array
                             items:
                               $ref: '#/components/schemas/Video'
@@ -414,7 +414,7 @@ paths:
                       data:
                         type: object
                         properties:
-                          list:
+                          videos:
                             type: array
                             items:
                               $ref: '#/components/schemas/Video'
@@ -448,7 +448,7 @@ paths:
                       data:
                         type: object
                         properties:
-                          list:
+                          videos:
                             type: array
                             items:
                               $ref: '#/components/schemas/Video'
@@ -2045,7 +2045,7 @@ components:
         example: 1
 
     PageSize:
-      name: page_size
+      name: pageSize
       in: query
       description: 每页数量
       schema:
@@ -2111,7 +2111,7 @@ components:
           type: integer
           description: 当前页码
           example: 1
-        page_size:
+        pageSize:
           type: integer
           description: 每页数量
           example: 20
@@ -2120,7 +2120,7 @@ components:
           format: int64
           description: 总记录数
           example: 100
-        total_pages:
+        totalPages:
           type: integer
           description: 总页数
           example: 5
@@ -2211,12 +2211,12 @@ components:
           type: string
           description: 视频描述
           example: 这是一个测试视频
-        cover_url:
+        coverUrl:
           type: string
           format: uri
           description: 封面URL
           example: https://cdn.flashvid.com/cover/12345.jpg
-        video_url:
+        videoUrl:
           type: string
           format: uri
           description: 视频URL
@@ -2233,10 +2233,11 @@ components:
           type: integer
           description: 视频高度
           example: 1920
-        music_name:
-          type: string
-          description: 背景音乐名称
-          example: 背景音乐
+        musicId:
+          type: integer
+          format: int64
+          description: 背景音乐ID
+          example: 456
         city:
           type: string
           description: 城市
@@ -2269,52 +2270,30 @@ components:
           type: object
           description: 统计信息
           properties:
-            view_count:
+            viewCount:
               type: integer
-              format: int64
               description: 播放数
               example: 10000
-            like_count:
+            likeCount:
               type: integer
-              format: int64
               description: 点赞数
               example: 1000
-            comment_count:
+            commentCount:
               type: integer
-              format: int64
               description: 评论数
               example: 100
-            share_count:
+            shareCount:
               type: integer
-              format: int64
               description: 分享数
               example: 50
-            favorite_count:
+            favoriteCount:
               type: integer
-              format: int64
               description: 收藏数
               example: 200
-        user_interaction:
-          type: object
-          description: 用户互动状态
-          properties:
-            is_liked:
-              type: boolean
-              description: 是否已点赞
-              example: false
-            is_favorited:
-              type: boolean
-              description: 是否已收藏
-              example: false
-            is_following:
-              type: boolean
-              description: 是否关注作者
-              example: false
-        created_at:
+        publishedAt:
           type: string
-          format: date-time
-          description: 创建时间
-          example: '2024-01-01T12:00:00Z'
+          description: 发布时间（格式：2006-01-02 15:04:05）
+          example: '2024-01-01 12:00:00'
 
     VideoDetail:
       allOf:
