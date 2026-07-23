@@ -41,8 +41,8 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 			userR.GET("/:id/videos", user.GetUserVideosHandler)           // 查看用户发布的视频（公开）
 			userR.POST("/:id/follow", user.FollowUserHandler)                 // 关注用户（私有）
 			userR.DELETE("/:id/follow", user.UnfollowUserHandler) // 取消关注用户（私有）
-			//userR.GET("/:id/followers", user.GetUserFollowersHandler) // 查看用户的粉丝列表（公开）
-			//userR.GET("/:id/following", user.GetUserFollowingHandler) // 查看用户的关注列表（公开）
+			userR.GET("/:id/followers", user.GetUserFollowersHandler) // 查看用户的粉丝列表（公开）
+			userR.GET("/:id/following", user.GetUserFollowingHandler) // 查看用户的关注列表（公开）
 		}
 	}
 
