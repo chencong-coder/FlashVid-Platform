@@ -15,7 +15,7 @@ func GetUserLikes(ctx context.Context, userId int64, page, pageSize int) (*model
 		First()
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, api.CodeUserNotExist, nil
+			return nil, api.CodeUserNotExist, err
 		}
 		return nil, api.CodeInternalError, err
 	}

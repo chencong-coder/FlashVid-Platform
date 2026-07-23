@@ -17,7 +17,7 @@ func GetUserVideos(ctx context.Context, userId int64, page, pageSize int) (*mode
 		First()
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, api.CodeUserNotExist, nil
+			return nil, api.CodeUserNotExist, err
 		}
 		return nil, api.CodeInternalError, err
 	}
