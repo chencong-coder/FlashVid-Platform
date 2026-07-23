@@ -41,3 +41,35 @@ func FollowUser(ctx context.Context, loginUserId int64, followUserId int64) (boo
 	}
 	return true, api.CodeSuccess, nil
 }
+
+func UnfollowUser(ctx context.Context, loginUserId int64, followUserId int64) (bool, api.ResCode, error) {
+	// 1. 检测用户是否存在
+	_, err := query.User.WithContext(ctx).
+		Where(query.User.ID.Eq(followUserId)).
+		First()
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, api.CodeUserNotExist, err
+		}
+		return false, api.CodeInternalError, err
+	}
+	// 2. 检查是否已经关注
+	followed, err := query.Follow.WithContext(ctx).
+		Where(query.Follow.FollowerID.Eq(loginUserId), query.Follow.FollowingID.Eq(followUserId)).
+		First()
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return false, api.CodeInternalError, err
+	}
+	if followed == nil {
+		// 未关注，返回特定错误码告知前端
+		return false, api.CodeNotFollowed, errors.New("not following")
+	}
+	// 3. 如果已经关注，则删除关注记录
+	_, err = query.Follow.WithContext(ctx).
+		Where(query.Follow.FollowerID.Eq(loginUserId), query.Follow.FollowingID.Eq(followUserId)).
+		Delete()
+	if err != nil {
+		return false, api.CodeInternalError, err
+	}
+	return false, api.CodeSuccess, nil
+}
