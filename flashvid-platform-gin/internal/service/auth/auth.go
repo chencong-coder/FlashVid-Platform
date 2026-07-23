@@ -80,7 +80,6 @@ func Register(ctx context.Context, req *v1.RegisterReq, ip string) (*model.Regis
 		Phone:     req.Phone,
 		Status:    1,              // 1-正常
 		IPAddress: ip,             // 注册IP
-		Email:     req.Email,      // 邮箱（可选）
 		Avatar:    userAvatarDefault,
 	}
 
