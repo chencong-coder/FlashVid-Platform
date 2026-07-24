@@ -49,3 +49,14 @@ type VideoListOutput struct {
 	Videos     []VideoInfo `json:"videos"`     // 视频列表
 	Pagination Pagination  `json:"pagination"` // 分页信息
 }
+
+// 创建视频输出
+type CreateVideoOutput struct {
+	VideoID int64 `json:"videoId"` // 创建成功的视频ID
+	Status  int   `json:"status"`  // 创建状态，1表示审核中，2表示成功 3.为通过 4.下架
+}
+
+// 获取视频详情输出
+type GetVideoOutput struct {
+	Video VideoInfo `json:"video"` // 视频详情
+}

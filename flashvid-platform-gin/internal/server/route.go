@@ -6,7 +6,7 @@ import (
 	"flashvid-platform-gin/internal/middleware"
 	"flashvid-platform-gin/pkg/logging"
 	"net/http"
-
+	"flashvid-platform-gin/internal/handler/video"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
@@ -44,6 +44,19 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 			userR.GET("/:id/followers", user.GetUserFollowersHandler) // 查看用户的粉丝列表（公开）
 			userR.GET("/:id/followings", user.GetUserFollowingHandler) // 查看用户的关注列表（公开）
 		}
+
+		videoR := apiV1.Group("/videos")
+		{
+			// 公开路由（无需登录）— 静态路由必须在动态路由 /:id 之前注册
+			//videoR.GET("/search", video.SearchVideosHandler) // 搜索视频
+			videoR.GET("/:id", video.GetVideoHandler) // 获取视频详情
+
+			// 需要登录
+			videoR.POST("", middleware.Auth(), video.CreateVideoHandler) // 发布视频
+			//videoR.DELETE("/:id", middleware.Auth(), video.DeleteVideoHandler) // 删除视频
+		}
+
+		
 	}
 
 	r.NoRoute(func(c *gin.Context) {

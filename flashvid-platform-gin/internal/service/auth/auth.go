@@ -97,6 +97,7 @@ func Register(ctx context.Context, req *v1.RegisterReq, ip string) (*model.Regis
 
 	// 如果提供了邮箱，加入插入列表
 	if req.Email != "" {
+		user.Email = req.Email
 		selectFields = append(selectFields, query.User.Email)
 	}
 
