@@ -32,3 +32,15 @@ type GetVideoResp struct {
 	Video model.VideoInfo `json:"video"` // 视频详情
 }
 
+// 搜索视频请求
+type SearchVideosReq struct {
+    Keyword  string `form:"keyword"  binding:"required,min=1"` // 搜索关键词，必填，最小长度1
+    Page     int    `form:"page"     binding:"omitempty,min=1"` // 页码，可选，最小值1
+    PageSize int    `form:"pageSize" binding:"omitempty,min=1,max=50"` // 每页数量，可选，最小值1，最大值50
+}
+
+// 搜索视频响应
+type SearchVideosResp struct {
+	Videos     []model.VideoInfo `json:"videos"`     // 视频列表
+	Pagination model.Pagination  `json:"pagination"` // 分页信息
+}

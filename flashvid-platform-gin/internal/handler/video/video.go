@@ -93,3 +93,30 @@ func DeleteVideoHandler(c *gin.Context) {
 		})
 	}
 }
+
+// SearchVideosHandler 搜索视频接口
+func SearchVideosHandler(c *gin.Context) {
+	// 1. 获取查询参数
+	var req v1.SearchVideosReq
+	if err := c.ShouldBindQuery(&req); err != nil {
+		api.ResponseError(c, api.CodeInvalidParam)
+		return
+	}
+	if req.Page <= 0 {
+		req.Page = 1
+	}
+	if req.PageSize <= 0 {
+		req.PageSize = 10
+	}
+	// 2. 调用service进行视频搜索操作
+	output, resCode, err := video.SearchVideos(c, req.Keyword, req.Page, req.PageSize)
+	if err != nil {
+		api.ResponseError(c, resCode)
+		return
+	}
+	// 3. 返回响应
+	api.ResponseSuccess(c, &v1.SearchVideosResp{
+		Videos:     output.Videos,
+		Pagination: output.Pagination,
+	})
+}

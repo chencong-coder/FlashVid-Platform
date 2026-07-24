@@ -48,7 +48,7 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 		videoR := apiV1.Group("/videos")
 		{
 			// 公开路由（无需登录）— 静态路由必须在动态路由 /:id 之前注册
-			//videoR.GET("/search", video.SearchVideosHandler) // 搜索视频
+			videoR.GET("/search", video.SearchVideosHandler) // 搜索视频
 			videoR.GET("/:id", video.GetVideoHandler) // 获取视频详情
 
 			// 需要登录
