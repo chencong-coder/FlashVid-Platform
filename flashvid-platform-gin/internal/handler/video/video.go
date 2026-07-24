@@ -60,3 +60,36 @@ func GetVideoHandler(c *gin.Context) {
 		Video: output.Video,
 	})
 }
+
+// DeleteVideoHandler 删除视频接口
+func DeleteVideoHandler(c *gin.Context) {
+	// 1. 获取视频ID
+	videoId, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || videoId <= 0 {
+		api.ResponseError(c, api.CodeInvalidParam)
+		return
+	}
+	// 2. 获取登录用户ID
+	userId, exists := c.Get(middleware.CtxKeyUserID)
+	if !exists {
+		api.ResponseError(c, api.CodeValueNotExist)
+		return
+	}
+	userIdInt64, ok := userId.(int64)
+	if !ok || userIdInt64 <= 0 {
+		api.ResponseError(c, api.CodeInternalError)
+		return
+	}
+	// 2. 调用service进行视频删除操作
+	rescode, err := video.DeleteVideo(c, videoId, userIdInt64)
+	if err != nil {
+		api.ResponseError(c, rescode)
+		return
+	}
+	// 3. 返回响应
+	if rescode == api.CodeSuccess {
+		api.ResponseSuccess(c, gin.H{
+			"message": "视频删除成功",
+		})
+	}
+}

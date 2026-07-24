@@ -182,3 +182,29 @@ func GetVideo(ctx context.Context, videoId int64) (*model.GetVideoOutput, api.Re
 		},
 	}, api.CodeSuccess, nil
 }
+
+// DeleteVideo 删除视频
+func DeleteVideo(ctx context.Context, videoId int64, userId int64) (api.ResCode, error) {
+	// 1. 查看视频是否存在
+	video, err := query.Video.WithContext(ctx).
+		Where(query.Video.ID.Eq(videoId)).
+		First()
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return api.CodeVideoNotExist, err
+		}
+		return api.CodeInternalError, err
+	}
+	// 2. 检查视频是否属于当前用户
+	if video.UserID != userId {
+		return api.CodeNotDeleteOwnVideo, errors.New("不能删除非自己发布的视频")
+	}
+	// 3. 删除视频记录 软删除
+	_, err = query.Video.WithContext(ctx).
+		Where(query.Video.ID.Eq(videoId)).
+		Delete()
+	if err != nil {
+		return api.CodeInternalError, err
+	}
+	return api.CodeSuccess, nil
+}	

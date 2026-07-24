@@ -53,7 +53,7 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 
 			// 需要登录
 			videoR.POST("", middleware.Auth(), video.CreateVideoHandler) // 发布视频
-			//videoR.DELETE("/:id", middleware.Auth(), video.DeleteVideoHandler) // 删除视频
+			videoR.DELETE("/:id", middleware.Auth(), video.DeleteVideoHandler) // 删除视频
 		}
 
 		

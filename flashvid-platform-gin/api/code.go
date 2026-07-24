@@ -47,6 +47,7 @@ const (
 	CodeNotFavorited       ResCode = 20011 // 未收藏
 	CodeTopicNotExist      ResCode = 20012 // 话题不存在
 	CodeMusicNotExist      ResCode = 20013 // 音乐不存在
+	CodeNotDeleteOwnVideo    ResCode = 20014 // 不能删除非自己发布的视频
 
 	// ==================== 评论相关错误 30000-39999 ====================
 	CodeCommentNotExist    ResCode = 30001 // 评论不存在
@@ -122,6 +123,7 @@ var codeMsgMap = map[ResCode]string{
 	CodeNotFavorited:       "未收藏",
 	CodeTopicNotExist:      "话题不存在",
 	CodeMusicNotExist:      "音乐不存在",
+	CodeNotDeleteOwnVideo:    "不能删除非自己发布的视频",
 
 	// ==================== 评论相关错误 ====================
 	CodeCommentNotExist:    "评论不存在",
