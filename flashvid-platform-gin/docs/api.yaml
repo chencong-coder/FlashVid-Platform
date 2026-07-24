@@ -776,12 +776,9 @@ paths:
               type: object
               required:
                 - title
-                - cover_url
-                - video_url
+                - coverUrl
+                - videoUrl
                 - duration
-                - width
-                - height
-                - file_size
               properties:
                 title:
                   type: string
@@ -791,68 +788,67 @@ paths:
                 description:
                   type: string
                   maxLength: 500
-                  description: 视频描述
+                  description: 视频描述（可选）
                   example: 这是一个测试视频
-                cover_url:
+                coverUrl:
                   type: string
                   format: uri
                   description: 封面URL（已上传）
                   example: https://cdn.flashvid.com/cover/123.jpg
-                video_url:
+                videoUrl:
                   type: string
                   format: uri
                   description: 视频URL（已上传）
                   example: https://cdn.flashvid.com/video/123.mp4
                 duration:
                   type: integer
+                  minimum: 1
                   description: 视频时长（秒）
                   example: 30
                 width:
                   type: integer
-                  description: 视频宽度
+                  minimum: 1
+                  description: 视频宽度（可选）
                   example: 1080
                 height:
                   type: integer
-                  description: 视频高度
+                  minimum: 1
+                  description: 视频高度（可选）
                   example: 1920
-                file_size:
+                musicId:
                   type: integer
                   format: int64
-                  description: 文件大小（字节）
-                  example: 5242880
-                music_id:
-                  type: integer
-                  format: int64
-                  description: 音乐ID
+                  description: 背景音乐ID（可选）
                   example: 456
-                music_name:
-                  type: string
-                  description: 背景音乐名称
-                  example: 背景音乐
                 city:
                   type: string
-                  description: 城市
+                  description: 城市（可选）
                   example: 深圳
                 location:
                   type: string
-                  description: 具体位置
+                  description: 具体位置（可选）
                   example: 南山区
                 latitude:
                   type: number
                   format: double
-                  description: 纬度
+                  minimum: -90
+                  maximum: 90
+                  description: 纬度（可选）
                   example: 22.5431
                 longitude:
                   type: number
                   format: double
-                  description: 经度
+                  minimum: -180
+                  maximum: 180
+                  description: 经度（可选）
                   example: 114.0579
-                topic_ids:
+                topics:
                   type: array
+                  maxItems: 5
                   items:
                     type: integer
                     format: int64
-                  description: 话题ID列表
+                  description: 话题ID列表（可选，最多5个）
                   example: [1, 2, 3]
       responses:
         '200':
@@ -873,8 +869,8 @@ paths:
                             example: 12345
                           status:
                             type: integer
-                            description: 1-审核中
-                            example: 1
+                            description: 2-已发布
+                            example: 2
         '401':
           $ref: '#/components/responses/Unauthorized'
         '422':
@@ -887,7 +883,7 @@ paths:
       tags:
         - 视频
       summary: 获取视频详情
-      description: 获取指定视频的详细信息
+      description: 获取指定视频的详细信息（无需登录）
       operationId: getVideoById
       parameters:
         - name: id
@@ -909,11 +905,12 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: '#/components/schemas/VideoDetail'
+                        type: object
+                        properties:
+                          video:
+                            $ref: '#/components/schemas/Video'
         '404':
           $ref: '#/components/responses/NotFound'
-      security:
-        - BearerAuth: []
 
     delete:
       tags:
@@ -950,7 +947,7 @@ paths:
       tags:
         - 视频
       summary: 搜索视频
-      description: 根据关键词搜索视频
+      description: 根据关键词搜索视频（无需登录）
       operationId: searchVideos
       parameters:
         - name: keyword
@@ -959,10 +956,10 @@ paths:
           description: 搜索关键词
           schema:
             type: string
+            minLength: 1
             example: 旅行
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/PageSize'
-        - $ref: '#/components/parameters/Sort'
       responses:
         '200':
           description: 搜索成功
@@ -976,14 +973,12 @@ paths:
                       data:
                         type: object
                         properties:
-                          list:
+                          videos:
                             type: array
                             items:
                               $ref: '#/components/schemas/Video'
                           pagination:
                             $ref: '#/components/schemas/Pagination'
-      security:
-        - BearerAuth: []
 
 
   # ==================== 互动模块 ====================
