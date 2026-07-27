@@ -7,6 +7,7 @@ import (
 	"flashvid-platform-gin/pkg/logging"
 	"net/http"
 	"flashvid-platform-gin/internal/handler/video"
+	"flashvid-platform-gin/internal/handler/feed"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
@@ -56,7 +57,11 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 			videoR.DELETE("/:id", middleware.Auth(), video.DeleteVideoHandler) // 删除视频
 		}
 
-		
+		feedR := apiV1.Group("/feed")
+		feedR.Use(middleware.Auth())
+		{
+			feedR.GET("recommend", feed.GetFeedRecommendHandler) // 获取推荐视频流
+		}
 	}
 
 	r.NoRoute(func(c *gin.Context) {
