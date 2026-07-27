@@ -42,12 +42,13 @@ const (
 	CodeVideoFormatInvalid ResCode = 20006 // 视频格式不支持
 	CodeVideoDurationLimit ResCode = 20007 // 视频时长超限
 	CodeAlreadyLiked       ResCode = 20008 // 已点赞
-	CodeNotLiked           ResCode = 20009 // 未点赞
-	CodeAlreadyFavorited   ResCode = 20010 // 已收藏
-	CodeNotFavorited       ResCode = 20011 // 未收藏
-	CodeTopicNotExist      ResCode = 20012 // 话题不存在
-	CodeMusicNotExist      ResCode = 20013 // 音乐不存在
-	CodeNotDeleteOwnVideo    ResCode = 20014 // 不能删除非自己发布的视频
+	CodeAlreadyUnliked     ResCode = 20009 // 已取消点赞
+	CodeNotLiked           ResCode = 20010 // 未点赞
+	CodeAlreadyFavorited   ResCode = 20011 // 已收藏
+	CodeNotFavorited       ResCode = 20012 // 未收藏
+	CodeTopicNotExist      ResCode = 20013 // 话题不存在
+	CodeMusicNotExist      ResCode = 20014 // 音乐不存在
+	CodeNotDeleteOwnVideo    ResCode = 20015 // 不能删除非自己发布的视频
 
 	// ==================== 评论相关错误 30000-39999 ====================
 	CodeCommentNotExist    ResCode = 30001 // 评论不存在
@@ -124,6 +125,7 @@ var codeMsgMap = map[ResCode]string{
 	CodeTopicNotExist:      "话题不存在",
 	CodeMusicNotExist:      "音乐不存在",
 	CodeNotDeleteOwnVideo:    "不能删除非自己发布的视频",
+	CodeAlreadyUnliked:     "已取消点赞",
 
 	// ==================== 评论相关错误 ====================
 	CodeCommentNotExist:    "评论不存在",

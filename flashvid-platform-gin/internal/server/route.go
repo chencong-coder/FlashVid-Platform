@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"flashvid-platform-gin/internal/handler/video"
 	"flashvid-platform-gin/internal/handler/feed"
+	"flashvid-platform-gin/internal/handler/interaction"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
@@ -22,6 +23,7 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 	r.Use(cors.New(corsCfg)) // CORS 跨域中间件，简单粗暴，直接放行所有跨域请求
 	apiV1 := r.Group("/api/v1")
 	{
+		// 登录注册相关路由组
 		authUser := apiV1.Group("/auth")
 		{
 			authUser.POST("/register", auth.RegisterHandler) // 注册
@@ -29,7 +31,7 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 			authUser.POST("/refresh", auth.RefreshHandler) // 刷新Token
 		}
 
-		// 需要登录的路由组
+		// 用户相关路由组
 		userR := apiV1.Group("/user")
 		userR.Use(middleware.Auth())
 		{
@@ -46,6 +48,7 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 			userR.GET("/:id/followings", user.GetUserFollowingHandler) // 查看用户的关注列表（公开）
 		}
 
+		// 视频相关路由组
 		videoR := apiV1.Group("/videos")
 		{
 			// 公开路由（无需登录）— 静态路由必须在动态路由 /:id 之前注册
@@ -57,6 +60,7 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 			videoR.DELETE("/:id", middleware.Auth(), video.DeleteVideoHandler) // 删除视频
 		}
 
+		// 视频流路由组
 		feedR := apiV1.Group("/feed")
 		feedR.Use(middleware.Auth())
 		{
@@ -64,6 +68,17 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 			feedR.GET("follow", feed.GetFeedFollowHandler) // 获取关注视频流
 			feedR.GET("nearby", feed.GetFeedNearbyHandler) // 获取附近视频流
 		}
+
+		// 互动相关路由组
+		interactionR := apiV1.Group("/videos")
+		interactionR.Use(middleware.Auth())
+		{
+			interactionR.POST("/:id/like", interaction.LikeVideoHandler) // 点赞视频
+			interactionR.DELETE("/:id/like", interaction.UnlikeVideoHandler) // 取消点赞视频
+			//interactionR.POST("/:id/favorite", interaction.FavoriteVideoHandler) // 收藏视频
+			//interactionR.DELETE("/:id/favorite", interaction.UnfavoriteVideoHandler) // 取消收藏视频
+		}
+
 	}
 
 	r.NoRoute(func(c *gin.Context) {
