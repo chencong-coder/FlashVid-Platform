@@ -1208,7 +1208,7 @@ paths:
                             example: https://flashvid.com/video/12345
                           share_count:
                             type: integer
-                            format: int64
+                            format: int32
                             example: 51
         '401':
           $ref: '#/components/responses/Unauthorized'
