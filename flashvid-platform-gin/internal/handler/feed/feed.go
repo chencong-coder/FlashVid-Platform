@@ -5,6 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	v1 "flashvid-platform-gin/api/feed/v1"
 	"flashvid-platform-gin/internal/service/feed"
+	"flashvid-platform-gin/internal/middleware"
 )
 
 // GetFeedRecommendHandler 获取推荐视频流接口
@@ -35,7 +36,7 @@ func GetFeedRecommendHandler(c *gin.Context) {
 // GetFeedFollowHandler 获取关注视频流接口
 func GetFeedFollowHandler(c *gin.Context) {
 	// 1. 获取用户ID 查看登录用户的关注视频流
-	userId, exists := c.Get("userID")
+	userId, exists := c.Get(middleware.CtxKeyUserID)
 	if !exists {
 		api.ResponseError(c, api.CodeValueNotExist)
 		return
