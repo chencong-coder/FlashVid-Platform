@@ -631,7 +631,7 @@ paths:
       tags:
         - 视频流
       summary: 获取推荐视频流
-      description: 获取个性化推荐的视频列表
+      description: 获取推荐的视频列表（按发布时间降序，无需登录）
       operationId: getRecommendFeed
       parameters:
         - $ref: '#/components/parameters/Cursor'
@@ -649,27 +649,25 @@ paths:
                       data:
                         type: object
                         properties:
-                          list:
+                          videos:
                             type: array
                             items:
                               $ref: '#/components/schemas/Video'
-                          cursor:
+                          nextCursorToken:
                             type: string
-                            description: 下一页游标
-                            example: next_cursor_token
-                          has_more:
+                            description: 下一页游标，空字符串表示没有更多
+                            example: "2026-07-24 12:00:00"
+                          hasMore:
                             type: boolean
                             description: 是否还有更多数据
                             example: true
-      security:
-        - BearerAuth: []
 
   /feed/following:
     get:
       tags:
         - 视频流
       summary: 获取关注视频流
-      description: 获取关注用户发布的视频列表
+      description: 获取关注用户发布的视频列表（需要登录）
       operationId: getFollowingFeed
       parameters:
         - $ref: '#/components/parameters/Cursor'
@@ -687,16 +685,20 @@ paths:
                       data:
                         type: object
                         properties:
-                          list:
+                          videos:
                             type: array
                             items:
                               $ref: '#/components/schemas/Video'
-                          cursor:
+                          nextCursorToken:
                             type: string
-                            example: next_cursor_token
-                          has_more:
+                            description: 下一页游标，空字符串表示没有更多
+                            example: "2026-07-24 12:00:00"
+                          hasMore:
                             type: boolean
+                            description: 是否还有更多数据
                             example: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
       security:
         - BearerAuth: []
 
@@ -705,30 +707,36 @@ paths:
       tags:
         - 视频流
       summary: 获取附近视频流
-      description: 获取附近用户发布的视频列表
+      description: 获取附近用户发布的视频列表（基于经纬度，无需登录）
       operationId: getNearbyFeed
       parameters:
         - name: latitude
           in: query
           required: true
-          description: 纬度
+          description: 纬度（-90到90）
           schema:
             type: number
             format: double
+            minimum: -90
+            maximum: 90
             example: 22.5431
         - name: longitude
           in: query
           required: true
-          description: 经度
+          description: 经度（-180到180）
           schema:
             type: number
             format: double
+            minimum: -180
+            maximum: 180
             example: 114.0579
-        - name: radius
+        - name: distance
           in: query
-          description: 半径（公里），默认10
+          description: 距离（公里），默认10，最大100
           schema:
             type: integer
+            minimum: 1
+            maximum: 100
             default: 10
             example: 10
         - $ref: '#/components/parameters/Cursor'
@@ -746,16 +754,20 @@ paths:
                       data:
                         type: object
                         properties:
-                          list:
+                          videos:
                             type: array
                             items:
                               $ref: '#/components/schemas/Video'
-                          cursor:
+                          nextCursorToken:
                             type: string
-                            example: next_cursor_token
-                          has_more:
+                            description: 下一页游标，空字符串表示没有更多
+                            example: "2026-07-24 12:00:00"
+                          hasMore:
                             type: boolean
+                            description: 是否还有更多数据
                             example: true
+        '422':
+          $ref: '#/components/responses/ValidationError'
       security:
         - BearerAuth: []
 
