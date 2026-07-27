@@ -2,6 +2,7 @@ package interaction
 
 import (
 	"flashvid-platform-gin/api"
+	v1 "flashvid-platform-gin/api/interaction/v1"
 	"flashvid-platform-gin/internal/middleware"
 	"flashvid-platform-gin/internal/service/interaction"
 	"strconv"
@@ -133,6 +134,30 @@ func UnfavoriteVideoHandler(c *gin.Context) {
 			api.ResponseErrorWithMsg(c, resCode, "未收藏过该视频")
 			return
 		}
+		api.ResponseError(c, resCode)
+		return
+	}
+	// 4. 返回响应
+	api.ResponseSuccess(c, resp)
+}
+
+// 分享视频接口
+func ShareVideoHandler(c *gin.Context) {
+	// 1. 获取视频ID
+	videoId, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		api.ResponseError(c, api.CodeInvalidParam)
+		return
+	}
+	// 2. 绑定请求参数
+	var req v1.ShareVideoReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.ResponseError(c, api.CodeInvalidParam)
+		return
+	}
+	// 3. 调用service进行分享操作
+	resp, resCode, err := interaction.ShareVideo(c, videoId)
+	if err != nil {
 		api.ResponseError(c, resCode)
 		return
 	}

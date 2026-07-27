@@ -2,11 +2,12 @@ package interaction
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"flashvid-platform-gin/api"
 	v1 "flashvid-platform-gin/api/interaction/v1"
 	"flashvid-platform-gin/internal/dao/query"
 	"flashvid-platform-gin/internal/model"
-	"errors"
 	"gorm.io/gorm"
 )
 
@@ -204,5 +205,24 @@ func UnfavoriteVideo(ctx context.Context, userId int64, videoId int64) (*v1.Favo
 	return &v1.FavoriteVideoResp{
 		IsFavorited:   false,
 		FavoriteCount: video.FavoriteCount - 1,
+	}, api.CodeSuccess, nil
+}
+
+// ShareVideo 分享视频
+func ShareVideo(ctx context.Context, videoId int64) (*v1.ShareVideoResp, api.ResCode, error) {
+	// 1. 检查视频是否存在
+	video, err := query.Video.WithContext(ctx).Where(query.Video.ID.Eq(videoId)).Take()
+	if err != nil {
+		return nil, api.CodeVideoNotExist, err
+	}
+	// 2. share_count + 1
+	if _, err = query.Video.WithContext(ctx).Where(query.Video.ID.Eq(videoId)).
+		UpdateSimple(query.Video.ShareCount.Add(1)); err != nil {
+		return nil, api.CodeInternalError, err
+	}
+	// 3. 返回结果
+	return &v1.ShareVideoResp{
+		ShareUrl:   fmt.Sprintf("https://flashvid.com/video/%d", videoId),
+		ShareCount: video.ShareCount + 1,
 	}, api.CodeSuccess, nil
 }
