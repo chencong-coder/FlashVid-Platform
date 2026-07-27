@@ -125,3 +125,84 @@ func UnlikeVideo(ctx context.Context, userId int64, videoId int64) (*v1.LikeVide
 		LikeCount: video.LikeCount - 1,
 	}, api.CodeSuccess, nil
 }
+
+// FavoriteVideo 收藏视频
+func FavoriteVideo(ctx context.Context, userId int64, videoId int64) (*v1.FavoriteVideoResp, api.ResCode, error) {
+	// 1. 检查视频是否存在
+	video, err := query.Video.WithContext(ctx).Where(query.Video.ID.Eq(videoId)).Take()
+	if err != nil {
+		return nil, api.CodeVideoNotExist, err
+	}
+	// 2. 检查是否已收藏
+	count, err := query.Favorite.WithContext(ctx).
+		Where(query.Favorite.UserID.Eq(userId), query.Favorite.VideoID.Eq(videoId)).
+		Count()
+	if err != nil {
+		return nil, api.CodeInternalError, err
+	}
+	if count > 0 {
+		return nil, api.CodeAlreadyFavorited, errors.New("已收藏过该视频")
+	}
+	// 3. 事务：创建收藏记录 + 收藏数 +1
+	err = query.Q.Transaction(func(tx *query.Query) error {
+		if err := tx.Favorite.WithContext(ctx).Create(&model.Favorite{
+			UserID:  userId,
+			VideoID: videoId,
+		}); err != nil {
+			return err
+		}
+		if _, err := tx.Video.WithContext(ctx).Where(tx.Video.ID.Eq(videoId)).
+			UpdateSimple(tx.Video.FavoriteCount.Add(1)); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, api.CodeInternalError, err
+	}
+	// 4. 返回结果
+	return &v1.FavoriteVideoResp{
+		IsFavorited:   true,
+		FavoriteCount: video.FavoriteCount + 1,
+	}, api.CodeSuccess, nil
+}
+
+// UnfavoriteVideo 取消收藏视频
+func UnfavoriteVideo(ctx context.Context, userId int64, videoId int64) (*v1.FavoriteVideoResp, api.ResCode, error) {
+	// 1. 检查视频是否存在
+	video, err := query.Video.WithContext(ctx).Where(query.Video.ID.Eq(videoId)).Take()
+	if err != nil {
+		return nil, api.CodeVideoNotExist, err
+	}
+	// 2. 检查是否已收藏
+	count, err := query.Favorite.WithContext(ctx).
+		Where(query.Favorite.UserID.Eq(userId), query.Favorite.VideoID.Eq(videoId)).
+		Count()
+	if err != nil {
+		return nil, api.CodeInternalError, err
+	}
+	if count == 0 {
+		return nil, api.CodeNotFavorited, errors.New("未收藏过该视频")
+	}
+	// 3. 事务：删除收藏记录 + 收藏数 -1
+	err = query.Q.Transaction(func(tx *query.Query) error {
+		if _, err := tx.Favorite.WithContext(ctx).
+			Where(tx.Favorite.UserID.Eq(userId), tx.Favorite.VideoID.Eq(videoId)).
+			Delete(); err != nil {
+			return err
+		}
+		if _, err := tx.Video.WithContext(ctx).Where(tx.Video.ID.Eq(videoId)).
+			UpdateSimple(tx.Video.FavoriteCount.Sub(1)); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, api.CodeInternalError, err
+	}
+	// 4. 返回结果
+	return &v1.FavoriteVideoResp{
+		IsFavorited:   false,
+		FavoriteCount: video.FavoriteCount - 1,
+	}, api.CodeSuccess, nil
+}

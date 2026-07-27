@@ -75,8 +75,8 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 		{
 			interactionR.POST("/:id/like", interaction.LikeVideoHandler) // 点赞视频
 			interactionR.DELETE("/:id/like", interaction.UnlikeVideoHandler) // 取消点赞视频
-			//interactionR.POST("/:id/favorite", interaction.FavoriteVideoHandler) // 收藏视频
-			//interactionR.DELETE("/:id/favorite", interaction.UnfavoriteVideoHandler) // 取消收藏视频
+			interactionR.POST("/:id/favorite", interaction.FavoriteVideoHandler) // 收藏视频
+			interactionR.DELETE("/:id/favorite", interaction.UnfavoriteVideoHandler) // 取消收藏视频
 		}
 
 	}

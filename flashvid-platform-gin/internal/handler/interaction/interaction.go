@@ -73,3 +73,69 @@ func UnlikeVideoHandler(c *gin.Context) {
 	// 4. 返回响应
 	api.ResponseSuccess(c, resp)
 }
+
+// 收藏视频接口
+func FavoriteVideoHandler(c *gin.Context) {
+	// 1. 获取登录用户ID
+	loginUserId, exists := c.Get(middleware.CtxKeyUserID)
+	if !exists {
+		api.ResponseError(c, api.CodeValueNotExist)
+		return
+	}
+	userIdInt64, ok := loginUserId.(int64)
+	if !ok || userIdInt64 <= 0 {
+		api.ResponseError(c, api.CodeInvalidUserID)
+		return
+	}
+	// 2. 获取视频ID
+	videoId, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		api.ResponseError(c, api.CodeInvalidParam)
+		return
+	}
+	// 3. 调用service进行收藏操作
+	resp, resCode, err := interaction.FavoriteVideo(c, userIdInt64, videoId)
+	if err != nil {
+		if resCode == api.CodeAlreadyFavorited {
+			api.ResponseErrorWithMsg(c, resCode, "已经收藏过该视频")
+			return
+		}
+		api.ResponseError(c, resCode)
+		return
+	}
+	// 4. 返回响应
+	api.ResponseSuccess(c, resp)
+}
+
+// 取消收藏视频接口
+func UnfavoriteVideoHandler(c *gin.Context) {
+	// 1. 获取登录用户ID
+	loginUserId, exists := c.Get(middleware.CtxKeyUserID)
+	if !exists {
+		api.ResponseError(c, api.CodeValueNotExist)
+		return
+	}
+	userIdInt64, ok := loginUserId.(int64)
+	if !ok || userIdInt64 <= 0 {
+		api.ResponseError(c, api.CodeInvalidUserID)
+		return
+	}
+	// 2. 获取视频ID
+	videoId, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		api.ResponseError(c, api.CodeInvalidParam)
+		return
+	}
+	// 3. 调用service进行取消收藏操作
+	resp, resCode, err := interaction.UnfavoriteVideo(c, userIdInt64, videoId)
+	if err != nil {
+		if resCode == api.CodeNotFavorited {
+			api.ResponseErrorWithMsg(c, resCode, "未收藏过该视频")
+			return
+		}
+		api.ResponseError(c, resCode)
+		return
+	}
+	// 4. 返回响应
+	api.ResponseSuccess(c, resp)
+}
