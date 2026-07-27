@@ -61,6 +61,7 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 		feedR.Use(middleware.Auth())
 		{
 			feedR.GET("recommend", feed.GetFeedRecommendHandler) // 获取推荐视频流
+			feedR.GET("follow", feed.GetFeedFollowHandler) // 获取关注视频流
 		}
 	}
 
