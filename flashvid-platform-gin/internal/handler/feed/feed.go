@@ -68,3 +68,31 @@ func GetFeedFollowHandler(c *gin.Context) {
 		HasMore:    output.HasMore,
 	})
 }
+
+// GetFeedNearbyHandler 获取附近视频流接口
+func GetFeedNearbyHandler(c *gin.Context) {
+	// 1. 获取表单参数
+	var req v1.NearbyFeedReq
+	if err := c.ShouldBindQuery(&req); err != nil {
+		api.ResponseError(c, api.CodeInvalidParam)
+		return
+	}
+	if req.Count <= 0 {
+		req.Count = 10
+	}
+	if req.Distance <= 0 {
+		req.Distance = 10
+	}
+	// 2. 调用service获取推荐视频流
+	output, resCode, err := feed.GetFeedNearby(c, req.Latitude, req.Longitude, req.Distance, req.Cursor, req.Count)
+	if err != nil {
+		api.ResponseError(c, resCode)
+		return
+	}
+	// 3. 返回响应
+	api.ResponseSuccess(c, v1.FeedResp{
+		Videos:     output.Videos,
+		NextCursorToken: output.NextCursorToken,
+		HasMore:    output.HasMore,
+	})
+}

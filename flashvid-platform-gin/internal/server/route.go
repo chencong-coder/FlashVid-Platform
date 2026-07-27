@@ -62,6 +62,7 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 		{
 			feedR.GET("recommend", feed.GetFeedRecommendHandler) // 获取推荐视频流
 			feedR.GET("follow", feed.GetFeedFollowHandler) // 获取关注视频流
+			feedR.GET("nearby", feed.GetFeedNearbyHandler) // 获取附近视频流
 		}
 	}
 
