@@ -106,8 +106,14 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 		commentDeleteR.Use(middleware.Auth())
 		{
 			commentDeleteR.DELETE("/:id", comment.DeleteCommentHandler) // 删除评论
-			commentDeleteR.POST("/:id/like", comment.LikeCommentHandler)    // 点赞评论
-			commentDeleteR.DELETE("/:id/like", comment.UnlikeCommentHandler) // 取消点赞评论
+		}
+
+		// 评论点赞路由（需要登录）
+		commentLikeR := apiV1.Group("/comments")
+		commentLikeR.Use(middleware.Auth())
+		{
+			commentLikeR.POST("/:id/like", comment.LikeCommentHandler)    // 点赞评论
+			commentLikeR.DELETE("/:id/like", comment.UnlikeCommentHandler) // 取消点赞评论
 		}
 	}
 
