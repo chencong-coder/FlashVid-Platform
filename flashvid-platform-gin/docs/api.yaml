@@ -1281,7 +1281,7 @@ paths:
       tags:
         - 评论
       summary: 发表评论
-      description: 对指定视频发表评论或回复
+      description: 对指定视频发表一级评论或回复。parentId=0 时为一级评论，response 返回 comment；parentId>0 时为回复，response 返回 reply。
       operationId: createComment
       parameters:
         - name: id
@@ -1302,14 +1302,20 @@ paths:
               properties:
                 content:
                   type: string
+                  minLength: 1
                   maxLength: 500
                   description: 评论内容
                   example: 这个视频太棒了！
-                parent_id:
+                parentId:
                   type: integer
                   format: int64
                   description: 父评论ID，不传或传0表示一级评论
                   example: 0
+                replyToUserId:
+                  type: integer
+                  format: int64
+                  description: 被回复的用户ID（parentId>0时传入）
+                  example: 123
       responses:
         '200':
           description: 评论成功
@@ -1323,17 +1329,16 @@ paths:
                       data:
                         type: object
                         properties:
-                          comment_id:
-                            type: integer
-                            format: int64
-                            example: 789
-                          content:
-                            type: string
-                            example: 这个视频太棒了！
-                          created_at:
-                            type: string
-                            format: date-time
-                            example: '2024-01-01T12:00:00Z'
+                          comment:
+                            description: 一级评论（parentId=0时返回）
+                            allOf:
+                              - $ref: '#/components/schemas/Comment'
+                            nullable: true
+                          reply:
+                            description: 回复（parentId>0时返回）
+                            allOf:
+                              - $ref: '#/components/schemas/Reply'
+                            nullable: true
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -1343,12 +1348,47 @@ paths:
       security:
         - BearerAuth: []
 
+  /comments/{id}/replies:
+    get:
+      tags:
+        - 评论
+      summary: 获取评论回复列表
+      description: 获取指定评论的所有回复（无需登录，登录后返回 isLiked 状态），按发布时间升序
+      operationId: getCommentReplies
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 评论ID
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          replies:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Reply'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /comments/{id}:
     delete:
       tags:
         - 评论
       summary: 删除评论
-      description: 删除自己发表的评论
+      description: 删除自己发表的评论（软删除，同时更新父评论回复数或视频评论数）
       operationId: deleteComment
       parameters:
         - name: id
@@ -2339,6 +2379,7 @@ components:
 
     Comment:
       type: object
+      description: 一级评论（TikTok风格，回复通过 GET /comments/{id}/replies 单独加载）
       properties:
         id:
           type: integer
@@ -2350,98 +2391,95 @@ components:
           description: 评论内容
           example: 这个视频太棒了！
         user:
+          $ref: '#/components/schemas/CommentUser'
+        likeCount:
+          type: integer
+          format: int32
+          description: 点赞数
+          example: 10
+        replyCount:
+          type: integer
+          format: int32
+          description: 回复数（折叠，点击展开时调用 /replies 接口）
+          example: 2
+        isLiked:
+          type: boolean
+          description: 当前用户是否已点赞（未登录时为 false）
+          example: false
+        isAuthored:
+          type: boolean
+          description: 是否为视频作者发表
+          example: false
+        replies:
+          type: array
+          description: 回复列表占位（始终为空数组，通过 GET /comments/{id}/replies 获取）
+          items:
+            $ref: '#/components/schemas/Reply'
+          example: []
+        createdAt:
+          type: string
+          description: 评论时间（格式：2006-01-02 15:04:05）
+          example: '2024-01-01 12:00:00'
+
+    Reply:
+      type: object
+      description: 评论回复
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: 回复ID
+          example: 790
+        content:
+          type: string
+          description: 回复内容
+          example: 同意！
+        user:
+          $ref: '#/components/schemas/CommentUser'
+        replyTo:
           type: object
-          description: 评论用户
+          description: 被回复的用户（防御性，replyToUserId=0 时为空对象）
+          nullable: true
           properties:
             id:
               type: integer
               format: int64
               example: 123
-            username:
-              type: string
-              example: commenter
             nickname:
               type: string
               example: 评论者
-            avatar:
-              type: string
-              format: uri
-              example: https://cdn.flashvid.com/avatar/123.jpg
-        like_count:
+        likeCount:
           type: integer
-          format: int64
+          format: int32
           description: 点赞数
-          example: 10
-        reply_count:
+          example: 5
+        isLiked:
+          type: boolean
+          description: 当前用户是否已点赞（未登录时为 false）
+          example: false
+        createdAt:
+          type: string
+          description: 回复时间（格式：2006-01-02 15:04:05）
+          example: '2024-01-01 12:05:00'
+
+    CommentUser:
+      type: object
+      description: 评论/回复用户信息
+      properties:
+        id:
           type: integer
           format: int64
-          description: 回复数
-          example: 2
-        is_liked:
-          type: boolean
-          description: 是否已点赞
-          example: false
-        is_author:
-          type: boolean
-          description: 是否为视频作者
-          example: false
-        replies:
-          type: array
-          description: 回复列表
-          items:
-            type: object
-            properties:
-              id:
-                type: integer
-                format: int64
-                example: 790
-              content:
-                type: string
-                example: 回复内容
-              user:
-                type: object
-                properties:
-                  id:
-                    type: integer
-                    format: int64
-                    example: 456
-                  username:
-                    type: string
-                    example: replier
-                  nickname:
-                    type: string
-                    example: 回复者
-                  avatar:
-                    type: string
-                    format: uri
-                    example: https://cdn.flashvid.com/avatar/456.jpg
-              reply_to_user:
-                type: object
-                nullable: true
-                properties:
-                  id:
-                    type: integer
-                    format: int64
-                    example: 123
-                  nickname:
-                    type: string
-                    example: 评论者
-              like_count:
-                type: integer
-                format: int64
-                example: 5
-              is_liked:
-                type: boolean
-                example: false
-              created_at:
-                type: string
-                format: date-time
-                example: '2024-01-01T12:05:00Z'
-        created_at:
+          example: 123
+        username:
           type: string
-          format: date-time
-          description: 评论时间
-          example: '2024-01-01T12:00:00Z'
+          example: commenter
+        nickname:
+          type: string
+          example: 评论者
+        avatar:
+          type: string
+          format: uri
+          example: https://cdn.flashvid.com/avatar/123.jpg
 
     Topic:
       type: object

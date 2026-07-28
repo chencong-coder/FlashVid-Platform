@@ -9,6 +9,7 @@ import (
 	"flashvid-platform-gin/internal/handler/video"
 	"flashvid-platform-gin/internal/handler/feed"
 	"flashvid-platform-gin/internal/handler/interaction"
+	"flashvid-platform-gin/internal/handler/comment"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
@@ -81,6 +82,31 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 			interactionR.POST("/:id/share", interaction.ShareVideoHandler) // 分享视频
 		}
 
+		// 评论相关路由组（公开接口，不强制登录）
+		commentR := apiV1.Group("/videos")
+		{
+			commentR.GET("/:id/comments", comment.GetCommentsHandler) // 获取评论列表
+		}
+
+		// 评论写操作路由（需要登录）
+		commentWriteR := apiV1.Group("/videos")
+		commentWriteR.Use(middleware.Auth())
+		{
+			commentWriteR.POST("/:id/comments", comment.CreateCommentHandler) // 发表评论
+		}
+
+		// 评论回复路由
+		replyR := apiV1.Group("/comments")
+		{
+			replyR.GET("/:id/replies", comment.GetRepliesHandler) // 获取回复列表
+		}
+
+		// 评论删除路由（需要登录）
+		commentDeleteR := apiV1.Group("/comments")
+		commentDeleteR.Use(middleware.Auth())
+		{
+			commentDeleteR.DELETE("/:id", comment.DeleteCommentHandler) // 删除评论
+		}
 	}
 
 	r.NoRoute(func(c *gin.Context) {
