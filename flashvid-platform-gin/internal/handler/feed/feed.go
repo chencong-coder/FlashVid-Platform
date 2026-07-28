@@ -16,7 +16,7 @@ func GetFeedRecommendHandler(c *gin.Context) {
 		api.ResponseError(c, api.CodeInvalidParam)
 		return
 	}
-	if req.Count <= 0 {
+	if req.Count < 10 {
 		req.Count = 10
 	}
 	// 2. 调用service获取推荐视频流
@@ -52,7 +52,7 @@ func GetFeedFollowHandler(c *gin.Context) {
 		api.ResponseError(c, api.CodeInvalidParam)
 		return
 	}
-	if req.Count <= 0 {
+	if req.Count < 10 {
 		req.Count = 10
 	}
 	// 3. 调用service获取推荐视频流
@@ -77,7 +77,7 @@ func GetFeedNearbyHandler(c *gin.Context) {
 		api.ResponseError(c, api.CodeInvalidParam)
 		return
 	}
-	if req.Count <= 0 {
+	if req.Count < 10 {
 		req.Count = 10
 	}
 	if req.Distance <= 0 {
