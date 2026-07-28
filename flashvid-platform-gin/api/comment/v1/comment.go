@@ -34,3 +34,9 @@ type CreateCommentResp struct {
 	Comment *model.CommentInfo `json:"comment,omitempty"` // 一级评论
 	Reply   *model.ReplyInfo   `json:"reply,omitempty"`   // 回复
 }
+
+// 点赞评论响应
+type LikeCommentResp struct {
+	IsLiked   bool  `json:"isLiked"`
+	LikeCount int32 `json:"likeCount"`
+}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"flashvid-platform-gin/api"
+	v1 "flashvid-platform-gin/api/comment/v1"
 	"flashvid-platform-gin/internal/dao/query"
 	"flashvid-platform-gin/internal/model"
 	"time"
@@ -373,4 +374,101 @@ func DeleteComment(ctx context.Context, userId int64, commentId int64) (api.ResC
 		return api.CodeInternalError, err
 	}
 	return api.CodeSuccess, nil
+}
+
+// LikeComment 点赞评论（target_type=2）
+func LikeComment(ctx context.Context, userId int64, commentId int64) (*v1.LikeCommentResp, api.ResCode, error) {
+	// 1. 检查评论是否存在
+	c, err := query.Comment.WithContext(ctx).
+		Where(query.Comment.ID.Eq(commentId), query.Comment.Status.Eq(1)).
+		First()
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, api.CodeCommentNotExist, err
+		}
+		return nil, api.CodeInternalError, err
+	}
+	// 2. 检查是否已点赞
+	count, err := query.Like.WithContext(ctx).
+		Where(
+			query.Like.UserID.Eq(userId),
+			query.Like.TargetType.Eq(2),
+			query.Like.TargetID.Eq(commentId),
+		).Count()
+	if err != nil {
+		return nil, api.CodeInternalError, err
+	}
+	if count > 0 {
+		return nil, api.CodeAlreadyLiked, errors.New("已点赞该评论")
+	}
+	// 3. 事务：创建点赞记录 + comment.like_count+1
+	err = query.Q.Transaction(func(tx *query.Query) error {
+		if err := tx.Like.WithContext(ctx).Create(&model.Like{
+			UserID:     userId,
+			TargetType: 2,
+			TargetID:   commentId,
+		}); err != nil {
+			return err
+		}
+		_, err = tx.Comment.WithContext(ctx).
+			Where(tx.Comment.ID.Eq(commentId)).
+			UpdateSimple(tx.Comment.LikeCount.Add(1))
+		return err
+	})
+	if err != nil {
+		return nil, api.CodeInternalError, err
+	}
+	return &v1.LikeCommentResp{
+		IsLiked:   true,
+		LikeCount: c.LikeCount + 1,
+	}, api.CodeSuccess, nil
+}
+
+// UnlikeComment 取消点赞评论
+func UnlikeComment(ctx context.Context, userId int64, commentId int64) (*v1.LikeCommentResp, api.ResCode, error) {
+	// 1. 检查评论是否存在
+	c, err := query.Comment.WithContext(ctx).
+		Where(query.Comment.ID.Eq(commentId), query.Comment.Status.Eq(1)).
+		First()
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, api.CodeCommentNotExist, err
+		}
+		return nil, api.CodeInternalError, err
+	}
+	// 2. 检查是否已点赞
+	count, err := query.Like.WithContext(ctx).
+		Where(
+			query.Like.UserID.Eq(userId),
+			query.Like.TargetType.Eq(2),
+			query.Like.TargetID.Eq(commentId),
+		).Count()
+	if err != nil {
+		return nil, api.CodeInternalError, err
+	}
+	if count == 0 {
+		return nil, api.CodeAlreadyUnliked, errors.New("未点赞该评论")
+	}
+	// 3. 事务：删除点赞记录 + comment.like_count-1
+	err = query.Q.Transaction(func(tx *query.Query) error {
+		if _, err := tx.Like.WithContext(ctx).
+			Where(
+				tx.Like.UserID.Eq(userId),
+				tx.Like.TargetType.Eq(2),
+				tx.Like.TargetID.Eq(commentId),
+			).Delete(); err != nil {
+			return err
+		}
+		_, err = tx.Comment.WithContext(ctx).
+			Where(tx.Comment.ID.Eq(commentId)).
+			UpdateSimple(tx.Comment.LikeCount.Sub(1))
+		return err
+	})
+	if err != nil {
+		return nil, api.CodeInternalError, err
+	}
+	return &v1.LikeCommentResp{
+		IsLiked:   false,
+		LikeCount: c.LikeCount - 1,
+	}, api.CodeSuccess, nil
 }

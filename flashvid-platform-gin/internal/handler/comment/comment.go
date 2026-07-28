@@ -128,3 +128,53 @@ func GetRepliesHandler(c *gin.Context) {
 	}
 	api.ResponseSuccess(c, v1.GetRepliesResp{Replies: replies})
 }
+
+// 点赞评论接口（需要登录）
+func LikeCommentHandler(c *gin.Context) {
+	loginUserId, exists := c.Get(middleware.CtxKeyUserID)
+	if !exists {
+		api.ResponseError(c, api.CodeNeedLogin)
+		return
+	}
+	userId, ok := loginUserId.(int64)
+	if !ok || userId <= 0 {
+		api.ResponseError(c, api.CodeInternalError)
+		return
+	}
+	commentId, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || commentId <= 0 {
+		api.ResponseError(c, api.CodeInvalidParam)
+		return
+	}
+	resp, resCode, err := comment.LikeComment(c, userId, commentId)
+	if err != nil {
+		api.ResponseError(c, resCode)
+		return
+	}
+	api.ResponseSuccess(c, resp)
+}
+
+// 取消点赞评论接口（需要登录）
+func UnlikeCommentHandler(c *gin.Context) {
+	loginUserId, exists := c.Get(middleware.CtxKeyUserID)
+	if !exists {
+		api.ResponseError(c, api.CodeNeedLogin)
+		return
+	}
+	userId, ok := loginUserId.(int64)
+	if !ok || userId <= 0 {
+		api.ResponseError(c, api.CodeInternalError)
+		return
+	}
+	commentId, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || commentId <= 0 {
+		api.ResponseError(c, api.CodeInvalidParam)
+		return
+	}
+	resp, resCode, err := comment.UnlikeComment(c, userId, commentId)
+	if err != nil {
+		api.ResponseError(c, resCode)
+		return
+	}
+	api.ResponseSuccess(c, resp)
+}
