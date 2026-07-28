@@ -79,29 +79,42 @@ func CreateVideo(ctx context.Context, userId int64, req v1.CreateVideoReq) (*mod
 		newVideo.Longitude = *req.Longitude
 		selectFields = append(selectFields, query.Video.Longitude)
 	}
-	err = query.Video.WithContext(ctx).
-		Select(selectFields...).
-		Create(newVideo)
+	// 2-3. 事务：创建视频 + 创建话题关联 + 更新话题视频数
+	err = query.Q.Transaction(func(tx *query.Query) error {
+		if err := tx.Video.WithContext(ctx).
+			Select(selectFields...).
+			Create(newVideo); err != nil {
+			return err
+		}
+		if req.Topics != nil && len(*req.Topics) > 0 {
+			videoTopics := make([]*model.VideoTopic, 0, len(*req.Topics))
+			topicIDs := make([]int64, 0, len(*req.Topics))
+			for _, topicID := range *req.Topics {
+				videoTopics = append(videoTopics, &model.VideoTopic{
+					VideoID: newVideo.ID,
+					TopicID: topicID,
+				})
+				topicIDs = append(topicIDs, topicID)
+			}
+			if err := tx.VideoTopic.WithContext(ctx).Create(videoTopics...); err != nil {
+				return err
+			}
+			// 批量更新话题视频数
+			if _, err := tx.Topic.WithContext(ctx).
+				Where(tx.Topic.ID.In(topicIDs...)).
+				UpdateSimple(tx.Topic.VideoCount.Add(1)); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, api.CodeInternalError, err
-	}
-	// 3. 如果有话题标签，则创建视频话题关联记录
-	if req.Topics != nil && len(*req.Topics) > 0 {
-		videoTopics := make([]*model.VideoTopic, 0, len(*req.Topics))
-		for _, topic := range *req.Topics {
-			videoTopics = append(videoTopics, &model.VideoTopic{
-				VideoID: newVideo.ID,
-				TopicID: topic,
-			})
-		}
-		if err := query.VideoTopic.WithContext(ctx).Create(videoTopics...); err != nil {
-			return nil, api.CodeInternalError, err
-		}
 	}
 	// 4. 返回结果
 	return &model.CreateVideoOutput{
 		VideoID: newVideo.ID,
-		Status:  2, // 假设创建成功状态为2
+		Status:  2,
 	}, api.CodeSuccess, nil
 }
 

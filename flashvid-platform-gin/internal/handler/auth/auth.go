@@ -37,7 +37,7 @@ func LoginHandler(c *gin.Context) {
 		return
 	}
 	// 2. 调用业务逻辑
-	output, code, err := auth.Login(c, &req)
+	output, code, err := auth.Login(c, &req, c.ClientIP(), c.GetHeader("User-Agent"))
 	if err != nil {
 		api.ResponseError(c, code)
 		return

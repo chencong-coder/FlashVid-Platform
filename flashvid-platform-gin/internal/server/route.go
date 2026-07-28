@@ -79,7 +79,6 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 			interactionR.POST("/:id/favorite", interaction.FavoriteVideoHandler) // 收藏视频
 			interactionR.DELETE("/:id/favorite", interaction.UnfavoriteVideoHandler) // 取消收藏视频
 			interactionR.POST("/:id/share", interaction.ShareVideoHandler) // 分享视频
-			interactionR.POST("/:id/share", interaction.ShareVideoHandler) // 分享视频
 		}
 
 		// 评论相关路由组（公开接口，不强制登录）
@@ -115,6 +114,15 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 			commentLikeR.POST("/:id/like", comment.LikeCommentHandler)    // 点赞评论
 			commentLikeR.DELETE("/:id/like", comment.UnlikeCommentHandler) // 取消点赞评论
 		}
+
+		// 话题相关路由组（handler 待实现后补充）
+		// topicR := apiV1.Group("/topics")
+		// {
+		// 	topicR.GET("", topic.GetTopicsHandler)
+		// 	topicR.GET("/search", topic.SearchTopicsHandler)
+		// 	topicR.GET("/:id", topic.GetTopicByIDHandler)
+		// 	topicR.GET("/:id/videos", topic.GetTopicVideosHandler)
+		// }
 	}
 
 	r.NoRoute(func(c *gin.Context) {

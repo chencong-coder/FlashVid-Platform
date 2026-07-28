@@ -120,8 +120,21 @@ func Register(ctx context.Context, req *v1.RegisterReq, ip string) (*model.Regis
 	}, api.CodeSuccess, nil
 }
 
+// writeLoginLog 异步写登录日志，不阻塞主流程
+func writeLoginLog(userID int64, ip, userAgent string, status int32) {
+	go func() {
+		_ = query.LoginLog.WithContext(context.Background()).Create(&model.LoginLog{
+			UserID:    userID,
+			IPAddress: ip,
+			Browser:   userAgent,
+			LoginType: 1, // 密码登录
+			Status:    status,
+		})
+	}()
+}
+
 // 登录业务逻辑
-func Login(ctx context.Context, req *v1.LoginReq) (*model.LoginOutput, api.ResCode, error) {
+func Login(ctx context.Context, req *v1.LoginReq, ip string, userAgent string) (*model.LoginOutput, api.ResCode, error) {
 	// 1. 查询用户是否存在（用户名或手机号）
 	user, err := query.User.WithContext(ctx).
 		Where(query.User.Username.Eq(req.Account)).
@@ -141,6 +154,7 @@ func Login(ctx context.Context, req *v1.LoginReq) (*model.LoginOutput, api.ResCo
 	// 3. 校验密码
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password))
 	if err != nil {
+		writeLoginLog(user.ID, ip, userAgent, 2) // 登录失败
 		return nil, api.CodeInvalidPassword, nil
 	}
 	// 4. 生成JWT Token和刷新Token
@@ -154,13 +168,15 @@ func Login(ctx context.Context, req *v1.LoginReq) (*model.LoginOutput, api.ResCo
 		zap.L().Error("failed to generate refresh token", zap.Error(err))
 		return nil, api.CodeInternalError, err
 	}
-	// 5. 更新用户最后登录时间
-	if _, err := query.User.WithContext(ctx).
-		Where(query.User.ID.Eq(user.ID)).
-		Update(query.User.LastLoginAt, time.Now()); err != nil {
-		zap.L().Warn("failed to update last login time", zap.Error(err))
-		// 不影响登录，继续
-	}
+	// 5. 异步：更新最后登录时间 + 写登录日志
+	go func() {
+		if _, err := query.User.WithContext(context.Background()).
+			Where(query.User.ID.Eq(user.ID)).
+			Update(query.User.LastLoginAt, time.Now()); err != nil {
+			zap.L().Warn("failed to update last login time", zap.Error(err))
+		}
+	}()
+	writeLoginLog(user.ID, ip, userAgent, 1) // 登录成功
 
 	// 6. 返回登录结果
 	return &model.LoginOutput{
