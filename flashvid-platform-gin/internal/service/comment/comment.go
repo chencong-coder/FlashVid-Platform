@@ -351,10 +351,15 @@ func DeleteComment(ctx context.Context, userId int64, commentId int64) (api.ResC
 	// 3. 事务：软删除 + 更新计数
 	err = query.Q.Transaction(func(tx *query.Query) error {
 		// 软删除：status 置为 2
-		_, err := tx.Comment.WithContext(ctx).
+		if _, err := tx.Comment.WithContext(ctx).
 			Where(tx.Comment.ID.Eq(commentId)).
-			UpdateSimple(tx.Comment.Status.Value(2))
-		if err != nil {
+			UpdateSimple(tx.Comment.Status.Value(2)); err != nil {
+			return err
+		}
+		// 同时更新 deleted_at（GORM 软删除，方便审计和数据恢复）
+		if _, err := tx.Comment.WithContext(ctx).
+			Where(tx.Comment.ID.Eq(commentId)).
+			Delete(); err != nil {
 			return err
 		}
 		if c.ParentID > 0 {
