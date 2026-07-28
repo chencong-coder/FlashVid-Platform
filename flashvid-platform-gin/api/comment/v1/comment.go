@@ -7,7 +7,7 @@ import (
 // 获取评论请求
 type GetCommentsReq struct {
 	Cursor   string `form:"cursor" binding:"omitempty"` // 游标，首次不传
-    Count    int    `form:"count"    binding:"omitempty,min=10,max=50"` // 请求数量，最小10，最大50
+    Count    int    `form:"count"    binding:"omitempty,max=50"` // 请求数量，最大50，小于10时handler层默认为10
 }
 
 // 获取评论响应

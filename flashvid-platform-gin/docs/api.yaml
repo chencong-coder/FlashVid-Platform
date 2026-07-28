@@ -1523,10 +1523,9 @@ paths:
             example: ''
         - name: count
           in: query
-          description: 每页数量，默认20，最大50
+          description: 每页数量，默认20，最大50；小于10时服务端默认为10
           schema:
             type: integer
-            minimum: 1
             maximum: 50
             default: 20
             example: 20
@@ -1543,7 +1542,7 @@ paths:
                       data:
                         type: object
                         properties:
-                          list:
+                          topics:
                             type: array
                             items:
                               $ref: '#/components/schemas/Topic'
@@ -1617,10 +1616,9 @@ paths:
             example: ''
         - name: count
           in: query
-          description: 每页数量，默认20，最大50
+          description: 每页数量，默认20，最大50；小于10时服务端默认为10
           schema:
             type: integer
-            minimum: 1
             maximum: 50
             default: 20
             example: 20
@@ -1637,7 +1635,7 @@ paths:
                       data:
                         type: object
                         properties:
-                          list:
+                          videos:
                             type: array
                             items:
                               $ref: '#/components/schemas/Video'
@@ -1669,16 +1667,15 @@ paths:
             example: 旅行
         - name: cursor
           in: query
-          description: 游标（created_at），首次不传
+          description: 游标（上一页最后一条的 video_count），首次不传
           schema:
             type: string
             example: ''
         - name: count
           in: query
-          description: 每页数量，默认20，最大50
+          description: 每页数量，默认20，最大50；小于10时服务端默认为10
           schema:
             type: integer
-            minimum: 1
             maximum: 50
             default: 20
             example: 20
@@ -1695,14 +1692,14 @@ paths:
                       data:
                         type: object
                         properties:
-                          list:
+                          topics:
                             type: array
                             items:
                               $ref: '#/components/schemas/Topic'
                           nextCursorToken:
                             type: string
                             description: 下一页游标，hasMore 为 false 时为空
-                            example: '2024-01-01 12:00:00'
+                            example: '500'
                           hasMore:
                             type: boolean
                             description: 是否还有更多

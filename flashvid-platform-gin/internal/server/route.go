@@ -10,6 +10,7 @@ import (
 	"flashvid-platform-gin/internal/handler/feed"
 	"flashvid-platform-gin/internal/handler/interaction"
 	"flashvid-platform-gin/internal/handler/comment"
+	"flashvid-platform-gin/internal/handler/topic"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
@@ -115,14 +116,14 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 			commentLikeR.DELETE("/:id/like", comment.UnlikeCommentHandler) // 取消点赞评论
 		}
 
-		// 话题相关路由组（handler 待实现后补充）
-		// topicR := apiV1.Group("/topics")
-		// {
-		// 	topicR.GET("", topic.GetTopicsHandler)
+		// 话题相关路由组
+		topicR := apiV1.Group("/topics")
+		{
+			topicR.GET("", topic.GetTopicsHandler)
 		// 	topicR.GET("/search", topic.SearchTopicsHandler)
 		// 	topicR.GET("/:id", topic.GetTopicByIDHandler)
 		// 	topicR.GET("/:id/videos", topic.GetTopicVideosHandler)
-		// }
+		}
 	}
 
 	r.NoRoute(func(c *gin.Context) {
