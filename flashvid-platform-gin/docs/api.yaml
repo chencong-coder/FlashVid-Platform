@@ -1224,7 +1224,7 @@ paths:
       tags:
         - 评论
       summary: 获取视频评论列表
-      description: 获取指定视频的评论列表
+      description: 获取指定视频的评论列表（游标分页，按创建时间倒序）
       operationId: getVideoComments
       parameters:
         - name: id
@@ -1234,16 +1234,21 @@ paths:
           schema:
             type: integer
             format: int64
-        - $ref: '#/components/parameters/Page'
-        - $ref: '#/components/parameters/PageSize'
-        - name: sort
+        - name: cursor
           in: query
-          description: 排序方式
+          description: 游标（上一页最后一条评论的创建时间，格式 2006-01-02 15:04:05），首次请求不传
           schema:
             type: string
-            enum: [latest, hot]
-            default: latest
-            example: latest
+            example: '2024-01-01 12:00:00'
+        - name: count
+          in: query
+          description: 每页数量，默认10，最大50
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+            example: 10
       responses:
         '200':
           description: 获取成功
@@ -1257,16 +1262,20 @@ paths:
                       data:
                         type: object
                         properties:
-                          list:
+                          comments:
                             type: array
                             items:
                               $ref: '#/components/schemas/Comment'
-                          pagination:
-                            $ref: '#/components/schemas/Pagination'
+                          nextCursorToken:
+                            type: string
+                            description: 下一页游标，hasMore为false时为空
+                            example: '2024-01-01 11:00:00'
+                          hasMore:
+                            type: boolean
+                            description: 是否还有更多
+                            example: true
         '404':
           $ref: '#/components/responses/NotFound'
-      security:
-        - BearerAuth: []
 
     post:
       tags:
@@ -1299,14 +1308,7 @@ paths:
                 parent_id:
                   type: integer
                   format: int64
-                  description: 父评论ID，0为一级评论
-                  default: 0
-                  example: 0
-                reply_to_user_id:
-                  type: integer
-                  format: int64
-                  description: 回复的用户ID
-                  default: 0
+                  description: 父评论ID，不传或传0表示一级评论
                   example: 0
       responses:
         '200':
