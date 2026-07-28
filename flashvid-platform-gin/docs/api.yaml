@@ -1504,19 +1504,32 @@ paths:
       tags:
         - 话题
       summary: 获取话题列表
-      description: 获取热门话题列表
+      description: 获取热门/最新话题列表（游标分页）。sort=hot 时游标为 view_count，sort=latest 时游标为 created_at
       operationId: getTopics
       parameters:
-        - $ref: '#/components/parameters/Page'
-        - $ref: '#/components/parameters/PageSize'
         - name: sort
           in: query
-          description: 排序方式
+          description: 排序方式，默认 hot
           schema:
             type: string
             enum: [hot, latest]
             default: hot
             example: hot
+        - name: cursor
+          in: query
+          description: 游标（上一页最后一条的排序值），首次不传
+          schema:
+            type: string
+            example: ''
+        - name: count
+          in: query
+          description: 每页数量，默认20，最大50
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+            example: 20
       responses:
         '200':
           description: 获取成功
@@ -1534,17 +1547,21 @@ paths:
                             type: array
                             items:
                               $ref: '#/components/schemas/Topic'
-                          pagination:
-                            $ref: '#/components/schemas/Pagination'
-      security:
-        - BearerAuth: []
+                          nextCursorToken:
+                            type: string
+                            description: 下一页游标，hasMore 为 false 时为空
+                            example: '1000000'
+                          hasMore:
+                            type: boolean
+                            description: 是否还有更多
+                            example: true
 
   /topics/{id}:
     get:
       tags:
         - 话题
       summary: 获取话题详情
-      description: 获取指定话题的详细信息
+      description: 获取指定话题的详细信息（公开）
       operationId: getTopicById
       parameters:
         - name: id
@@ -1568,15 +1585,13 @@ paths:
                         $ref: '#/components/schemas/Topic'
         '404':
           $ref: '#/components/responses/NotFound'
-      security:
-        - BearerAuth: []
 
   /topics/{id}/videos:
     get:
       tags:
         - 话题
       summary: 获取话题视频列表
-      description: 获取指定话题下的视频列表
+      description: 获取指定话题下的视频列表（游标分页，公开）
       operationId: getTopicVideos
       parameters:
         - name: id
@@ -1586,9 +1601,29 @@ paths:
           schema:
             type: integer
             format: int64
-        - $ref: '#/components/parameters/Page'
-        - $ref: '#/components/parameters/PageSize'
-        - $ref: '#/components/parameters/Sort'
+        - name: sort
+          in: query
+          description: 排序方式，默认 latest
+          schema:
+            type: string
+            enum: [latest, popular]
+            default: latest
+            example: latest
+        - name: cursor
+          in: query
+          description: 游标（latest 时为 published_at，popular 时为 like_count），首次不传
+          schema:
+            type: string
+            example: ''
+        - name: count
+          in: query
+          description: 每页数量，默认20，最大50
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+            example: 20
       responses:
         '200':
           description: 获取成功
@@ -1606,19 +1641,23 @@ paths:
                             type: array
                             items:
                               $ref: '#/components/schemas/Video'
-                          pagination:
-                            $ref: '#/components/schemas/Pagination'
+                          nextCursorToken:
+                            type: string
+                            description: 下一页游标，hasMore 为 false 时为空
+                            example: '2024-01-01 12:00:00'
+                          hasMore:
+                            type: boolean
+                            description: 是否还有更多
+                            example: true
         '404':
           $ref: '#/components/responses/NotFound'
-      security:
-        - BearerAuth: []
 
   /topics/search:
     get:
       tags:
         - 话题
       summary: 搜索话题
-      description: 根据关键词搜索话题
+      description: 根据关键词搜索话题（游标分页，公开）
       operationId: searchTopics
       parameters:
         - name: keyword
@@ -1628,8 +1667,21 @@ paths:
           schema:
             type: string
             example: 旅行
-        - $ref: '#/components/parameters/Page'
-        - $ref: '#/components/parameters/PageSize'
+        - name: cursor
+          in: query
+          description: 游标（created_at），首次不传
+          schema:
+            type: string
+            example: ''
+        - name: count
+          in: query
+          description: 每页数量，默认20，最大50
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+            example: 20
       responses:
         '200':
           description: 搜索成功
@@ -1647,10 +1699,14 @@ paths:
                             type: array
                             items:
                               $ref: '#/components/schemas/Topic'
-                          pagination:
-                            $ref: '#/components/schemas/Pagination'
-      security:
-        - BearerAuth: []
+                          nextCursorToken:
+                            type: string
+                            description: 下一页游标，hasMore 为 false 时为空
+                            example: '2024-01-01 12:00:00'
+                          hasMore:
+                            type: boolean
+                            description: 是否还有更多
+                            example: true
 
 
   # ==================== 消息模块 ====================
