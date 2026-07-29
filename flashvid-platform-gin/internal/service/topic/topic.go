@@ -201,17 +201,17 @@ func GetTopicVideos(ctx context.Context, topicId int64, sort string, cursor stri
 	allTopicIdSet := make(map[int64]struct{})
 	for _, topicIds := range videoIdToTopicIds {
 		for _, id := range topicIds {
-			allTopicIdSet[id] = struct{}{}
+			allTopicIdSet[id] = struct{}{} // 相当于一个Set，去重
 		}
 	}
 	topicIdToName := make(map[int64]string)
 	if len(allTopicIdSet) > 0 {
-		allTopicIdSlice := make([]int64, 0, len(allTopicIdSet))
+		allTopicIds := make([]int64, 0, len(allTopicIdSet))
 		for id := range allTopicIdSet {
-			allTopicIdSlice = append(allTopicIdSlice, id)
+			allTopicIds = append(allTopicIds, id)
 		}
 		allTopics, err := query.Topic.WithContext(ctx).
-			Where(query.Topic.ID.In(allTopicIdSlice...)).
+			Where(query.Topic.ID.In(allTopicIds...)).
 			Find()
 		if err != nil {
 			return nil, api.CodeInternalError, err
