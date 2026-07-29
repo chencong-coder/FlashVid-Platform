@@ -17,3 +17,10 @@ type TopicListOutput struct {
 	NextCursorToken string      `json:"nextCursorToken"` // 下次请求传这个，空字符串表示没有更多
 	HasMore         bool        `json:"hasMore"`         // 是否还有更多数据
 }
+
+// 根据话题ID获取话题下的视频列表输出
+type GetTopicVideosOutput struct {
+	Videos          []VideoInfo `json:"videos"`          // 视频列表
+	NextCursorToken string      `json:"nextCursorToken"` // 下次请求传这个，空字符串表示没有更多
+	HasMore         bool        `json:"hasMore"`         // 是否还有更多数据
+}

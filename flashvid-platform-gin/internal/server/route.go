@@ -120,9 +120,9 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 		topicR := apiV1.Group("/topics")
 		{
 			topicR.GET("", topic.GetTopicsHandler)
-		// 	topicR.GET("/search", topic.SearchTopicsHandler)
-		// 	topicR.GET("/:id", topic.GetTopicByIDHandler)
-		// 	topicR.GET("/:id/videos", topic.GetTopicVideosHandler)
+		 	topicR.GET("/search", topic.SearchTopicsHandler)
+		 	topicR.GET("/:id", topic.GetTopicByIDHandler)
+		 	topicR.GET("/:id/videos", topic.GetTopicVideosHandler)
 		}
 	}
 
