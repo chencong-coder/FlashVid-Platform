@@ -120,19 +120,6 @@ func Register(ctx context.Context, req *v1.RegisterReq, ip string) (*model.Regis
 	}, api.CodeSuccess, nil
 }
 
-// writeLoginLog 异步写登录日志，不阻塞主流程
-func writeLoginLog(userID int64, ip, userAgent string, status int32) {
-	go func() {
-		_ = query.LoginLog.WithContext(context.Background()).Create(&model.LoginLog{
-			UserID:    userID,
-			IPAddress: ip,
-			Browser:   userAgent,
-			LoginType: 1, // 密码登录
-			Status:    status,
-		})
-	}()
-}
-
 // 登录业务逻辑
 func Login(ctx context.Context, req *v1.LoginReq, ip string, userAgent string) (*model.LoginOutput, api.ResCode, error) {
 	// 1. 查询用户是否存在（用户名或手机号）
@@ -154,7 +141,16 @@ func Login(ctx context.Context, req *v1.LoginReq, ip string, userAgent string) (
 	// 3. 校验密码
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password))
 	if err != nil {
-		writeLoginLog(user.ID, ip, userAgent, 2) // 登录失败
+		// 写登录失败日志，不影响主流程
+		if err := query.LoginLog.WithContext(ctx).Create(&model.LoginLog{
+			UserID:    user.ID,
+			IPAddress: ip,
+			Browser:   userAgent,
+			LoginType: 1,
+			Status:    2, // 失败
+		}); err != nil {
+			zap.L().Warn("failed to write login log", zap.Error(err))
+		}
 		return nil, api.CodeInvalidPassword, nil
 	}
 	// 4. 生成JWT Token和刷新Token
@@ -168,7 +164,7 @@ func Login(ctx context.Context, req *v1.LoginReq, ip string, userAgent string) (
 		zap.L().Error("failed to generate refresh token", zap.Error(err))
 		return nil, api.CodeInternalError, err
 	}
-	// 5. 异步：更新最后登录时间 + 写登录日志
+	// 5. 更新最后登录时间（异步，不影响响应）
 	go func() {
 		if _, err := query.User.WithContext(context.Background()).
 			Where(query.User.ID.Eq(user.ID)).
@@ -176,9 +172,18 @@ func Login(ctx context.Context, req *v1.LoginReq, ip string, userAgent string) (
 			zap.L().Warn("failed to update last login time", zap.Error(err))
 		}
 	}()
-	writeLoginLog(user.ID, ip, userAgent, 1) // 登录成功
+	// 6. 写登录成功日志
+	if err := query.LoginLog.WithContext(ctx).Create(&model.LoginLog{
+		UserID:    user.ID,
+		IPAddress: ip,
+		Browser:   userAgent,
+		LoginType: 1,
+		Status:    1, // 成功
+	}); err != nil {
+		zap.L().Warn("failed to write login log", zap.Error(err))
+	}
 
-	// 6. 返回登录结果
+	// 7. 返回登录结果
 	return &model.LoginOutput{
 		UserID:       user.ID,
 		Username:     user.Username,
