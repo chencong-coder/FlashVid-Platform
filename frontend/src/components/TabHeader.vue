@@ -1,28 +1,37 @@
 <script setup lang="ts">
-import type { FeedType } from '@/types/video'
+import { computed } from 'vue'
+
+import type { FeedType, TopNavValue } from '@/types/video'
 
 interface TabItem {
   label: string
-  value: FeedType
+  value: TopNavValue
 }
 
 interface Props {
-  active: FeedType
+  active: TopNavValue
 }
 
 interface Emits {
-  (event: 'change', value: FeedType): void
+  (event: 'change', value: TopNavValue): void
   (event: 'search'): void
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 const tabs: TabItem[] = [
   { label: '关注', value: 'follow' },
   { label: '推荐', value: 'recommend' },
+  { label: '发现', value: 'discover' },
   { label: '同城', value: 'nearby' },
 ]
+
+const activeIndex = computed(() => {
+  const i = tabs.findIndex((t) => t.value === props.active)
+  return i < 0 ? 0 : i
+})
+const tabWidthPercent = computed(() => 100 / tabs.length)
 </script>
 
 <template>
@@ -40,7 +49,7 @@ const tabs: TabItem[] = [
         v-for="tab in tabs"
         :key="tab.value"
         type="button"
-        class="relative z-10 rounded-full px-5 py-2 text-sm font-semibold transition-all duration-300"
+        class="relative z-10 rounded-full px-4 py-2 text-sm font-semibold transition-all duration-300"
         :class="active === tab.value ? 'text-white' : 'text-white/60 hover:text-white/80'"
         @click="emit('change', tab.value)"
       >
@@ -51,8 +60,8 @@ const tabs: TabItem[] = [
       <div
         class="absolute left-1 top-1 bottom-1 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 shadow-lg transition-all duration-300"
         :style="{
-          width: 'calc(33.333% - 0.25rem)',
-          transform: `translateX(${tabs.findIndex((t) => t.value === active) * 100}%)`,
+          width: `calc(${tabWidthPercent}% - 0.25rem)`,
+          transform: `translateX(${activeIndex * 100}%)`,
         }"
       />
     </div>

@@ -31,10 +31,28 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '同城', bottomTab: 'home' },
   },
   {
+    path: '/friends',
+    name: 'friends',
+    component: () => import('@/views/FriendsView.vue'),
+    meta: { title: '朋友', bottomTab: 'friends' },
+  },
+  {
     path: '/discover',
     name: 'discover',
     component: () => import('@/views/DiscoverView.vue'),
     meta: { title: '发现', bottomTab: 'discover' },
+  },
+  {
+    path: '/topic/:id',
+    name: 'topic',
+    component: () => import('@/views/TopicView.vue'),
+    meta: { title: '话题', bottomTab: 'discover' },
+  },
+  {
+    path: '/topic/:id/play',
+    name: 'topic-play',
+    component: () => import('@/views/feed/TopicPlayView.vue'),
+    meta: { title: '话题', bottomTab: 'discover', hideBottomNav: true },
   },
   {
     path: '/publish',

@@ -16,6 +16,12 @@ type FollowFeedReq struct {
     Count    int    `form:"count"    binding:"omitempty,max=50"` // 请求数量，最大50，小于10时handler层默认为10
 }
 
+// 好友流请求（互相关注）
+type FriendsFeedReq struct {
+    Cursor   string `form:"cursor" binding:"omitempty"` // 游标，首次不传
+    Count    int    `form:"count"    binding:"omitempty,max=50"` // 请求数量，最大50，小于10时handler层默认为10
+}
+
 // 附近流请求
 type NearbyFeedReq struct {
     Latitude  float64 `form:"latitude"  binding:"required,gte=-90,lte=90"` // 纬度

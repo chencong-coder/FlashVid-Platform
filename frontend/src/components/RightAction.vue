@@ -78,17 +78,15 @@ const emit = defineEmits<Emits>()
       }}</span>
     </button>
 
-    <!-- 评论按钮 - 圆形背景 -->
+    <!-- 评论按钮 -->
     <button
       type="button"
       class="action-item flex w-14 flex-col items-center gap-1"
       @click.stop="emit('comment')"
     >
-      <div
-        class="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 backdrop-blur-md transition-all duration-300 hover:scale-110 hover:bg-white/20 active:scale-95"
-      >
-        <i class="fa-solid fa-comment-dots text-2xl drop-shadow-md" />
-      </div>
+      <i
+        class="fa-solid fa-comment-dots text-[30px] drop-shadow-lg transition-all duration-300 hover:scale-110 hover:text-violet-300 active:scale-90"
+      />
       <span class="text-xs font-semibold text-shadow-strong">{{
         formatCount(video.stats.comments)
       }}</span>
@@ -119,17 +117,15 @@ const emit = defineEmits<Emits>()
       }}</span>
     </button>
 
-    <!-- 分享按钮 - 圆形背景 -->
+    <!-- 分享按钮 -->
     <button
       type="button"
       class="action-item flex w-14 flex-col items-center gap-1"
       @click.stop="emit('share')"
     >
-      <div
-        class="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 backdrop-blur-md transition-all duration-300 hover:scale-110 hover:bg-white/20 hover:rotate-12 active:scale-95"
-      >
-        <i class="fa-solid fa-share text-2xl drop-shadow-md" />
-      </div>
+      <i
+        class="fa-solid fa-share text-[30px] drop-shadow-lg transition-all duration-300 hover:scale-110 hover:rotate-12 hover:text-violet-300 active:scale-90"
+      />
       <span class="text-xs font-semibold text-shadow-strong">{{
         formatCount(video.stats.shares)
       }}</span>

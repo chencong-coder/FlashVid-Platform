@@ -5,7 +5,6 @@ import { useRoute, useRouter } from 'vue-router'
 import type { BottomTab } from '@/types/app'
 
 interface NavItem {
-  label: string
   icon: string
   name: string
   tab: BottomTab
@@ -14,55 +13,68 @@ interface NavItem {
 const route = useRoute()
 const router = useRouter()
 
-const items: NavItem[] = [
-  { label: '首页', icon: 'fa-house', name: 'recommend', tab: 'home' },
-  { label: '发现', icon: 'fa-compass', name: 'discover', tab: 'discover' },
-  { label: '消息', icon: 'fa-message', name: 'messages', tab: 'messages' },
-  { label: '我的', icon: 'fa-user', name: 'profile', tab: 'profile' },
+const leftItems: NavItem[] = [
+  { icon: 'fa-house',  name: 'recommend', tab: 'home' },
+  { icon: 'fa-users',  name: 'friends',   tab: 'friends' },
+]
+const rightItems: NavItem[] = [
+  { icon: 'fa-message', name: 'messages', tab: 'messages' },
+  { icon: 'fa-user',    name: 'profile',  tab: 'profile' },
 ]
 
 const activeTab = computed<BottomTab>(() => route.meta.bottomTab ?? 'home')
 
-const navigate = async (name: string): Promise<void> => {
-  await router.push({ name })
-}
+const navigate = (name: string) => router.push({ name })
 </script>
 
 <template>
+  <!-- Floating pill dock — always visible, floats above content -->
   <nav
-    class="safe-bottom z-50 flex h-[calc(4rem+env(safe-area-inset-bottom))] shrink-0 items-start justify-around bg-[#121212] px-1 pt-2 text-[11px]"
+    aria-label="底部导航"
+    class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50
+           flex items-center gap-1 px-3 py-2
+           rounded-2xl bg-[#1c1c24]/90 backdrop-blur-2xl
+           border border-white/[0.08] shadow-2xl shadow-black/60"
   >
+    <!-- Left two items -->
     <button
-      v-for="item in items.slice(0, 2)"
+      v-for="item in leftItems"
       :key="item.name"
       type="button"
-      class="flex h-12 min-w-14 flex-col items-center justify-center gap-1 transition-all duration-200"
-      :class="activeTab === item.tab ? 'text-white' : 'text-neutral-500'"
+      class="w-11 h-10 flex items-center justify-center rounded-xl transition-all duration-200"
+      :class="activeTab === item.tab
+        ? 'text-white'
+        : 'text-gray-500 hover:text-gray-300'"
       @click="navigate(item.name)"
     >
-      <i class="fa-solid text-lg" :class="item.icon" />
-      <span>{{ item.label }}</span>
+      <i class="fa-solid text-[20px]" :class="item.icon" />
     </button>
 
+    <!-- Center publish button (prominent purple circle) -->
     <button
       type="button"
-      aria-label="发布视频"
-      class="-mt-2 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-pink-500 to-purple-600 text-2xl text-white shadow-[0_0_20px_rgba(236,72,153,0.5)] transition-all duration-300 hover:shadow-[0_0_30px_rgba(236,72,153,0.7)] active:scale-90"
+      aria-label="发布"
+      class="mx-1 w-12 h-12 flex items-center justify-center rounded-full
+             bg-violet-600 text-white text-xl
+             shadow-lg shadow-violet-600/50
+             transition-all duration-200 hover:bg-violet-500 hover:shadow-violet-500/60 hover:scale-105 active:scale-90"
       @click="navigate('publish')"
     >
       <i class="fa-solid fa-plus" />
     </button>
 
+    <!-- Right two items -->
     <button
-      v-for="item in items.slice(2)"
+      v-for="item in rightItems"
       :key="item.name"
       type="button"
-      class="flex h-12 min-w-14 flex-col items-center justify-center gap-1 transition-all duration-200"
-      :class="activeTab === item.tab ? 'text-white' : 'text-neutral-500'"
+      class="w-11 h-10 flex items-center justify-center rounded-xl transition-all duration-200"
+      :class="activeTab === item.tab
+        ? 'text-white'
+        : 'text-gray-500 hover:text-gray-300'"
       @click="navigate(item.name)"
     >
-      <i class="fa-solid text-lg" :class="item.icon" />
-      <span>{{ item.label }}</span>
+      <i class="fa-solid text-[20px]" :class="item.icon" />
     </button>
   </nav>
 </template>

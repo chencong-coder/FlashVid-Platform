@@ -69,6 +69,42 @@ func GetFeedFollowHandler(c *gin.Context) {
 	})
 }
 
+// GetFeedFriendsHandler 获取好友视频流接口（互相关注）
+func GetFeedFriendsHandler(c *gin.Context) {
+	// 1. 获取用户ID 查看登录用户的好友视频流
+	userId, exists := c.Get(middleware.CtxKeyUserID)
+	if !exists {
+		api.ResponseError(c, api.CodeValueNotExist)
+		return
+	}
+	userIdInt64, ok := userId.(int64)
+	if !ok || userIdInt64 <= 0 {
+		api.ResponseError(c, api.CodeInternalError)
+		return
+	}
+	// 2. 获取游标和分页参数
+	var req v1.FriendsFeedReq
+	if err := c.ShouldBindQuery(&req); err != nil {
+		api.ResponseError(c, api.CodeInvalidParam)
+		return
+	}
+	if req.Count < 10 {
+		req.Count = 10
+	}
+	// 3. 调用service获取好友视频流
+	output, resCode, err := feed.GetFeedFriends(c, userIdInt64, req.Cursor, req.Count)
+	if err != nil {
+		api.ResponseError(c, resCode)
+		return
+	}
+	// 4. 返回响应
+	api.ResponseSuccess(c, v1.FeedResp{
+		Videos:     output.Videos,
+		NextCursorToken: output.NextCursorToken,
+		HasMore:    output.HasMore,
+	})
+}
+
 // GetFeedNearbyHandler 获取附近视频流接口
 func GetFeedNearbyHandler(c *gin.Context) {
 	// 1. 获取表单参数

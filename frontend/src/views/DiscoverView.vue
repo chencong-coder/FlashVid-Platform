@@ -1,50 +1,84 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { showToast } from 'vant'
 
-interface DiscoverItem {
-  id: number
-  title: string
-  cover: string
-  views: string
-  tag: string
+import { getTopics, searchTopics, type TopicItem } from '@/api/topic'
+import { formatCount } from '@/utils/format'
+
+const router = useRouter()
+
+type SortMode = 'hot' | 'latest'
+const sort = ref<SortMode>('hot')
+const keyword = ref('')
+
+const topics = ref<TopicItem[]>([])
+const cursor = ref('')
+const hasMore = ref(true)
+const loading = ref(false)
+const searching = ref(false)
+
+// 拉取热门/最新话题（游标分页）
+const loadTopics = async (reset = false): Promise<void> => {
+  if (loading.value || (!reset && !hasMore.value)) return
+  loading.value = true
+  try {
+    const res = await getTopics({
+      sort: sort.value,
+      cursor: reset ? undefined : cursor.value || undefined,
+      count: 20,
+    })
+    const page = res.data.data
+    topics.value = reset ? page.topics : [...topics.value, ...page.topics]
+    cursor.value = page.nextCursorToken
+    hasMore.value = page.hasMore
+  } catch {
+    showToast('加载话题失败')
+  } finally {
+    loading.value = false
+  }
 }
 
-const keyword = ref('')
-const categories = ['直播', '影视', '音乐', '游戏', '美食', '旅行']
-const items: DiscoverItem[] = [
-  {
-    id: 1,
-    title: '在城市里寻找夏天',
-    cover:
-      'https://images.unsplash.com/photo-1494526585095-c41746248156?q=80&w=800&auto=format&fit=crop',
-    views: '128.6万',
-    tag: '城市漫游',
-  },
-  {
-    id: 2,
-    title: '把日落装进镜头',
-    cover:
-      'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=800&auto=format&fit=crop',
-    views: '76.3万',
-    tag: '旅行',
-  },
-  {
-    id: 3,
-    title: '今晚的现场太浪漫',
-    cover:
-      'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=800&auto=format&fit=crop',
-    views: '42.9万',
-    tag: '音乐现场',
-  },
-  {
-    id: 4,
-    title: '周末咖啡店打卡',
-    cover:
-      'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=800&auto=format&fit=crop',
-    views: '31.5万',
-    tag: '探店',
-  },
-]
+// 搜索话题（关键词非空时覆盖列表）
+const runSearch = async (): Promise<void> => {
+  const kw = keyword.value.trim()
+  if (!kw) {
+    searching.value = false
+    void loadTopics(true)
+    return
+  }
+  searching.value = true
+  loading.value = true
+  try {
+    const res = await searchTopics(kw, undefined, 20)
+    topics.value = res.data.data.topics
+    hasMore.value = false
+  } catch {
+    showToast('搜索失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+const switchSort = (mode: SortMode): void => {
+  if (sort.value === mode || searching.value) return
+  sort.value = mode
+  void loadTopics(true)
+}
+
+const openTopic = (topic: TopicItem): void => {
+  void router.push({ name: 'topic', params: { id: String(topic.id) } })
+}
+
+let searchTimer: number | undefined
+watch(keyword, () => {
+  window.clearTimeout(searchTimer)
+  searchTimer = window.setTimeout(() => void runSearch(), 350)
+})
+
+onMounted(() => {
+  void loadTopics(true)
+})
 </script>
 
 <template>
@@ -55,52 +89,81 @@ const items: DiscoverItem[] = [
         <input
           v-model="keyword"
           type="search"
-          placeholder="搜索视频、用户和话题"
+          placeholder="搜索话题"
           class="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-neutral-500"
         />
       </div>
-      <div class="no-scrollbar mt-4 flex gap-5 overflow-x-auto whitespace-nowrap text-sm">
+      <!-- 排序切换（搜索时隐藏） -->
+      <div v-if="!searching" class="mt-4 flex gap-5 text-sm">
         <button
-          v-for="(category, index) in categories"
-          :key="category"
           type="button"
-          :class="index === 0 ? 'font-semibold text-white' : 'text-neutral-500'"
+          :class="sort === 'hot' ? 'font-semibold text-white' : 'text-neutral-500'"
+          @click="switchSort('hot')"
         >
-          {{ category }}
+          热门话题
+        </button>
+        <button
+          type="button"
+          :class="sort === 'latest' ? 'font-semibold text-white' : 'text-neutral-500'"
+          @click="switchSort('latest')"
+        >
+          最新话题
         </button>
       </div>
     </header>
 
-    <section class="px-3 pb-6">
-      <div class="mb-3 flex items-center justify-between">
-        <h1 class="text-lg font-bold">发现精彩</h1>
-        <button type="button" class="text-xs text-neutral-500">
-          换一换 <i class="fa-solid fa-rotate ml-1" />
-        </button>
+    <section class="px-3 pb-6 pt-3">
+      <!-- 加载骨架 -->
+      <div v-if="loading && topics.length === 0" class="grid grid-cols-2 gap-1.5">
+        <div v-for="n in 6" :key="n" class="aspect-[3/4] animate-pulse rounded bg-neutral-800" />
       </div>
-      <div class="grid grid-cols-2 gap-1.5">
+
+      <!-- 话题卡片网格 -->
+      <div v-else-if="topics.length" class="grid grid-cols-2 gap-1.5">
         <article
-          v-for="item in items"
-          :key="item.id"
-          class="relative aspect-[3/4] overflow-hidden bg-neutral-900"
+          v-for="topic in topics"
+          :key="topic.id"
+          class="relative aspect-[3/4] cursor-pointer overflow-hidden rounded bg-neutral-900 transition-transform active:scale-[0.98]"
+          @click="openTopic(topic)"
         >
           <img
-            :src="item.cover"
-            :alt="item.title"
+            :src="topic.coverUrl"
+            :alt="topic.name"
             loading="lazy"
             class="h-full w-full object-cover"
           />
           <div
             class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-2 pb-2 pt-10"
           >
-            <p class="line-clamp-2 text-sm font-medium leading-5">{{ item.title }}</p>
+            <p class="line-clamp-1 text-sm font-semibold leading-5"># {{ topic.name }}</p>
             <div class="mt-1 flex items-center justify-between text-[10px] text-neutral-300">
-              <span># {{ item.tag }}</span
-              ><span><i class="fa-solid fa-play mr-1" />{{ item.views }}</span>
+              <span>{{ formatCount(topic.videoCount) }} 个视频</span>
+              <span><i class="fa-solid fa-fire mr-1" />{{ formatCount(topic.viewCount) }}</span>
             </div>
           </div>
         </article>
       </div>
+
+      <!-- 空态 -->
+      <div v-else class="flex flex-col items-center justify-center py-20 text-neutral-500">
+        <i class="fa-regular fa-compass mb-3 text-3xl" />
+        <p class="text-sm">{{ searching ? '没有找到相关话题' : '暂无话题' }}</p>
+      </div>
+
+      <!-- 加载更多 -->
+      <div v-if="topics.length" class="py-5 text-center">
+        <button
+          v-if="hasMore && !searching"
+          type="button"
+          class="text-xs text-neutral-500 hover:text-neutral-300 disabled:opacity-40"
+          :disabled="loading"
+          @click="void loadTopics(false)"
+        >
+          {{ loading ? '加载中…' : '加载更多' }}
+        </button>
+        <span v-else-if="!searching" class="text-xs text-neutral-600">没有更多了</span>
+      </div>
     </section>
   </main>
 </template>
+

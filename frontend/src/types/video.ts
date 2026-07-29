@@ -1,4 +1,5 @@
-export type FeedType = 'follow' | 'recommend' | 'nearby'
+export type FeedType = 'follow' | 'recommend' | 'nearby' | 'friends' | 'topic'
+export type TopNavValue = 'follow' | 'recommend' | 'nearby' | 'friends' | 'discover'
 
 export interface VideoAuthor {
   id: string
@@ -30,17 +31,33 @@ export interface VideoItem {
   city?: string
 }
 
+export interface CommentUser {
+  id: string
+  username: string
+  nickname: string
+  avatar: string
+}
+
 export interface CommentItem {
   id: string
-  userName: string
-  avatar: string
   content: string
-  time: string
-  likes: number
+  user: CommentUser
+  likeCount: number
+  replyCount: number
+  isLiked: boolean
+  createdAt: string
 }
 
 export interface FeedCache {
   items: VideoItem[]
-  page: number
+  cursor: string
   hasMore: boolean
+  loading: boolean
+  loaded: boolean
+}
+
+// 附近流所需的定位坐标
+export interface GeoLocation {
+  latitude: number
+  longitude: number
 }

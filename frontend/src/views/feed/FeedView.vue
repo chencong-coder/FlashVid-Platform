@@ -10,13 +10,20 @@ import TabHeader from '@/components/TabHeader.vue'
 import VideoCard from '@/components/VideoCard.vue'
 import { useAppStore } from '@/store/app'
 import { useVideoStore } from '@/store/video'
-import type { FeedType, VideoItem } from '@/types/video'
+import type { FeedType, TopNavValue, VideoItem } from '@/types/video'
 
 interface Props {
   feed: FeedType
+  // friends 等独立流不显示顶部 tab 切换栏
+  showTabs?: boolean
+  // 进入时定位到的起始视频索引（话题流点封面进入用）
+  startIndex?: number
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  showTabs: true,
+  startIndex: 0,
+})
 const router = useRouter()
 const appStore = useAppStore()
 const videoStore = useVideoStore()
@@ -68,7 +75,37 @@ const syncActiveVideo = (index: number): void => {
   currentIndex.value = boundedIndex
   const video = videos.value[boundedIndex]
   if (video) videoStore.setActiveVideo(video.id)
-  if (boundedIndex >= videos.value.length - 2) videoStore.loadMore(props.feed)
+  if (boundedIndex >= videos.value.length - 2) void videoStore.loadMore(props.feed)
+}
+
+// 获取定位（附近流需要），失败则跳过
+const ensureLocation = async (): Promise<void> => {
+  if (props.feed !== 'nearby' || videoStore.location) return
+  if (!navigator.geolocation) return
+  await new Promise<void>((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        videoStore.setLocation({
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+        })
+        resolve()
+      },
+      () => resolve(),
+      { timeout: 5000 },
+    )
+  })
+}
+
+// 初始化当前 feed 数据并定位到起始条
+const initCurrentFeed = async (): Promise<void> => {
+  await ensureLocation()
+  await videoStore.initFeed(props.feed)
+  await nextTick()
+  const start = Math.max(0, Math.min(props.startIndex, videos.value.length - 1))
+  currentIndex.value = start
+  scrollToIndex(start, 'auto')
+  syncActiveVideo(start)
 }
 
 const getScroller = (): HTMLElement | null =>
@@ -358,14 +395,19 @@ const unbindScrollerEvents = (): void => {
   scrollerElement = null
 }
 
-const switchFeed = async (feed: FeedType): Promise<void> => {
-  appStore.setTopTab(feed)
-  const routes: Record<FeedType, string> = {
+const switchFeed = async (value: TopNavValue): Promise<void> => {
+  if (value === 'discover') {
+    await router.push({ name: 'discover' })
+    return
+  }
+  appStore.setTopTab(value)
+  const routes: Record<Exclude<TopNavValue, 'discover'>, string> = {
     recommend: 'recommend',
     follow: 'follow',
     nearby: 'nearby',
+    friends: 'friends',
   }
-  await router.replace({ name: routes[feed] })
+  await router.replace({ name: routes[value] })
 }
 
 const openComments = (videoId: string): void => {
@@ -374,17 +416,19 @@ const openComments = (videoId: string): void => {
 }
 
 const share = async (): Promise<void> => {
-  if (navigator.share && currentVideo.value) {
+  if (!currentVideo.value) return
+  const shareUrl = await videoStore.shareCurrent(props.feed, currentVideo.value.id)
+  if (navigator.share) {
     await navigator
       .share({
         title: `闪视 · ${currentVideo.value.author.nickname}`,
         text: currentVideo.value.description,
-        url: window.location.href,
+        url: shareUrl,
       })
       .catch(() => undefined)
     return
   }
-  await navigator.clipboard?.writeText(window.location.href)
+  await navigator.clipboard?.writeText(shareUrl)
   showToast('分享链接已复制')
 }
 
@@ -401,12 +445,14 @@ onMounted(async () => {
     resizeObserver.observe(feedRoot.value)
   }
   appStore.setTopTab(props.feed)
-  syncActiveVideo(0)
+  await initCurrentFeed()
 })
 
 watch(
   () => props.feed,
-  () => syncActiveVideo(0),
+  () => {
+    void initCurrentFeed()
+  },
 )
 
 onBeforeUnmount(() => {
@@ -446,16 +492,36 @@ onBeforeUnmount(() => {
           :video="item"
           :active="index === currentIndex"
           :muted="videoStore.muted"
-          @follow="videoStore.toggleFollow(feed, $event)"
-          @like="videoStore.toggleLike(feed, $event)"
+          @follow="void videoStore.toggleFollow(feed, $event)"
+          @like="void videoStore.toggleLike(feed, $event)"
           @comment="openComments"
-          @favorite="videoStore.toggleFavorite(feed, $event)"
+          @favorite="void videoStore.toggleFavorite(feed, $event)"
           @share="share"
         />
       </template>
     </RecycleScroller>
 
-    <TabHeader :active="feed" @change="switchFeed" @search="searchVisible = true" />
+    <!-- 常规 feed：顶部 tab 切换栏 -->
+    <TabHeader
+      v-if="showTabs"
+      :active="feed"
+      @change="switchFeed"
+      @search="searchVisible = true"
+    />
+
+    <!-- 独立流（如朋友）：仅显示标题栏 -->
+    <header
+      v-else
+      class="safe-top pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center justify-center px-4 pb-6 pt-3"
+    >
+      <div class="absolute inset-0 bg-gradient-to-b from-black/80 via-black/40 to-transparent" />
+      <div
+        class="pointer-events-auto relative flex items-center gap-2 rounded-full bg-white/10 px-5 py-2 text-sm font-semibold text-white backdrop-blur-xl"
+      >
+        <i class="fa-solid fa-user-group text-xs" />
+        朋友
+      </div>
+    </header>
 
     <!-- 静音按钮 - 更现代的设计 -->
     <button
@@ -473,7 +539,7 @@ onBeforeUnmount(() => {
       />
     </button>
 
-    <CommentDrawer v-model:show="commentsVisible" :total="commentTotal" />
+    <CommentDrawer v-model:show="commentsVisible" :video-id="commentVideoId" :total="commentTotal" />
     <SearchPopup v-model:show="searchVisible" />
   </main>
 </template>
