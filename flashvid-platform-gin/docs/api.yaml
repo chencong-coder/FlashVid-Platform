@@ -854,14 +854,15 @@ paths:
                   maximum: 180
                   description: 经度（可选）
                   example: 114.0579
-                topics:
+                topicNames:
                   type: array
                   maxItems: 5
                   items:
-                    type: integer
-                    format: int64
-                  description: 话题ID列表（可选，最多5个）
-                  example: [1, 2, 3]
+                    type: string
+                    minLength: 1
+                    maxLength: 20
+                  description: 话题名称列表（可选，最多5个，每个1-20字符；不存在的话题自动创建）
+                  example: ['旅行', '美食', '新话题']
       responses:
         '200':
           description: 发布成功
