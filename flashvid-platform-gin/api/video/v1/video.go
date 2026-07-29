@@ -18,7 +18,7 @@ type CreateVideoReq struct {
 	Location    *string   `json:"location"    binding:"omitempty"` // 视频拍摄地点，可选
 	Latitude    *float64  `json:"latitude"    binding:"omitempty,gte=-90,lte=90"` // 视频拍摄地点纬度，可选，范围[-90, 90]
 	Longitude   *float64  `json:"longitude"   binding:"omitempty,gte=-180,lte=180"` // 视频拍摄地点经度，可选，范围[-180, 180]
-    Topics      *[]int64  `json:"topics"      binding:"omitempty,max=5"` // 视频话题标签列表，可选，最多5个
+    TopicNames  *[]string `json:"topicNames"  binding:"omitempty,max=5,dive,required,min=1,max=20"` // 视频话题名称列表，可选，最多5个，每个话题名1-20字符
 }
 
 // 发布视频响应

@@ -79,27 +79,56 @@ func CreateVideo(ctx context.Context, userId int64, req v1.CreateVideoReq) (*mod
 		newVideo.Longitude = *req.Longitude
 		selectFields = append(selectFields, query.Video.Longitude)
 	}
-	// 2-3. 事务：创建视频 + 创建话题关联 + 更新话题视频数
+	// 2-3. 事务：创建视频 + 查询/创建话题 + 创建话题关联 + 更新话题视频数
 	err = query.Q.Transaction(func(tx *query.Query) error {
 		if err := tx.Video.WithContext(ctx).
 			Select(selectFields...).
 			Create(newVideo); err != nil {
 			return err
 		}
-		if req.Topics != nil && len(*req.Topics) > 0 {
-			videoTopics := make([]*model.VideoTopic, 0, len(*req.Topics))
-			topicIDs := make([]int64, 0, len(*req.Topics))
-			for _, topicID := range *req.Topics {
+		if req.TopicNames != nil && len(*req.TopicNames) > 0 {
+			names := *req.TopicNames
+			// 2-3.1 批量查询已存在的话题（按名称去重）
+			existingTopics, err := tx.Topic.WithContext(ctx).
+				Where(tx.Topic.Name.In(names...)).
+				Find()
+			if err != nil {
+				return err
+			}
+			existingTopicMap := make(map[string]*model.Topic, len(existingTopics))
+			for _, t := range existingTopics {
+				existingTopicMap[t.Name] = t
+			}
+			// 2-3.2 不存在的话题批量创建
+			newTopics := make([]*model.Topic, 0)
+			for _, name := range names {
+				if _, ok := existingTopicMap[name]; !ok {
+					newTopics = append(newTopics, &model.Topic{Name: name, Status: 1})
+				}
+			}
+			if len(newTopics) > 0 {
+				if err := tx.Topic.WithContext(ctx).Create(newTopics...); err != nil {
+					return err
+				}
+				for _, t := range newTopics {
+					existingTopicMap[t.Name] = t
+				}
+			}
+			// 2-3.3 收集所有话题ID，创建视频-话题关联
+			topicIDs := make([]int64, 0, len(names))
+			videoTopics := make([]*model.VideoTopic, 0, len(names))
+			for _, name := range names {
+				t := existingTopicMap[name]
+				topicIDs = append(topicIDs, t.ID)
 				videoTopics = append(videoTopics, &model.VideoTopic{
 					VideoID: newVideo.ID,
-					TopicID: topicID,
+					TopicID: t.ID,
 				})
-				topicIDs = append(topicIDs, topicID)
 			}
 			if err := tx.VideoTopic.WithContext(ctx).Create(videoTopics...); err != nil {
 				return err
 			}
-			// 批量更新话题视频数
+			// 2-3.4 批量更新话题视频数
 			if _, err := tx.Topic.WithContext(ctx).
 				Where(tx.Topic.ID.In(topicIDs...)).
 				UpdateSimple(tx.Topic.VideoCount.Add(1)); err != nil {
