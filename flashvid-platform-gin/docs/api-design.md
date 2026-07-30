@@ -61,6 +61,7 @@
 | 30000-39999 | 评论相关错误 |
 | 40000-49999 | 系统错误 |
 | 50000-59999 | 第三方服务错误 |
+| 60000-69999 | 私信相关错误 |
 
 ## 2. API 接口设计
 
@@ -756,6 +757,180 @@ GET /api/v1/music/search
 | pageSize | int | 否 | 每页数量，默认 20，最大 100 |
 
 **响应结构同 2.8.1**。
+
+### 2.9 私信模块
+
+采用「会话 + 消息」两层模型：
+
+- **会话（Conversation）**：两个用户之间的私信关系，聚合出对方用户、最后一条消息、未读数。会话列表用 offset 分页（数量有限，按最后消息时间排序）。
+- **消息（Message）**：会话内的单条私信。对话内消息用游标分页（数量大，向上翻加载历史）。
+
+> 全部接口需要登录（Authorization: Bearer \<token\>）。
+
+#### 2.9.1 获取会话列表
+```
+GET /api/v1/conversations
+```
+
+**请求参数**：
+| 参数 | 类型 | 必填 | 说明 |
+|-----|------|-----|------|
+| page | int | 否 | 页码，默认 1 |
+| pageSize | int | 否 | 每页数量，默认 20，最大 100 |
+
+**响应**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "list": [
+      {
+        "targetUser": {
+          "id": 456,
+          "username": "friend",
+          "nickname": "好友",
+          "avatar": "https://..."
+        },
+        "lastMessage": {
+          "id": 1001,
+          "messageType": 1,
+          "content": "在吗？",
+          "mediaUrl": "",
+          "createdAt": "2024-01-01 12:00:00"
+        },
+        "unreadCount": 3,
+        "updatedAt": "2024-01-01 12:00:00"
+      }
+    ],
+    "total": 12,
+    "page": 1,
+    "pageSize": 20
+  }
+}
+```
+
+#### 2.9.2 获取对话消息
+```
+GET /api/v1/conversations/:userId/messages
+```
+
+`:userId` 为对方用户 ID。消息按创建时间倒序返回（最新在前），游标分页向上翻历史。
+
+**请求参数**：
+| 参数 | 类型 | 必填 | 说明 |
+|-----|------|-----|------|
+| cursor | string | 否 | 游标（上一页最后一条消息的创建时间，格式 `2006-01-02 15:04:05`），首次不传 |
+| count | int | 否 | 每页数量，默认 20，最大 50 |
+
+**响应**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "messages": [
+      {
+        "id": 1001,
+        "fromUserId": 456,
+        "toUserId": 123,
+        "messageType": 1,
+        "content": "在吗？",
+        "mediaUrl": "",
+        "isRead": true,
+        "createdAt": "2024-01-01 12:00:00"
+      }
+    ],
+    "nextCursorToken": "2024-01-01 11:00:00",
+    "hasMore": true
+  }
+}
+```
+
+> `messageType`：1-文本，2-图片，3-视频。图片/视频类型时 `content` 可为空，`mediaUrl` 为已上传的资源地址。
+
+#### 2.9.3 发送私信
+```
+POST /api/v1/messages
+```
+
+**请求参数**：
+```json
+{
+  "toUserId": 456,
+  "messageType": 1,
+  "content": "在吗？",
+  "mediaUrl": ""
+}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|-----|------|-----|------|
+| toUserId | int64 | 是 | 接收方用户 ID |
+| messageType | int | 是 | 消息类型：1-文本 2-图片 3-视频 |
+| content | string | 条件 | 文本内容，messageType=1 时必填 |
+| mediaUrl | string | 条件 | 媒体地址，messageType=2/3 时必填（先经上传接口获取） |
+
+**响应**：
+```json
+{
+  "code": 0,
+  "message": "发送成功",
+  "data": {
+    "id": 1002,
+    "fromUserId": 123,
+    "toUserId": 456,
+    "messageType": 1,
+    "content": "在吗？",
+    "mediaUrl": "",
+    "isRead": false,
+    "createdAt": "2024-01-01 12:05:00"
+  }
+}
+```
+
+#### 2.9.4 标记会话已读
+```
+PUT /api/v1/conversations/:userId/read
+```
+
+将与 `:userId` 的会话中所有未读消息标记为已读。
+
+**响应**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "readCount": 3
+  }
+}
+```
+
+#### 2.9.5 删除消息
+```
+DELETE /api/v1/messages/:id
+```
+
+删除自己发送或接收的某条消息（仅对自己隐藏）。
+
+#### 2.9.6 获取未读总数
+```
+GET /api/v1/messages/unread-count
+```
+
+用于消息入口红点提示。
+
+**响应**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "unreadCount": 8
+  }
+}
+```
 
 ## 3. 认证与鉴权
 

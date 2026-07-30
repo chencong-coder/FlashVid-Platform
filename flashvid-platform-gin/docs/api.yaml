@@ -15,6 +15,7 @@ info:
     - 话题模块：话题列表、话题详情、话题视频列表、搜索话题
     - 上传模块：获取上传凭证、上传文件
     - 音乐模块：音乐列表、搜索音乐
+    - 私信模块：会话列表、对话消息、发送私信、标记已读、删除消息、未读总数
 
     ## 认证方式
     使用 JWT Token 认证，在请求头中添加：
@@ -66,6 +67,8 @@ tags:
     description: 文件上传
   - name: 音乐
     description: 音乐相关操作
+  - name: 私信
+    description: 用户私信相关操作
 
 paths:
   # ==================== 认证模块 ====================
@@ -1874,6 +1877,270 @@ paths:
                             description: 每页数量
                             example: 20
 
+  /conversations:
+    get:
+      tags:
+        - 私信
+      summary: 获取会话列表
+      description: 获取当前用户的会话列表（offset 分页，按最后消息时间倒序）。需要登录
+      operationId: getConversations
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Conversation'
+                          total:
+                            type: integer
+                            format: int64
+                            description: 会话总数
+                            example: 12
+                          page:
+                            type: integer
+                            description: 当前页码
+                            example: 1
+                          pageSize:
+                            type: integer
+                            description: 每页数量
+                            example: 20
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      security:
+        - BearerAuth: []
+
+  /conversations/{userId}/messages:
+    get:
+      tags:
+        - 私信
+      summary: 获取对话消息
+      description: 获取与指定用户的私信消息列表（游标分页，按创建时间倒序，最新在前）。需要登录
+      operationId: getConversationMessages
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: 对方用户ID
+          schema:
+            type: integer
+            format: int64
+            example: 456
+        - name: cursor
+          in: query
+          description: 游标（上一页最后一条消息的创建时间，格式 2006-01-02 15:04:05），首次不传
+          schema:
+            type: string
+            example: '2024-01-01 12:00:00'
+        - name: count
+          in: query
+          description: 每页数量，默认20，最大50
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+            example: 20
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          messages:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Message'
+                          nextCursorToken:
+                            type: string
+                            description: 下一页游标，hasMore为false时为空
+                            example: '2024-01-01 11:00:00'
+                          hasMore:
+                            type: boolean
+                            description: 是否还有更多
+                            example: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+
+  /conversations/{userId}/read:
+    put:
+      tags:
+        - 私信
+      summary: 标记会话已读
+      description: 将与指定用户的会话中所有未读消息标记为已读。需要登录
+      operationId: markConversationRead
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: 对方用户ID
+          schema:
+            type: integer
+            format: int64
+            example: 456
+      responses:
+        '200':
+          description: 标记成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          readCount:
+                            type: integer
+                            description: 本次标记为已读的消息数
+                            example: 3
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      security:
+        - BearerAuth: []
+
+  /messages:
+    post:
+      tags:
+        - 私信
+      summary: 发送私信
+      description: 向指定用户发送私信。messageType=1 文本时 content 必填；messageType=2/3 图片/视频时 mediaUrl 必填（先经上传接口获取）。需要登录
+      operationId: sendMessage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - toUserId
+                - messageType
+              properties:
+                toUserId:
+                  type: integer
+                  format: int64
+                  description: 接收方用户ID
+                  example: 456
+                messageType:
+                  type: integer
+                  description: 消息类型：1-文本 2-图片 3-视频
+                  enum: [1, 2, 3]
+                  example: 1
+                content:
+                  type: string
+                  description: 文本内容，messageType=1 时必填
+                  example: 在吗？
+                mediaUrl:
+                  type: string
+                  format: uri
+                  description: 媒体地址，messageType=2/3 时必填
+                  example: ''
+      responses:
+        '200':
+          description: 发送成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Message'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+
+  /messages/{id}:
+    delete:
+      tags:
+        - 私信
+      summary: 删除消息
+      description: 删除自己发送或接收的某条消息（仅对自己隐藏）。需要登录
+      operationId: deleteMessage
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 消息ID
+          schema:
+            type: integer
+            format: int64
+            example: 1001
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+
+  /messages/unread-count:
+    get:
+      tags:
+        - 私信
+      summary: 获取未读总数
+      description: 获取当前用户所有会话的未读私信总数，用于入口红点。需要登录
+      operationId: getUnreadCount
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          unreadCount:
+                            type: integer
+                            description: 未读私信总数
+                            example: 8
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      security:
+        - BearerAuth: []
+
 
 components:
   securitySchemes:
@@ -2360,6 +2627,108 @@ components:
         createdAt:
           type: string
           description: 创建时间
+          example: '2024-01-01 12:00:00'
+
+    Conversation:
+      type: object
+      description: 会话（与某个用户的私信汇总）
+      properties:
+        targetUser:
+          type: object
+          description: 对方用户信息
+          properties:
+            id:
+              type: integer
+              format: int64
+              description: 用户ID
+              example: 456
+            username:
+              type: string
+              description: 用户名
+              example: zhangsan
+            nickname:
+              type: string
+              description: 昵称
+              example: 张三
+            avatar:
+              type: string
+              format: uri
+              description: 头像URL
+              example: http://localhost:8089/static/image/avatar.jpg
+        lastMessage:
+          type: object
+          description: 最后一条消息摘要
+          properties:
+            id:
+              type: integer
+              format: int64
+              description: 消息ID
+              example: 1001
+            messageType:
+              type: integer
+              description: 消息类型：1-文本 2-图片 3-视频
+              enum: [1, 2, 3]
+              example: 1
+            content:
+              type: string
+              description: 文本内容（非文本消息为空）
+              example: 在吗？
+            mediaUrl:
+              type: string
+              description: 媒体地址（文本消息为空）
+              example: ''
+            createdAt:
+              type: string
+              description: 发送时间
+              example: '2024-01-01 12:00:00'
+        unreadCount:
+          type: integer
+          description: 该会话未读消息数
+          example: 3
+        updatedAt:
+          type: string
+          description: 会话更新时间（最后消息时间）
+          example: '2024-01-01 12:00:00'
+
+    Message:
+      type: object
+      description: 私信消息
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: 消息ID
+          example: 1001
+        fromUserId:
+          type: integer
+          format: int64
+          description: 发送方用户ID
+          example: 123
+        toUserId:
+          type: integer
+          format: int64
+          description: 接收方用户ID
+          example: 456
+        messageType:
+          type: integer
+          description: 消息类型：1-文本 2-图片 3-视频
+          enum: [1, 2, 3]
+          example: 1
+        content:
+          type: string
+          description: 文本内容（非文本消息为空）
+          example: 在吗？
+        mediaUrl:
+          type: string
+          description: 媒体地址（文本消息为空）
+          example: ''
+        isRead:
+          type: boolean
+          description: 是否已读
+          example: false
+        createdAt:
+          type: string
+          description: 发送时间
           example: '2024-01-01 12:00:00'
 
 
