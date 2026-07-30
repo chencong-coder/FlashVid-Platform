@@ -12,6 +12,8 @@ import (
 	"flashvid-platform-gin/internal/handler/comment"
 	"flashvid-platform-gin/internal/handler/topic"
 	"flashvid-platform-gin/internal/handler/music"
+	"flashvid-platform-gin/internal/handler/upload"
+	"flashvid-platform-gin/pkg/storage"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
@@ -24,6 +26,10 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 	corsCfg.AllowHeaders = append(corsCfg.AllowHeaders, "Authorization")
 	corsCfg.AllowAllOrigins = true
 	r.Use(cors.New(corsCfg)) // CORS 跨域中间件，简单粗暴，直接放行所有跨域请求
+
+	// 静态文件服务：/static 映射到本地存储目录
+	r.Static("/static", storage.LocalPath())
+
 	apiV1 := r.Group("/api/v1")
 	{
 		// 登录注册相关路由组
@@ -132,6 +138,13 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 		{
 			musicR.GET("", music.GetMusicListHandler)           // 获取音乐列表
 			musicR.GET("/search", music.SearchMusicHandler)     // 搜索音乐
+		}
+
+		// 上传相关路由组（需要登录）
+		uploadR := apiV1.Group("/upload")
+		uploadR.Use(middleware.Auth())
+		{
+			uploadR.POST("", upload.UploadFileHandler) // 上传文件（图片/视频/音频）
 		}
 	}
 

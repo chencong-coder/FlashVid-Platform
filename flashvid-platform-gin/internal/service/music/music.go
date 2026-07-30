@@ -74,7 +74,7 @@ func SearchMusic(ctx context.Context, keyword string, page, pageSize int) (*mode
 		Where(query.Music.Status.Eq(1)).
 		UnderlyingDB().
 		Where("name LIKE ? OR artist LIKE ?", searchPattern, searchPattern).
-		Order("use_count DESC").
+		Order(query.Music.UseCount.Desc()).
 		Offset((page - 1) * pageSize).
 		Limit(pageSize).
 		Find(&musics).Error; err != nil {

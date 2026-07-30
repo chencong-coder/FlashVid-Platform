@@ -37,3 +37,10 @@ redis:
   password: ""
   db: 0
   pool_size: 10
+
+storage:
+  local_path: "./uploads"                       # 文件存储根目录
+  base_url: "http://localhost:8089/static"      # 静态文件访问基础 URL
+  max_image_size: 10485760                      # 图片最大 10MB
+  max_video_size: 524288000                     # 视频最大 500MB
+  max_audio_size: 52428800                      # 音频最大 50MB

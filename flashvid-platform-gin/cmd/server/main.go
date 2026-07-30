@@ -10,6 +10,7 @@ import (
 	"flashvid-platform-gin/pkg/jwt"
 	"flashvid-platform-gin/pkg/logging"
 	"flashvid-platform-gin/pkg/snowflake"
+	"flashvid-platform-gin/pkg/storage"
 )
 
 var confPath = flag.String("conf", "./config/config.yaml", "配置文件路径")
@@ -31,6 +32,7 @@ func main() {
 	dao.MustInitRedis(cfg)  // 初始化 Redis
 	jwt.MustInit(cfg)       // 初始化 jwt
 	snowflake.MustInit(cfg) // 初始化 snowflake
+	storage.MustInit(cfg)   // 初始化本地文件存储
 
 	// 初始化路由
 	r := server.SetupRoutes(cfg)

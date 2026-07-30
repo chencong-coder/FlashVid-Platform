@@ -31,6 +31,9 @@ go.work.sum
 *.log
 log/*.log
 
+# uploaded files (local storage)
+uploads/
+
 # Editor/IDE
 .idea/
 .vscode/
