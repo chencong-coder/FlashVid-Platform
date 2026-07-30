@@ -43,9 +43,9 @@
     "list": [],
     "pagination": {
       "page": 1,
-      "page_size": 20,
+      "pageSize": 20,
       "total": 100,
-      "total_pages": 5
+      "totalPages": 5
     }
   }
 }
@@ -87,9 +87,8 @@ POST /api/v1/auth/register
   "code": 0,
   "message": "success",
   "data": {
-    "user_id": 123456,
-    "username": "testuser",
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    "userId": 123456,
+    "username": "testuser"
   }
 }
 ```
@@ -102,7 +101,7 @@ POST /api/v1/auth/login
 **请求参数**：
 ```json
 {
-  "username": "string",    // 用户名或手机号
+  "account": "string",     // 用户名或手机号
   "password": "string"     // 密码
 }
 ```
@@ -113,12 +112,12 @@ POST /api/v1/auth/login
   "code": 0,
   "message": "success",
   "data": {
-    "user_id": 123456,
+    "userId": 123456,
     "username": "testuser",
     "nickname": "测试用户",
     "avatar": "https://...",
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
   }
 }
 ```
@@ -131,13 +130,13 @@ POST /api/v1/auth/refresh
 **请求参数**：
 ```json
 {
-  "refresh_token": "string"
+  "refreshToken": "string"
 }
 ```
 
 #### 2.1.4 获取用户信息
 ```
-GET /api/v1/users/:id
+GET /api/v1/user/:id
 ```
 
 **响应**：
@@ -153,18 +152,18 @@ GET /api/v1/users/:id
     "bio": "个人简介",
     "gender": 1,
     "city": "深圳",
-    "follower_count": 1000,
-    "following_count": 500,
-    "video_count": 50,
-    "like_count": 10000,
-    "is_following": false
+    "followerCount": 1000,
+    "followingCount": 500,
+    "videoCount": 50,
+    "likeCount": 10000,
+    "isFollowing": false
   }
 }
 ```
 
 #### 2.1.5 更新用户信息
 ```
-PUT /api/v1/users/:id
+PUT /api/v1/user/:id
 ```
 
 **请求参数**：
@@ -181,30 +180,30 @@ PUT /api/v1/users/:id
 
 #### 2.1.6 获取用户作品列表
 ```
-GET /api/v1/users/:id/videos
+GET /api/v1/user/:id/videos
 ```
 
 **请求参数**：
 | 参数 | 类型 | 必填 | 说明 |
 |-----|------|-----|------|
 | page | int | 否 | 页码，默认1 |
-| page_size | int | 否 | 每页数量，默认20 |
+| pageSize | int | 否 | 每页数量，默认20 |
 
 #### 2.1.7 获取用户喜欢列表
 ```
-GET /api/v1/users/:id/likes
+GET /api/v1/user/profile/likes
 ```
 
 #### 2.1.8 获取用户收藏列表
 ```
-GET /api/v1/users/:id/favorites
+GET /api/v1/user/profile/favorites
 ```
 
 ### 2.2 关注模块
 
 #### 2.2.1 关注用户
 ```
-POST /api/v1/users/:id/follow
+POST /api/v1/user/:id/follow
 ```
 
 **响应**：
@@ -213,26 +212,26 @@ POST /api/v1/users/:id/follow
   "code": 0,
   "message": "关注成功",
   "data": {
-    "is_following": true
+    "isFollowing": true
   }
 }
 ```
 
 #### 2.2.2 取消关注
 ```
-DELETE /api/v1/users/:id/follow
+DELETE /api/v1/user/:id/follow
 ```
 
 #### 2.2.3 获取关注列表
 ```
-GET /api/v1/users/:id/following
+GET /api/v1/user/:id/followings
 ```
 
 **请求参数**：
 | 参数 | 类型 | 必填 | 说明 |
 |-----|------|-----|------|
 | page | int | 否 | 页码 |
-| page_size | int | 否 | 每页数量 |
+| pageSize | int | 否 | 每页数量 |
 
 **响应**：
 ```json
@@ -247,13 +246,13 @@ GET /api/v1/users/:id/following
         "nickname": "用户789",
         "avatar": "https://...",
         "bio": "简介",
-        "is_following": true,
-        "follower_count": 5000
+        "isFollowing": true,
+        "followerCount": 5000
       }
     ],
     "pagination": {
       "page": 1,
-      "page_size": 20,
+      "pageSize": 20,
       "total": 100
     }
   }
@@ -262,7 +261,7 @@ GET /api/v1/users/:id/following
 
 #### 2.2.4 获取粉丝列表
 ```
-GET /api/v1/users/:id/followers
+GET /api/v1/user/:id/followers
 ```
 
 ### 2.3 视频模块
@@ -289,12 +288,12 @@ GET /api/v1/feed/recommend
         "id": 12345,
         "title": "视频标题",
         "description": "视频描述",
-        "cover_url": "https://...",
-        "video_url": "https://...",
+        "coverUrl": "https://...",
+        "videoUrl": "https://...",
         "duration": 30,
         "width": 1080,
         "height": 1920,
-        "music_name": "背景音乐",
+        "musicId": 456,
         "city": "深圳",
         "topics": ["话题1", "话题2"],
         "author": {
@@ -304,29 +303,29 @@ GET /api/v1/feed/recommend
           "avatar": "https://..."
         },
         "stats": {
-          "view_count": 10000,
-          "like_count": 1000,
-          "comment_count": 100,
-          "share_count": 50,
-          "favorite_count": 200
+          "viewCount": 10000,
+          "likeCount": 1000,
+          "commentCount": 100,
+          "shareCount": 50,
+          "favoriteCount": 200
         },
-        "user_interaction": {
-          "is_liked": false,
-          "is_favorited": false,
-          "is_following": false
+        "userInteraction": {
+          "isLiked": false,
+          "isFavorited": false,
+          "isFollowing": false
         },
-        "created_at": "2024-01-01T12:00:00Z"
+        "createdAt": "2024-01-01T12:00:00Z"
       }
     ],
-    "cursor": "next_cursor_token",
-    "has_more": true
+    "nextCursorToken": "...",
+    "hasMore": true
   }
 }
 ```
 
 #### 2.3.2 获取关注视频流
 ```
-GET /api/v1/feed/following
+GET /api/v1/feed/follow
 ```
 
 #### 2.3.3 获取附近视频流
@@ -357,13 +356,12 @@ GET /api/v1/videos/:id
     "id": 12345,
     "title": "视频标题",
     "description": "视频描述",
-    "cover_url": "https://...",
-    "video_url": "https://...",
+    "coverUrl": "https://...",
+    "videoUrl": "https://...",
     "duration": 30,
     "width": 1080,
     "height": 1920,
-    "music_id": 456,
-    "music_name": "背景音乐",
+    "musicId": 456,
     "city": "深圳",
     "location": "南山区",
     "topics": [
@@ -380,19 +378,19 @@ GET /api/v1/videos/:id
       "bio": "简介"
     },
     "stats": {
-      "view_count": 10000,
-      "like_count": 1000,
-      "comment_count": 100,
-      "share_count": 50,
-      "favorite_count": 200
+      "viewCount": 10000,
+      "likeCount": 1000,
+      "commentCount": 100,
+      "shareCount": 50,
+      "favoriteCount": 200
     },
-    "user_interaction": {
-      "is_liked": false,
-      "is_favorited": false,
-      "is_following": false
+    "userInteraction": {
+      "isLiked": false,
+      "isFavorited": false,
+      "isFollowing": false
     },
-    "published_at": "2024-01-01T12:00:00Z",
-    "created_at": "2024-01-01T12:00:00Z"
+    "publishedAt": "2024-01-01T12:00:00Z",
+    "createdAt": "2024-01-01T12:00:00Z"
   }
 }
 ```
@@ -407,19 +405,17 @@ POST /api/v1/videos
 {
   "title": "string",
   "description": "string",
-  "cover_url": "string",       // 封面URL（已上传）
-  "video_url": "string",       // 视频URL（已上传）
+  "coverUrl": "string",       // 封面URL（已上传）
+  "videoUrl": "string",       // 视频URL（已上传）
   "duration": 30,
   "width": 1080,
   "height": 1920,
-  "file_size": 5242880,
-  "music_id": 456,
-  "music_name": "背景音乐",
+  "musicId": 456,
   "city": "深圳",
   "location": "南山区",
   "latitude": 22.5431,
   "longitude": 114.0579,
-  "topic_ids": [1, 2, 3]
+  "topicNames": ["话题1", "话题2"]   // 话题名称，后端自动查询/创建话题
 }
 ```
 
@@ -429,7 +425,7 @@ POST /api/v1/videos
   "code": 0,
   "message": "发布成功",
   "data": {
-    "video_id": 12345,
+    "videoId": 12345,
     "status": 1  // 1-审核中
   }
 }
@@ -450,7 +446,7 @@ GET /api/v1/videos/search
 |-----|------|-----|------|
 | keyword | string | 是 | 搜索关键词 |
 | page | int | 否 | 页码 |
-| page_size | int | 否 | 每页数量 |
+| pageSize | int | 否 | 每页数量 |
 | sort | string | 否 | 排序：latest(最新)、popular(最热) |
 
 ### 2.4 互动模块
@@ -466,8 +462,8 @@ POST /api/v1/videos/:id/like
   "code": 0,
   "message": "点赞成功",
   "data": {
-    "is_liked": true,
-    "like_count": 1001
+    "isLiked": true,
+    "likeCount": 1001
   }
 }
 ```
@@ -505,8 +501,8 @@ POST /api/v1/videos/:id/share
   "code": 0,
   "message": "success",
   "data": {
-    "share_url": "https://...",
-    "share_count": 51
+    "shareUrl": "https://...",
+    "shareCount": 51
   }
 }
 ```
@@ -522,7 +518,7 @@ GET /api/v1/videos/:id/comments
 | 参数 | 类型 | 必填 | 说明 |
 |-----|------|-----|------|
 | page | int | 否 | 页码 |
-| page_size | int | 否 | 每页数量 |
+| pageSize | int | 否 | 每页数量 |
 | sort | string | 否 | 排序：latest(最新)、hot(最热) |
 
 **响应**：
@@ -541,10 +537,10 @@ GET /api/v1/videos/:id/comments
           "nickname": "评论者",
           "avatar": "https://..."
         },
-        "like_count": 10,
-        "reply_count": 2,
-        "is_liked": false,
-        "is_author": false,
+        "likeCount": 10,
+        "replyCount": 2,
+        "isLiked": false,
+        "isAuthor": false,
         "replies": [
           {
             "id": 790,
@@ -555,21 +551,21 @@ GET /api/v1/videos/:id/comments
               "nickname": "回复者",
               "avatar": "https://..."
             },
-            "reply_to_user": {
+            "replyToUser": {
               "id": 123,
               "nickname": "评论者"
             },
-            "like_count": 5,
-            "is_liked": false,
-            "created_at": "2024-01-01T12:05:00Z"
+            "likeCount": 5,
+            "isLiked": false,
+            "createdAt": "2024-01-01T12:05:00Z"
           }
         ],
-        "created_at": "2024-01-01T12:00:00Z"
+        "createdAt": "2024-01-01T12:00:00Z"
       }
     ],
     "pagination": {
       "page": 1,
-      "page_size": 20,
+      "pageSize": 20,
       "total": 100
     }
   }
@@ -585,8 +581,8 @@ POST /api/v1/videos/:id/comments
 ```json
 {
   "content": "string",         // 评论内容
-  "parent_id": 0,             // 父评论ID，0为一级评论
-  "reply_to_user_id": 0       // 回复的用户ID
+  "parentId": 0,             // 父评论ID，0为一级评论
+  "replyToUserId": 0       // 回复的用户ID
 }
 ```
 
@@ -596,9 +592,9 @@ POST /api/v1/videos/:id/comments
   "code": 0,
   "message": "评论成功",
   "data": {
-    "comment_id": 789,
+    "commentId": 789,
     "content": "评论内容",
-    "created_at": "2024-01-01T12:00:00Z"
+    "createdAt": "2024-01-01T12:00:00Z"
   }
 }
 ```
@@ -629,7 +625,7 @@ GET /api/v1/topics
 | 参数 | 类型 | 必填 | 说明 |
 |-----|------|-----|------|
 | page | int | 否 | 页码 |
-| page_size | int | 否 | 每页数量 |
+| pageSize | int | 否 | 每页数量 |
 | sort | string | 否 | 排序：hot(最热)、latest(最新) |
 
 #### 2.6.2 获取话题详情
@@ -646,10 +642,10 @@ GET /api/v1/topics/:id
     "id": 1,
     "name": "话题名称",
     "description": "话题描述",
-    "cover_url": "https://...",
-    "view_count": 1000000,
-    "video_count": 5000,
-    "created_at": "2024-01-01T12:00:00Z"
+    "coverUrl": "https://...",
+    "viewCount": 1000000,
+    "videoCount": 5000,
+    "createdAt": "2024-01-01T12:00:00Z"
   }
 }
 ```
@@ -669,20 +665,57 @@ GET /api/v1/topics/search
 |-----|------|-----|------|
 | keyword | string | 是 | 搜索关键词 |
 | page | int | 否 | 页码 |
-| page_size | int | 否 | 每页数量 |
+| pageSize | int | 否 | 每页数量 |
 
-### 2.7 消息模块
+### 2.7 文件上传模块
 
-#### 2.7.1 获取消息列表
+#### 2.7.1 上传文件
 ```
-GET /api/v1/messages
+POST /api/v1/upload
+```
+
+> 需要登录（Authorization: Bearer \<token\>）
+
+**请求参数**（multipart/form-data）：
+| 参数 | 类型 | 必填 | 说明 |
+|-----|------|-----|------|
+| file | file | 是 | 文件 |
+| file_type | string | 是 | 文件类型：image、video、audio |
+
+**文件大小限制**：
+- image：10 MB
+- audio：50 MB
+- video：500 MB
+
+**响应**：
+```json
+{
+  "code": 0,
+  "message": "上传成功",
+  "data": {
+    "file_url": "http://localhost:8089/static/video/1234567890.mp4",
+    "file_size": 5242880,
+    "file_type": "video",
+    "duration": 0
+  }
+}
+```
+
+> `duration` 当前本地存储固定返回 0，不做媒体分析。
+
+### 2.8 音乐模块
+
+#### 2.8.1 获取音乐列表
+```
+GET /api/v1/music
 ```
 
 **请求参数**：
 | 参数 | 类型 | 必填 | 说明 |
 |-----|------|-----|------|
-| page | int | 否 | 页码 |
-| page_size | int | 否 | 每页数量 |
+| page | int | 否 | 页码，默认 1 |
+| pageSize | int | 否 | 每页数量，默认 20，最大 100 |
+| sort | string | 否 | 排序：hot(最热，默认)、latest(最新) |
 
 **响应**：
 ```json
@@ -693,133 +726,24 @@ GET /api/v1/messages
     "list": [
       {
         "id": 1,
-        "from_user": {
-          "id": 123,
-          "username": "sender",
-          "nickname": "发送者",
-          "avatar": "https://..."
-        },
-        "message_type": 1,
-        "content": "消息内容",
-        "media_url": "",
-        "is_read": false,
-        "created_at": "2024-01-01T12:00:00Z"
+        "name": "曲名",
+        "artist": "艺术家",
+        "album": "专辑名",
+        "coverUrl": "https://...",
+        "musicUrl": "https://...",
+        "duration": 180,
+        "useCount": 5000,
+        "createdAt": "2024-01-01T12:00:00Z"
       }
     ],
-    "pagination": {
-      "page": 1,
-      "page_size": 20,
-      "total": 50
-    },
-    "unread_count": 10
+    "total": 100,
+    "page": 1,
+    "pageSize": 20
   }
 }
 ```
 
-#### 2.7.2 获取对话消息
-```
-GET /api/v1/messages/conversations/:user_id
-```
-
-**请求参数**：
-| 参数 | 类型 | 必填 | 说明 |
-|-----|------|-----|------|
-| cursor | string | 否 | 游标 |
-| count | int | 否 | 数量 |
-
-#### 2.7.3 发送消息
-```
-POST /api/v1/messages
-```
-
-**请求参数**：
-```json
-{
-  "to_user_id": 456,
-  "message_type": 1,
-  "content": "消息内容",
-  "media_url": ""
-}
-```
-
-#### 2.7.4 标记消息已读
-```
-PUT /api/v1/messages/:id/read
-```
-
-#### 2.7.5 删除消息
-```
-DELETE /api/v1/messages/:id
-```
-
-### 2.8 文件上传模块
-
-#### 2.8.1 获取上传凭证
-```
-GET /api/v1/upload/token
-```
-
-**请求参数**：
-| 参数 | 类型 | 必填 | 说明 |
-|-----|------|-----|------|
-| file_type | string | 是 | 文件类型：image、video、audio |
-| file_name | string | 是 | 文件名 |
-
-**响应**：
-```json
-{
-  "code": 0,
-  "message": "success",
-  "data": {
-    "token": "upload_token",
-    "upload_url": "https://upload.example.com",
-    "expires_at": "2024-01-01T13:00:00Z"
-  }
-}
-```
-
-#### 2.8.2 上传文件
-```
-POST /api/v1/upload
-```
-
-**请求参数**（multipart/form-data）：
-| 参数 | 类型 | 必填 | 说明 |
-|-----|------|-----|------|
-| file | file | 是 | 文件 |
-| file_type | string | 是 | 文件类型 |
-
-**响应**：
-```json
-{
-  "code": 0,
-  "message": "上传成功",
-  "data": {
-    "file_url": "https://cdn.example.com/xxx.mp4",
-    "file_size": 5242880,
-    "file_type": "video",
-    "duration": 30,
-    "width": 1080,
-    "height": 1920
-  }
-}
-```
-
-### 2.9 音乐模块
-
-#### 2.9.1 获取音乐列表
-```
-GET /api/v1/music
-```
-
-**请求参数**：
-| 参数 | 类型 | 必填 | 说明 |
-|-----|------|-----|------|
-| page | int | 否 | 页码 |
-| page_size | int | 否 | 每页数量 |
-| sort | string | 否 | 排序：hot(最热)、latest(最新) |
-
-#### 2.9.2 搜索音乐
+#### 2.8.2 搜索音乐
 ```
 GET /api/v1/music/search
 ```
@@ -827,9 +751,11 @@ GET /api/v1/music/search
 **请求参数**：
 | 参数 | 类型 | 必填 | 说明 |
 |-----|------|-----|------|
-| keyword | string | 是 | 搜索关键词 |
-| page | int | 否 | 页码 |
-| page_size | int | 否 | 每页数量 |
+| keyword | string | 是 | 搜索关键词（匹配曲名或艺术家） |
+| page | int | 否 | 页码，默认 1 |
+| pageSize | int | 否 | 每页数量，默认 20，最大 100 |
+
+**响应结构同 2.8.1**。
 
 ## 3. 认证与鉴权
 
