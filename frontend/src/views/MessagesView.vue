@@ -1,11 +1,10 @@
 <script setup lang="ts">
-interface MessageItem {
-  name: string
-  preview: string
-  time: string
-  avatar: string
-  unread: number
-}
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+
+import { getConversations, type ConversationInfo } from '@/api/message'
+
+const router = useRouter()
 
 const shortcuts = [
   { label: '粉丝', icon: 'fa-user-plus', color: 'bg-primary' },
@@ -14,32 +13,51 @@ const shortcuts = [
   { label: '评论', icon: 'fa-comment-dots', color: 'bg-emerald-500' },
 ]
 
-const messages: MessageItem[] = [
-  {
-    name: '闪视小助手',
-    preview: '欢迎来到闪视，记录此刻的精彩。',
-    time: '14:20',
-    avatar:
-      'https://images.unsplash.com/photo-1611162617474-5b21e879e113?q=80&w=200&auto=format&fit=crop',
-    unread: 1,
-  },
-  {
-    name: '户外旅行家',
-    preview: '分享给你一个视频',
-    time: '昨天',
-    avatar:
-      'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=200&auto=format&fit=crop',
-    unread: 2,
-  },
-  {
-    name: '可乐要加冰',
-    preview: '周末一起去看展吗？',
-    time: '星期三',
-    avatar:
-      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&auto=format&fit=crop',
-    unread: 0,
-  },
-]
+const conversations = ref<ConversationInfo[]>([])
+const loading = ref(false)
+const error = ref('')
+
+async function loadConversations() {
+  loading.value = true
+  error.value = ''
+  try {
+    const res = await getConversations({ page: 1, pageSize: 30 })
+    conversations.value = res.data.data.list ?? []
+  } catch (e: unknown) {
+    error.value = e instanceof Error ? e.message : '加载失败'
+  } finally {
+    loading.value = false
+  }
+}
+
+/** 将后端时间字符串格式化为会话列表时间显示 */
+function formatTime(dateStr: string): string {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return dateStr
+  const now = new Date()
+  const diffMs = now.getTime() - d.getTime()
+  const diffDays = Math.floor(diffMs / 86_400_000)
+  if (diffDays === 0) return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  if (diffDays === 1) return '昨天'
+  if (diffDays < 7) return ['日', '一', '二', '三', '四', '五', '六'][d.getDay()] ? `星期${['日', '一', '二', '三', '四', '五', '六'][d.getDay()]}` : '昨天'
+  return `${d.getMonth() + 1}/${d.getDate()}`
+}
+
+/** 根据消息类型生成预览文本 */
+function previewText(conv: ConversationInfo): string {
+  const msg = conv.lastMessage
+  if (!msg || !msg.id) return ''
+  if (msg.messageType === 2) return '[图片]'
+  if (msg.messageType === 3) return '[视频]'
+  return msg.content
+}
+
+function openChat(conv: ConversationInfo) {
+  router.push({ name: 'chat', params: { userId: conv.targetUser.id } })
+}
+
+onMounted(loadConversations)
 </script>
 
 <template>
@@ -49,6 +67,8 @@ const messages: MessageItem[] = [
     >
       消息
     </header>
+
+    <!-- 快捷入口 -->
     <section class="grid grid-cols-4 border-b border-white/5 px-3 py-5">
       <button
         v-for="item in shortcuts"
@@ -64,29 +84,50 @@ const messages: MessageItem[] = [
         {{ item.label }}
       </button>
     </section>
-    <section>
+
+    <!-- 加载中 -->
+    <div v-if="loading" class="flex justify-center py-10">
+      <i class="fa-solid fa-circle-notch animate-spin text-2xl text-neutral-500" />
+    </div>
+
+    <!-- 错误提示 -->
+    <div v-else-if="error" class="px-4 py-6 text-center text-sm text-red-400">
+      {{ error }}
+      <button type="button" class="mt-2 block w-full text-primary" @click="loadConversations">重试</button>
+    </div>
+
+    <!-- 空状态 -->
+    <div v-else-if="conversations.length === 0" class="px-4 py-12 text-center text-sm text-neutral-500">
+      暂无私信
+    </div>
+
+    <!-- 会话列表 -->
+    <section v-else>
       <article
-        v-for="message in messages"
-        :key="message.name"
-        class="flex items-center gap-3 px-4 py-3"
+        v-for="conv in conversations"
+        :key="conv.targetUser.id"
+        class="flex cursor-pointer items-center gap-3 px-4 py-3 active:bg-white/5"
+        @click="openChat(conv)"
       >
         <div class="relative shrink-0">
           <img
-            :src="message.avatar"
-            :alt="message.name"
+            :src="conv.targetUser.avatar"
+            :alt="conv.targetUser.nickname || conv.targetUser.username"
             class="h-12 w-12 rounded-full object-cover"
-          /><span
-            v-if="message.unread"
+          />
+          <span
+            v-if="conv.unreadCount > 0"
             class="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px]"
-            >{{ message.unread }}</span
-          >
+          >{{ conv.unreadCount > 99 ? '99+' : conv.unreadCount }}</span>
         </div>
         <div class="min-w-0 flex-1">
           <div class="flex justify-between">
-            <h2 class="text-sm font-medium">{{ message.name }}</h2>
-            <time class="text-[10px] text-neutral-600">{{ message.time }}</time>
+            <h2 class="text-sm font-medium">
+              {{ conv.targetUser.nickname || conv.targetUser.username }}
+            </h2>
+            <time class="text-[10px] text-neutral-600">{{ formatTime(conv.updatedAt) }}</time>
           </div>
-          <p class="mt-1 truncate text-xs text-neutral-500">{{ message.preview }}</p>
+          <p class="mt-1 truncate text-xs text-neutral-500">{{ previewText(conv) }}</p>
         </div>
       </article>
     </section>

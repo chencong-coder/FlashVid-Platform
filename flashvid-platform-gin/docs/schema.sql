@@ -248,3 +248,21 @@ CREATE TABLE `messages` (
   KEY `idx_created_at` (`created_at`),
   KEY `idx_deleted_at` (`deleted_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='消息表';
+
+-- ----------------------------
+-- 会话表（私信模块）
+-- ----------------------------
+CREATE TABLE `conversations` (
+  `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '会话ID',
+  `user1_id`        BIGINT UNSIGNED NOT NULL COMMENT '较小的用户ID',
+  `user2_id`        BIGINT UNSIGNED NOT NULL COMMENT '较大的用户ID',
+  `last_message_id` BIGINT UNSIGNED DEFAULT NULL COMMENT '最后一条消息ID',
+  `unread_count1`   INT NOT NULL DEFAULT 0 COMMENT 'user1 的未读消息数',
+  `unread_count2`   INT NOT NULL DEFAULT 0 COMMENT 'user2 的未读消息数',
+  `updated_at`      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '会话更新时间（最后消息时间）',
+  `created_at`      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_users` (`user1_id`, `user2_id`),
+  KEY `idx_user1_updated` (`user1_id`, `updated_at`),
+  KEY `idx_user2_updated` (`user2_id`, `updated_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='会话表';

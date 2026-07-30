@@ -13,6 +13,7 @@ import (
 	"flashvid-platform-gin/internal/handler/topic"
 	"flashvid-platform-gin/internal/handler/music"
 	"flashvid-platform-gin/internal/handler/upload"
+	"flashvid-platform-gin/internal/handler/message"
 	"flashvid-platform-gin/pkg/storage"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -145,6 +146,18 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 		uploadR.Use(middleware.Auth())
 		{
 			uploadR.POST("", upload.UploadFileHandler) // 上传文件（图片/视频/音频）
+		}
+
+		// 私信相关路由组（全部需要登录）
+		msgR := apiV1.Group("")
+		msgR.Use(middleware.Auth())
+		{
+			msgR.GET("/conversations", message.GetConversationsHandler)                            // 会话列表
+			msgR.GET("/conversations/:userId/messages", message.GetConversationMessagesHandler)    // 对话消息
+			msgR.PUT("/conversations/:userId/read", message.MarkConversationReadHandler)           // 标记已读
+			msgR.GET("/messages/unread-count", message.GetUnreadCountHandler)                      // 未读总数（必须在 /:id 之前注册）
+			msgR.POST("/messages", message.SendMessageHandler)                                     // 发送私信
+			msgR.DELETE("/messages/:id", message.DeleteMessageHandler)                             // 删除消息
 		}
 	}
 

@@ -67,6 +67,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '消息', bottomTab: 'messages' },
   },
   {
+    path: '/chat/:userId',
+    name: 'chat',
+    component: () => import('@/views/ChatView.vue'),
+    meta: { title: '私信', hideBottomNav: true },
+  },
+  {
     path: '/profile',
     name: 'profile',
     component: () => import('@/views/ProfileView.vue'),

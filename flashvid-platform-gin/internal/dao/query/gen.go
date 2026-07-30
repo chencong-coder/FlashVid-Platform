@@ -16,24 +16,26 @@ import (
 )
 
 var (
-	Q           = new(Query)
-	Comment     *comment
-	Favorite    *favorite
-	Follow      *follow
-	Like        *like
-	LoginLog    *loginLog
-	Message     *message
-	Music       *music
-	Topic       *topic
-	User        *user
-	Video       *video
-	VideoTopic  *videoTopic
-	ViewHistory *viewHistory
+	Q            = new(Query)
+	Comment      *comment
+	Conversation *conversation
+	Favorite     *favorite
+	Follow       *follow
+	Like         *like
+	LoginLog     *loginLog
+	Message      *message
+	Music        *music
+	Topic        *topic
+	User         *user
+	Video        *video
+	VideoTopic   *videoTopic
+	ViewHistory  *viewHistory
 )
 
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	*Q = *Use(db, opts...)
 	Comment = &Q.Comment
+	Conversation = &Q.Conversation
 	Favorite = &Q.Favorite
 	Follow = &Q.Follow
 	Like = &Q.Like
@@ -49,56 +51,59 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
-		db:          db,
-		Comment:     newComment(db, opts...),
-		Favorite:    newFavorite(db, opts...),
-		Follow:      newFollow(db, opts...),
-		Like:        newLike(db, opts...),
-		LoginLog:    newLoginLog(db, opts...),
-		Message:     newMessage(db, opts...),
-		Music:       newMusic(db, opts...),
-		Topic:       newTopic(db, opts...),
-		User:        newUser(db, opts...),
-		Video:       newVideo(db, opts...),
-		VideoTopic:  newVideoTopic(db, opts...),
-		ViewHistory: newViewHistory(db, opts...),
+		db:           db,
+		Comment:      newComment(db, opts...),
+		Conversation: newConversation(db, opts...),
+		Favorite:     newFavorite(db, opts...),
+		Follow:       newFollow(db, opts...),
+		Like:         newLike(db, opts...),
+		LoginLog:     newLoginLog(db, opts...),
+		Message:      newMessage(db, opts...),
+		Music:        newMusic(db, opts...),
+		Topic:        newTopic(db, opts...),
+		User:         newUser(db, opts...),
+		Video:        newVideo(db, opts...),
+		VideoTopic:   newVideoTopic(db, opts...),
+		ViewHistory:  newViewHistory(db, opts...),
 	}
 }
 
 type Query struct {
 	db *gorm.DB
 
-	Comment     comment
-	Favorite    favorite
-	Follow      follow
-	Like        like
-	LoginLog    loginLog
-	Message     message
-	Music       music
-	Topic       topic
-	User        user
-	Video       video
-	VideoTopic  videoTopic
-	ViewHistory viewHistory
+	Comment      comment
+	Conversation conversation
+	Favorite     favorite
+	Follow       follow
+	Like         like
+	LoginLog     loginLog
+	Message      message
+	Music        music
+	Topic        topic
+	User         user
+	Video        video
+	VideoTopic   videoTopic
+	ViewHistory  viewHistory
 }
 
 func (q *Query) Available() bool { return q.db != nil }
 
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
-		db:          db,
-		Comment:     q.Comment.clone(db),
-		Favorite:    q.Favorite.clone(db),
-		Follow:      q.Follow.clone(db),
-		Like:        q.Like.clone(db),
-		LoginLog:    q.LoginLog.clone(db),
-		Message:     q.Message.clone(db),
-		Music:       q.Music.clone(db),
-		Topic:       q.Topic.clone(db),
-		User:        q.User.clone(db),
-		Video:       q.Video.clone(db),
-		VideoTopic:  q.VideoTopic.clone(db),
-		ViewHistory: q.ViewHistory.clone(db),
+		db:           db,
+		Comment:      q.Comment.clone(db),
+		Conversation: q.Conversation.clone(db),
+		Favorite:     q.Favorite.clone(db),
+		Follow:       q.Follow.clone(db),
+		Like:         q.Like.clone(db),
+		LoginLog:     q.LoginLog.clone(db),
+		Message:      q.Message.clone(db),
+		Music:        q.Music.clone(db),
+		Topic:        q.Topic.clone(db),
+		User:         q.User.clone(db),
+		Video:        q.Video.clone(db),
+		VideoTopic:   q.VideoTopic.clone(db),
+		ViewHistory:  q.ViewHistory.clone(db),
 	}
 }
 
@@ -112,51 +117,54 @@ func (q *Query) WriteDB() *Query {
 
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
-		db:          db,
-		Comment:     q.Comment.replaceDB(db),
-		Favorite:    q.Favorite.replaceDB(db),
-		Follow:      q.Follow.replaceDB(db),
-		Like:        q.Like.replaceDB(db),
-		LoginLog:    q.LoginLog.replaceDB(db),
-		Message:     q.Message.replaceDB(db),
-		Music:       q.Music.replaceDB(db),
-		Topic:       q.Topic.replaceDB(db),
-		User:        q.User.replaceDB(db),
-		Video:       q.Video.replaceDB(db),
-		VideoTopic:  q.VideoTopic.replaceDB(db),
-		ViewHistory: q.ViewHistory.replaceDB(db),
+		db:           db,
+		Comment:      q.Comment.replaceDB(db),
+		Conversation: q.Conversation.replaceDB(db),
+		Favorite:     q.Favorite.replaceDB(db),
+		Follow:       q.Follow.replaceDB(db),
+		Like:         q.Like.replaceDB(db),
+		LoginLog:     q.LoginLog.replaceDB(db),
+		Message:      q.Message.replaceDB(db),
+		Music:        q.Music.replaceDB(db),
+		Topic:        q.Topic.replaceDB(db),
+		User:         q.User.replaceDB(db),
+		Video:        q.Video.replaceDB(db),
+		VideoTopic:   q.VideoTopic.replaceDB(db),
+		ViewHistory:  q.ViewHistory.replaceDB(db),
 	}
 }
 
 type queryCtx struct {
-	Comment     ICommentDo
-	Favorite    IFavoriteDo
-	Follow      IFollowDo
-	Like        ILikeDo
-	LoginLog    ILoginLogDo
-	Message     IMessageDo
-	Music       IMusicDo
-	Topic       ITopicDo
-	User        IUserDo
-	Video       IVideoDo
-	VideoTopic  IVideoTopicDo
-	ViewHistory IViewHistoryDo
+	Comment      ICommentDo
+	Conversation IConversationDo
+	Favorite     IFavoriteDo
+	Follow       IFollowDo
+	Like         ILikeDo
+	LoginLog     ILoginLogDo
+	Message      IMessageDo
+	Music        IMusicDo
+	Topic        ITopicDo
+	User         IUserDo
+	Video        IVideoDo
+	VideoTopic   IVideoTopicDo
+	ViewHistory  IViewHistoryDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
-		Comment:     q.Comment.WithContext(ctx),
-		Favorite:    q.Favorite.WithContext(ctx),
-		Follow:      q.Follow.WithContext(ctx),
-		Like:        q.Like.WithContext(ctx),
-		LoginLog:    q.LoginLog.WithContext(ctx),
-		Message:     q.Message.WithContext(ctx),
-		Music:       q.Music.WithContext(ctx),
-		Topic:       q.Topic.WithContext(ctx),
-		User:        q.User.WithContext(ctx),
-		Video:       q.Video.WithContext(ctx),
-		VideoTopic:  q.VideoTopic.WithContext(ctx),
-		ViewHistory: q.ViewHistory.WithContext(ctx),
+		Comment:      q.Comment.WithContext(ctx),
+		Conversation: q.Conversation.WithContext(ctx),
+		Favorite:     q.Favorite.WithContext(ctx),
+		Follow:       q.Follow.WithContext(ctx),
+		Like:         q.Like.WithContext(ctx),
+		LoginLog:     q.LoginLog.WithContext(ctx),
+		Message:      q.Message.WithContext(ctx),
+		Music:        q.Music.WithContext(ctx),
+		Topic:        q.Topic.WithContext(ctx),
+		User:         q.User.WithContext(ctx),
+		Video:        q.Video.WithContext(ctx),
+		VideoTopic:   q.VideoTopic.WithContext(ctx),
+		ViewHistory:  q.ViewHistory.WithContext(ctx),
 	}
 }
 
