@@ -1,11 +1,9 @@
 import http from './http'
 
 import type { ApiResponse } from '@/types/api'
-import type { LoginPayload, LoginResult } from '@/types/user'
 import type { FeedVideo } from './feed'
 
-export const login = (payload: LoginPayload) =>
-  http.post<ApiResponse<LoginResult>>('/auth/login', payload)
+// 登录 / 注册 / 刷新 Token 见 @/api/auth
 
 // ===== 用户信息 =====
 export interface UserInfo {

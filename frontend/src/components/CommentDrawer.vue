@@ -76,7 +76,8 @@ const submit = async (): Promise<void> => {
   submitting.value = true
   try {
     const res = await postComment(props.videoId, value)
-    comments.value.unshift(res.data.data.comment)
+    // 一级评论返回 comment；此处只发一级评论
+    if (res.data.data.comment) comments.value.unshift(res.data.data.comment)
     content.value = ''
   } catch {
     showToast('评论发布失败')

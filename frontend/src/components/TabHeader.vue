@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import type { FeedType, TopNavValue } from '@/types/video'
+import type { TopNavValue } from '@/types/video'
 
 interface TabItem {
   label: string

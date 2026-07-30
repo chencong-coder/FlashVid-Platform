@@ -8,12 +8,4 @@ export interface UserProfile {
   likes: number
 }
 
-export interface LoginPayload {
-  mobile: string
-  code: string
-}
-
-export interface LoginResult {
-  token: string
-  user: UserProfile
-}
+// 登录 / 注册相关类型已迁移至 @/api/auth（对齐后端 auth 模块）

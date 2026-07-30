@@ -38,6 +38,23 @@ export interface CommentUser {
   avatar: string
 }
 
+// 被回复的用户（回复里的 replyTo）
+export interface ReplyToUser {
+  id: string
+  nickname: string
+}
+
+// 评论回复
+export interface ReplyItem {
+  id: string
+  content: string
+  user: CommentUser
+  replyTo: ReplyToUser
+  likeCount: number
+  isLiked: boolean
+  createdAt: string
+}
+
 export interface CommentItem {
   id: string
   content: string
@@ -45,6 +62,8 @@ export interface CommentItem {
   likeCount: number
   replyCount: number
   isLiked: boolean
+  isAuthored: boolean // 是否为视频作者
+  replies: ReplyItem[]
   createdAt: string
 }
 

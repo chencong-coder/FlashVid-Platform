@@ -70,6 +70,12 @@ const commentTotal = computed(() =>
     : 0,
 )
 
+// TabHeader 只在带 tab 的常规流（follow/recommend/nearby）渲染，
+// 'topic' 属于独立流不会走到这里；收窄类型以匹配 TopNavValue
+const activeTab = computed<TopNavValue>(() =>
+  props.feed === 'topic' ? 'recommend' : props.feed,
+)
+
 const syncActiveVideo = (index: number): void => {
   const boundedIndex = Math.max(0, Math.min(index, videos.value.length - 1))
   currentIndex.value = boundedIndex
@@ -504,7 +510,7 @@ onBeforeUnmount(() => {
     <!-- 常规 feed：顶部 tab 切换栏 -->
     <TabHeader
       v-if="showTabs"
-      :active="feed"
+      :active="activeTab"
       @change="switchFeed"
       @search="searchVisible = true"
     />
