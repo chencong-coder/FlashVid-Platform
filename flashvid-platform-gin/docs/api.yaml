@@ -1705,63 +1705,6 @@ paths:
 
 
   # ==================== 上传模块 ====================
-  /upload/token:
-    get:
-      tags:
-        - 上传
-      summary: 获取上传凭证
-      description: 获取文件上传凭证和上传URL
-      operationId: getUploadToken
-      parameters:
-        - name: file_type
-          in: query
-          required: true
-          description: 文件类型
-          schema:
-            type: string
-            enum: [image, video, audio]
-            example: video
-        - name: file_name
-          in: query
-          required: true
-          description: 文件名
-          schema:
-            type: string
-            example: my_video.mp4
-      responses:
-        '200':
-          description: 获取成功
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/Response'
-                  - type: object
-                    properties:
-                      data:
-                        type: object
-                        properties:
-                          token:
-                            type: string
-                            description: 上传令牌
-                            example: upload_token_abc123
-                          upload_url:
-                            type: string
-                            format: uri
-                            description: 上传URL
-                            example: https://upload.flashvid.com
-                          expires_at:
-                            type: string
-                            format: date-time
-                            description: 过期时间
-                            example: '2024-01-01T13:00:00Z'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '422':
-          $ref: '#/components/responses/ValidationError'
-      security:
-        - BearerAuth: []
-
   /upload:
     post:
       tags:
@@ -1805,7 +1748,7 @@ paths:
                             type: string
                             format: uri
                             description: 文件URL
-                            example: https://cdn.flashvid.com/video/xxx.mp4
+                            example: http://localhost:8089/static/video/1785396664197888300.mp4
                           file_size:
                             type: integer
                             format: int64
@@ -1817,16 +1760,8 @@ paths:
                             example: video
                           duration:
                             type: integer
-                            description: 视频/音频时长（秒）
-                            example: 30
-                          width:
-                            type: integer
-                            description: 视频/图片宽度
-                            example: 1080
-                          height:
-                            type: integer
-                            description: 视频/图片高度
-                            example: 1920
+                            description: 视频/音频时长（秒），本地存储暂不解析，固定返回 0
+                            example: 0
         '401':
           $ref: '#/components/responses/Unauthorized'
         '413':
@@ -1847,7 +1782,7 @@ paths:
       tags:
         - 音乐
       summary: 获取音乐列表
-      description: 获取热门音乐列表
+      description: 获取音乐列表（sort=hot 按使用次数，sort=latest 按创建时间）。公开接口，无需登录
       operationId: getMusicList
       parameters:
         - $ref: '#/components/parameters/Page'
@@ -1877,23 +1812,32 @@ paths:
                             type: array
                             items:
                               $ref: '#/components/schemas/Music'
-                          pagination:
-                            $ref: '#/components/schemas/Pagination'
-      security:
-        - BearerAuth: []
+                          total:
+                            type: integer
+                            format: int64
+                            description: 总条数
+                            example: 128
+                          page:
+                            type: integer
+                            description: 当前页码
+                            example: 1
+                          pageSize:
+                            type: integer
+                            description: 每页数量
+                            example: 20
 
   /music/search:
     get:
       tags:
         - 音乐
       summary: 搜索音乐
-      description: 根据关键词搜索音乐
+      description: 根据关键词搜索音乐（匹配音乐名称或艺术家）。公开接口，无需登录
       operationId: searchMusic
       parameters:
         - name: keyword
           in: query
           required: true
-          description: 搜索关键词
+          description: 搜索关键词（匹配音乐名称或艺术家）
           schema:
             type: string
             example: 告白气球
@@ -1916,10 +1860,19 @@ paths:
                             type: array
                             items:
                               $ref: '#/components/schemas/Music'
-                          pagination:
-                            $ref: '#/components/schemas/Pagination'
-      security:
-        - BearerAuth: []
+                          total:
+                            type: integer
+                            format: int64
+                            description: 总条数
+                            example: 12
+                          page:
+                            type: integer
+                            description: 当前页码
+                            example: 1
+                          pageSize:
+                            type: integer
+                            description: 每页数量
+                            example: 20
 
 
 components:
@@ -2345,26 +2298,25 @@ components:
           type: string
           description: 话题描述
           example: 分享你的旅行故事
-        cover_url:
+        coverUrl:
           type: string
           format: uri
           description: 话题封面
           example: https://cdn.flashvid.com/topic/1.jpg
-        view_count:
+        viewCount:
           type: integer
           format: int64
           description: 浏览量
           example: 1000000
-        video_count:
+        videoCount:
           type: integer
-          format: int64
+          format: int32
           description: 视频数量
           example: 5000
-        created_at:
+        createdAt:
           type: string
-          format: date-time
           description: 创建时间
-          example: '2024-01-01T12:00:00Z'
+          example: '2024-01-01 12:00:00'
 
     Music:
       type: object
@@ -2382,30 +2334,33 @@ components:
           type: string
           description: 艺术家
           example: 周杰伦
-        cover_url:
+        album:
+          type: string
+          description: 专辑
+          example: 依然范特西
+        coverUrl:
           type: string
           format: uri
           description: 封面URL
-          example: https://cdn.flashvid.com/music/456.jpg
-        music_url:
+          example: http://localhost:8089/static/image/cover.jpg
+        musicUrl:
           type: string
           format: uri
           description: 音乐URL
-          example: https://cdn.flashvid.com/music/456.mp3
+          example: http://localhost:8089/static/audio/song.mp3
         duration:
           type: integer
           description: 音乐时长（秒）
           example: 200
-        use_count:
+        useCount:
           type: integer
-          format: int64
-          description: 使用次数
+          format: int32
+          description: 被视频使用次数
           example: 10000
-        created_at:
+        createdAt:
           type: string
-          format: date-time
           description: 创建时间
-          example: '2024-01-01T12:00:00Z'
+          example: '2024-01-01 12:00:00'
 
 
   responses:
