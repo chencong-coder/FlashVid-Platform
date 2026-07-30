@@ -11,6 +11,7 @@ import (
 	"flashvid-platform-gin/internal/handler/interaction"
 	"flashvid-platform-gin/internal/handler/comment"
 	"flashvid-platform-gin/internal/handler/topic"
+	"flashvid-platform-gin/internal/handler/music"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
@@ -124,6 +125,13 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 		 	topicR.GET("/search", topic.SearchTopicsHandler)
 		 	topicR.GET("/:id", topic.GetTopicByIDHandler)
 		 	topicR.GET("/:id/videos", topic.GetTopicVideosHandler)
+		}
+
+		// 音乐相关路由组
+		musicR := apiV1.Group("/music")
+		{
+			musicR.GET("", music.GetMusicListHandler)           // 获取音乐列表
+			musicR.GET("/search", music.SearchMusicHandler)     // 搜索音乐
 		}
 	}
 
