@@ -932,6 +932,133 @@ GET /api/v1/messages/unread-count
 }
 ```
 
+### 2.10 播放列表模块
+
+> 全部接口需要登录（Authorization: Bearer \<token\>）。
+
+#### 2.10.1 获取我的播放列表
+```
+GET /api/v1/playlists
+```
+
+**响应**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "playlists": [
+      {
+        "id": 1,
+        "title": "收藏",
+        "description": "",
+        "coverUrl": "https://...",
+        "isDefault": true,
+        "videoCount": 12,
+        "createdAt": "2024-01-01 12:00:00"
+      }
+    ]
+  }
+}
+```
+
+#### 2.10.2 创建播放列表
+```
+POST /api/v1/playlists
+```
+
+**请求参数**：
+```json
+{
+  "title": "稍后观看",         // 必填，最多50字符
+  "description": "以后再看",   // 可选，最多500字符
+  "coverUrl": "https://..."   // 可选
+}
+```
+
+**响应**：
+```json
+{
+  "code": 0,
+  "message": "创建成功",
+  "data": {
+    "playlist": {
+      "id": 2,
+      "title": "稍后观看",
+      "description": "以后再看",
+      "coverUrl": "",
+      "isDefault": false,
+      "videoCount": 0,
+      "createdAt": "2024-01-03 12:00:00"
+    }
+  }
+}
+```
+
+#### 2.10.3 更新播放列表
+```
+PUT /api/v1/playlists/:id
+```
+
+**请求参数**（所有字段可选，只传需要修改的字段）：
+```json
+{
+  "title": "新标题",
+  "description": "新描述",
+  "coverUrl": "https://..."
+}
+```
+
+#### 2.10.4 删除播放列表
+```
+DELETE /api/v1/playlists/:id
+```
+
+**说明**：默认收藏列表（isDefault=true）不可删除，返回错误码 `CodeCannotDeleteDefault`。删除时会同步删除所有视频关联。
+
+#### 2.10.5 获取播放列表内的视频
+```
+GET /api/v1/playlists/:id/videos
+```
+
+**请求参数**：
+| 参数 | 类型 | 必填 | 说明 |
+|-----|------|-----|------|
+| page | int | 否 | 页码，默认1 |
+| pageSize | int | 否 | 每页数量，默认20 |
+
+**响应**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "playlist": { "id": 1, "title": "收藏", "isDefault": true, "videoCount": 12, "createdAt": "..." },
+    "videos": [ { "id": 12345, "title": "视频标题", "coverUrl": "...", "duration": 30 } ],
+    "pagination": { "page": 1, "pageSize": 20, "total": 12, "totalPages": 1 }
+  }
+}
+```
+
+#### 2.10.6 添加视频到播放列表
+```
+POST /api/v1/playlists/:id/videos
+```
+
+**请求参数**：
+```json
+{ "videoId": 12345 }
+```
+
+**说明**：幂等操作，重复添加返回 `CodeVideoAlreadyInList`；自动更新 videoCount 及封面。
+
+#### 2.10.7 从播放列表移除视频
+```
+DELETE /api/v1/playlists/:id/videos/:videoId
+```
+
+**说明**：视频不在列表中时返回 `CodeVideoNotInList`；移除后自动更新 videoCount。
+
 ## 3. 认证与鉴权
 
 ### 3.1 JWT Token

@@ -9,6 +9,7 @@ import SearchPopup from '@/components/SearchPopup.vue'
 import TabHeader from '@/components/TabHeader.vue'
 import VideoCard from '@/components/VideoCard.vue'
 import { useAppStore } from '@/store/app'
+import { useAuthModalStore } from '@/store/authModal'
 import { useVideoStore } from '@/store/video'
 import type { FeedType, TopNavValue, VideoItem } from '@/types/video'
 
@@ -26,6 +27,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 const router = useRouter()
 const appStore = useAppStore()
+const authModal = useAuthModalStore()
 const videoStore = useVideoStore()
 
 const feedRoot = ref<HTMLElement | null>(null)
@@ -72,9 +74,7 @@ const commentTotal = computed(() =>
 
 // TabHeader 只在带 tab 的常规流（follow/recommend/nearby）渲染，
 // 'topic' 属于独立流不会走到这里；收窄类型以匹配 TopNavValue
-const activeTab = computed<TopNavValue>(() =>
-  props.feed === 'topic' ? 'recommend' : props.feed,
-)
+const activeTab = computed<TopNavValue>(() => (props.feed === 'topic' ? 'recommend' : props.feed))
 
 const syncActiveVideo = (index: number): void => {
   const boundedIndex = Math.max(0, Math.min(index, videos.value.length - 1))
@@ -406,14 +406,39 @@ const switchFeed = async (value: TopNavValue): Promise<void> => {
     await router.push({ name: 'discover' })
     return
   }
-  appStore.setTopTab(value)
   const routes: Record<Exclude<TopNavValue, 'discover'>, string> = {
     recommend: 'recommend',
     follow: 'follow',
     nearby: 'nearby',
     friends: 'friends',
   }
-  await router.replace({ name: routes[value] })
+  const target = { name: routes[value] }
+  if (
+    (value === 'follow' || value === 'friends') &&
+    !authModal.requireLogin(router.resolve(target).fullPath)
+  ) {
+    return
+  }
+  appStore.setTopTab(value)
+  await router.replace(target)
+}
+
+const requireInteractionLogin = (): boolean =>
+  authModal.requireLogin(router.currentRoute.value.fullPath)
+
+const toggleFollow = (videoId: string): void => {
+  if (!requireInteractionLogin()) return
+  void videoStore.toggleFollow(props.feed, videoId)
+}
+
+const toggleLike = (videoId: string): void => {
+  if (!requireInteractionLogin()) return
+  void videoStore.toggleLike(props.feed, videoId)
+}
+
+const toggleFavorite = (videoId: string): void => {
+  if (!requireInteractionLogin()) return
+  void videoStore.toggleFavorite(props.feed, videoId)
 }
 
 const openComments = (videoId: string): void => {
@@ -423,6 +448,7 @@ const openComments = (videoId: string): void => {
 
 const share = async (): Promise<void> => {
   if (!currentVideo.value) return
+  if (!requireInteractionLogin()) return
   const shareUrl = await videoStore.shareCurrent(props.feed, currentVideo.value.id)
   if (navigator.share) {
     await navigator
@@ -498,10 +524,10 @@ onBeforeUnmount(() => {
           :video="item"
           :active="index === currentIndex"
           :muted="videoStore.muted"
-          @follow="void videoStore.toggleFollow(feed, $event)"
-          @like="void videoStore.toggleLike(feed, $event)"
+          @follow="toggleFollow"
+          @like="toggleLike"
           @comment="openComments"
-          @favorite="void videoStore.toggleFavorite(feed, $event)"
+          @favorite="toggleFavorite"
           @share="share"
         />
       </template>
@@ -545,7 +571,11 @@ onBeforeUnmount(() => {
       />
     </button>
 
-    <CommentDrawer v-model:show="commentsVisible" :video-id="commentVideoId" :total="commentTotal" />
+    <CommentDrawer
+      v-model:show="commentsVisible"
+      :video-id="commentVideoId"
+      :total="commentTotal"
+    />
     <SearchPopup v-model:show="searchVisible" />
   </main>
 </template>

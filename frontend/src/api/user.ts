@@ -74,6 +74,50 @@ export const getMyLikes = (params: PageParams = {}) =>
 export const getMyFavorites = (params: PageParams = {}) =>
   http.get<ApiResponse<VideoListResp>>('/user/profile/favorites', { params })
 
+// ===== 播放列表 =====
+export interface PlaylistInfo {
+  id: number
+  title: string
+  description: string
+  coverUrl: string
+  isDefault: boolean
+  videoCount: number
+  createdAt: string
+}
+
+export interface GetPlaylistsResp {
+  playlists: PlaylistInfo[]
+}
+
+export interface PlaylistVideosResp {
+  playlist: PlaylistInfo
+  videos: FeedVideo[]
+  pagination: Pagination
+}
+
+export const getMyPlaylists = () =>
+  http.get<ApiResponse<GetPlaylistsResp>>('/playlists')
+
+export const createPlaylist = (payload: { title: string; description?: string; coverUrl?: string }) =>
+  http.post<ApiResponse<{ playlist: PlaylistInfo }>>('/playlists', payload)
+
+export const updatePlaylist = (
+  playlistId: number,
+  payload: { title?: string; description?: string; coverUrl?: string },
+) => http.put<ApiResponse<unknown>>(`/playlists/${playlistId}`, payload)
+
+export const deletePlaylist = (playlistId: number) =>
+  http.delete<ApiResponse<unknown>>(`/playlists/${playlistId}`)
+
+export const getPlaylistVideos = (playlistId: number, params: PageParams = {}) =>
+  http.get<ApiResponse<PlaylistVideosResp>>(`/playlists/${playlistId}/videos`, { params })
+
+export const addVideoToPlaylist = (playlistId: number, videoId: number) =>
+  http.post<ApiResponse<unknown>>(`/playlists/${playlistId}/videos`, { videoId })
+
+export const removeVideoFromPlaylist = (playlistId: number, videoId: number) =>
+  http.delete<ApiResponse<unknown>>(`/playlists/${playlistId}/videos/${videoId}`)
+
 // ===== 关注 =====
 export const followUser = (userId: string | number) =>
   http.post<ApiResponse<FollowResp>>(`/user/${userId}/follow`)

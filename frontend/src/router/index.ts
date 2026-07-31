@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
+import { useAuthModalStore } from '@/store/authModal'
 import type { BottomTab } from '@/types/app'
 
 declare module 'vue-router' {
@@ -22,7 +23,7 @@ const routes: RouteRecordRaw[] = [
     path: '/follow',
     name: 'follow',
     component: () => import('@/views/FollowView.vue'),
-    meta: { title: '关注', bottomTab: 'home' },
+    meta: { title: '关注', bottomTab: 'home', requiresAuth: true },
   },
   {
     path: '/nearby',
@@ -34,7 +35,7 @@ const routes: RouteRecordRaw[] = [
     path: '/friends',
     name: 'friends',
     component: () => import('@/views/FriendsView.vue'),
-    meta: { title: '朋友', bottomTab: 'friends' },
+    meta: { title: '朋友', bottomTab: 'friends', requiresAuth: true },
   },
   {
     path: '/discover',
@@ -58,25 +59,37 @@ const routes: RouteRecordRaw[] = [
     path: '/publish',
     name: 'publish',
     component: () => import('@/views/PublishView.vue'),
-    meta: { title: '发布作品', bottomTab: 'publish', hideBottomNav: true },
+    meta: { title: '发布作品', bottomTab: 'publish', hideBottomNav: true, requiresAuth: true },
   },
   {
     path: '/messages',
     name: 'messages',
     component: () => import('@/views/MessagesView.vue'),
-    meta: { title: '消息', bottomTab: 'messages' },
+    meta: { title: '消息', bottomTab: 'messages', requiresAuth: true },
   },
   {
     path: '/chat/:userId',
     name: 'chat',
     component: () => import('@/views/ChatView.vue'),
-    meta: { title: '私信', hideBottomNav: true },
+    meta: { title: '私信', hideBottomNav: true, requiresAuth: true },
   },
   {
     path: '/profile',
     name: 'profile',
     component: () => import('@/views/ProfileView.vue'),
     meta: { title: '我的', bottomTab: 'profile' },
+  },
+  {
+    path: '/login',
+    name: 'login',
+    component: () => import('@/views/LoginView.vue'),
+    meta: { title: '登录', hideBottomNav: true },
+  },
+  {
+    path: '/register',
+    name: 'register',
+    component: () => import('@/views/RegisterView.vue'),
+    meta: { title: '注册', hideBottomNav: true },
   },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]
@@ -87,7 +100,10 @@ const router = createRouter({
   scrollBehavior: () => ({ top: 0 }),
 })
 
-router.beforeEach((to) => {
+router.beforeEach((to, from) => {
+  if (to.meta.requiresAuth && !useAuthModalStore().requireLogin(to.fullPath)) {
+    return from.name ? false : { name: 'recommend' }
+  }
   document.title = `${to.meta.title} - 闪视`
   return true
 })

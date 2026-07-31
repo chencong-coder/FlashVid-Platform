@@ -266,3 +266,36 @@ CREATE TABLE `conversations` (
   KEY `idx_user1_updated` (`user1_id`, `updated_at`),
   KEY `idx_user2_updated` (`user2_id`, `updated_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='会话表';
+
+-- ==================== 播放列表相关表 ====================
+
+-- 播放列表表
+CREATE TABLE `playlists` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '播放列表ID',
+  `user_id` BIGINT UNSIGNED NOT NULL COMMENT '所属用户ID',
+  `title` VARCHAR(50) NOT NULL COMMENT '标题',
+  `description` VARCHAR(500) DEFAULT '' COMMENT '描述',
+  `cover_url` VARCHAR(500) DEFAULT '' COMMENT '封面URL',
+  `is_default` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否为默认收藏列表',
+  `video_count` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '视频数量',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted_at` DATETIME DEFAULT NULL COMMENT '删除时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_is_default` (`is_default`),
+  KEY `idx_deleted_at` (`deleted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='播放列表表';
+
+-- 播放列表视频关联表
+CREATE TABLE `playlist_videos` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'ID',
+  `playlist_id` BIGINT UNSIGNED NOT NULL COMMENT '播放列表ID',
+  `video_id` BIGINT UNSIGNED NOT NULL COMMENT '视频ID',
+  `sort_order` INT NOT NULL DEFAULT 0 COMMENT '排序',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_playlist_video` (`playlist_id`, `video_id`),
+  KEY `idx_video_id` (`video_id`),
+  KEY `idx_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='播放列表视频关联表';

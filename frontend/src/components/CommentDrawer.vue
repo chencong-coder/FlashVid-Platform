@@ -2,12 +2,8 @@
 import { ref, watch } from 'vue'
 import { Popup as VanPopup, showToast } from 'vant'
 
-import {
-  getVideoComments,
-  likeComment,
-  postComment,
-  unlikeComment,
-} from '@/api/video'
+import { getVideoComments, likeComment, postComment, unlikeComment } from '@/api/video'
+import { useAuthModalStore } from '@/store/authModal'
 import type { CommentItem } from '@/types/video'
 import { formatCount } from '@/utils/format'
 
@@ -23,6 +19,7 @@ interface Emits {
 
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
+const authModal = useAuthModalStore()
 
 const content = ref('')
 const comments = ref<CommentItem[]>([])
@@ -55,13 +52,12 @@ const fetchComments = async (reset = false): Promise<void> => {
 }
 
 const toggleLike = async (comment: CommentItem): Promise<void> => {
+  if (!authModal.requireLogin()) return
   const next = !comment.isLiked
   comment.isLiked = next
   comment.likeCount += next ? 1 : -1
   try {
-    const res = next
-      ? await likeComment(comment.id)
-      : await unlikeComment(comment.id)
+    const res = next ? await likeComment(comment.id) : await unlikeComment(comment.id)
     comment.isLiked = res.data.data.isLiked
     comment.likeCount = res.data.data.likeCount
   } catch {
@@ -73,6 +69,7 @@ const toggleLike = async (comment: CommentItem): Promise<void> => {
 const submit = async (): Promise<void> => {
   const value = content.value.trim()
   if (!value || submitting.value) return
+  if (!authModal.requireLogin()) return
   submitting.value = true
   try {
     const res = await postComment(props.videoId, value)

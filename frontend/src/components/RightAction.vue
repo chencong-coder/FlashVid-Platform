@@ -55,6 +55,7 @@ const emit = defineEmits<Emits>()
     <!-- 点赞按钮 - 带心跳动画 -->
     <button
       type="button"
+      :aria-label="video.liked ? '取消点赞' : '点赞'"
       class="action-item flex w-14 flex-col items-center gap-1"
       @click.stop="emit('like')"
     >
@@ -81,6 +82,7 @@ const emit = defineEmits<Emits>()
     <!-- 评论按钮 -->
     <button
       type="button"
+      aria-label="评论"
       class="action-item flex w-14 flex-col items-center gap-1"
       @click.stop="emit('comment')"
     >
@@ -95,6 +97,7 @@ const emit = defineEmits<Emits>()
     <!-- 收藏按钮 - 带星星闪烁 -->
     <button
       type="button"
+      :aria-label="video.favorited ? '取消收藏' : '收藏'"
       class="action-item flex w-14 flex-col items-center gap-1"
       @click.stop="emit('favorite')"
     >
@@ -120,6 +123,7 @@ const emit = defineEmits<Emits>()
     <!-- 分享按钮 -->
     <button
       type="button"
+      aria-label="分享"
       class="action-item flex w-14 flex-col items-center gap-1"
       @click.stop="emit('share')"
     >

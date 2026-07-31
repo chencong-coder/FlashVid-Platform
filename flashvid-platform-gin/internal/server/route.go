@@ -159,6 +159,19 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 			msgR.POST("/messages", message.SendMessageHandler)                                     // 发送私信
 			msgR.DELETE("/messages/:id", message.DeleteMessageHandler)                             // 删除消息
 		}
+
+		// 播放列表相关路由组（全部需要登录）
+		playlistR := apiV1.Group("/playlists")
+		playlistR.Use(middleware.Auth())
+		{
+			//playlistR.GET("", playlist.GetUserPlaylistsHandler)                              // 获取我的播放列表
+			//playlistR.POST("", playlist.CreatePlaylistHandler)                               // 创建播放列表
+			//playlistR.PUT("/:id", playlist.UpdatePlaylistHandler)                            // 更新播放列表信息
+			//playlistR.DELETE("/:id", playlist.DeletePlaylistHandler)                         // 删除播放列表
+			//playlistR.GET("/:id/videos", playlist.GetPlaylistVideosHandler)                  // 获取播放列表内的视频
+			//playlistR.POST("/:id/videos", playlist.AddVideoToPlaylistHandler)                // 手动添加视频到播放列表
+			//playlistR.DELETE("/:id/videos/:videoId", playlist.RemoveVideoFromPlaylistHandler) // 从播放列表移除视频
+		}
 	}
 
 	r.NoRoute(func(c *gin.Context) {

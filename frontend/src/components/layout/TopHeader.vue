@@ -10,10 +10,14 @@ const searchVisible = ref(false)
 </script>
 
 <template>
-  <header class="h-16 shrink-0 flex items-center gap-4 px-5 bg-[#0d0d10] border-b border-white/[0.06] z-50">
+  <header
+    class="h-16 shrink-0 flex items-center gap-4 px-5 bg-[#0d0d10] border-b border-white/[0.06] z-50"
+  >
     <!-- Logo (mobile only — desktop sees it in sidebar) -->
     <div class="lg:hidden shrink-0">
-      <span class="text-xl font-black bg-gradient-to-r from-violet-400 via-purple-300 to-fuchsia-300 bg-clip-text text-transparent tracking-tight">
+      <span
+        class="text-xl font-black bg-gradient-to-r from-violet-400 via-purple-300 to-fuchsia-300 bg-clip-text text-transparent tracking-tight"
+      >
         闪视
       </span>
     </div>
@@ -27,7 +31,10 @@ const searchVisible = ref(false)
       >
         <i class="fa-solid fa-magnifying-glass text-xs shrink-0" />
         <span class="flex-1 text-left">搜索创作者、视频、话题…</span>
-        <kbd class="shrink-0 text-[10px] bg-white/[0.06] border border-white/10 rounded px-1.5 py-0.5 font-mono text-gray-600">⌘ K</kbd>
+        <kbd
+          class="shrink-0 text-[10px] bg-white/[0.06] border border-white/10 rounded px-1.5 py-0.5 font-mono text-gray-600"
+          >⌘ K</kbd
+        >
       </button>
     </div>
 
@@ -55,10 +62,15 @@ const searchVisible = ref(false)
       <!-- Notification bell with badge -->
       <button
         type="button"
+        aria-label="消息通知"
         class="relative w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/5 text-gray-300 hover:text-white transition-colors"
+        @click="router.push({ name: 'messages' })"
       >
         <i class="fa-regular fa-bell text-[18px]" />
-        <span class="absolute top-1.5 right-1.5 w-[18px] h-[18px] flex items-center justify-center rounded-full bg-violet-600 text-[9px] font-bold text-white leading-none">3</span>
+        <span
+          class="absolute top-1.5 right-1.5 w-[18px] h-[18px] flex items-center justify-center rounded-full bg-violet-600 text-[9px] font-bold text-white leading-none"
+          >3</span
+        >
       </button>
 
       <!-- User avatar -->

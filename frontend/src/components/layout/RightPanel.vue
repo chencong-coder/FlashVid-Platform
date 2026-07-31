@@ -2,31 +2,33 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { getTopics, type TopicItem } from '@/api/topic'
+import { useAuthModalStore } from '@/store/authModal'
 
 const router = useRouter()
+const authModal = useAuthModalStore()
 const trendingTopics = ref<TopicItem[]>([])
 const loading = ref(true)
 
 // API 无数据时的兜底 mock
 const mockTrending = [
-  { id: 1, name: '慵懒周末',   videoCount: 2_400_000 },
+  { id: 1, name: '慵懒周末', videoCount: 2_400_000 },
   { id: 2, name: '晨间routine', videoCount: 1_800_000 },
-  { id: 3, name: '旅行日记',   videoCount: 1_200_000 },
-  { id: 4, name: '舞蹈挑战',   videoCount: 965_000 },
-  { id: 5, name: '美食ASMR',   videoCount: 872_000 },
+  { id: 3, name: '旅行日记', videoCount: 1_200_000 },
+  { id: 4, name: '舞蹈挑战', videoCount: 965_000 },
+  { id: 5, name: '美食ASMR', videoCount: 872_000 },
 ] as TopicItem[]
 
 const suggestions = [
-  { name: '林朴',   cat: '旅行',   avatar: 'https://picsum.photos/40/40?random=31' },
-  { name: '李杰森', cat: '搞笑',   avatar: 'https://picsum.photos/40/40?random=32' },
-  { name: '阮索菲', cat: '生活',   avatar: 'https://picsum.photos/40/40?random=33' },
-  { name: '瑞麦克', cat: '健身',   avatar: 'https://picsum.photos/40/40?random=34' },
-  { name: '陈艾娃', cat: '艺术',   avatar: 'https://picsum.photos/40/40?random=35' },
+  { name: '林朴', cat: '旅行', avatar: 'https://picsum.photos/40/40?random=31' },
+  { name: '李杰森', cat: '搞笑', avatar: 'https://picsum.photos/40/40?random=32' },
+  { name: '阮索菲', cat: '生活', avatar: 'https://picsum.photos/40/40?random=33' },
+  { name: '瑞麦克', cat: '健身', avatar: 'https://picsum.photos/40/40?random=34' },
+  { name: '陈艾娃', cat: '艺术', avatar: 'https://picsum.photos/40/40?random=35' },
 ]
 
 const fmtVideos = (n: number): string => {
   if (n >= 100_000_000) return `${(n / 100_000_000).toFixed(1)}亿个视频`
-  if (n >= 10_000)      return `${(n / 10_000).toFixed(0)}万个视频`
+  if (n >= 10_000) return `${(n / 10_000).toFixed(0)}万个视频`
   return `${n} 个视频`
 }
 
@@ -35,19 +37,22 @@ const loadTopics = async () => {
   try {
     const res = await getTopics({ sort: 'hot', count: 5 })
     trendingTopics.value = res.data.data?.topics ?? []
-  } catch { /* use mock */ } finally {
+  } catch {
+    /* use mock */
+  } finally {
     loading.value = false
   }
 }
 
 onMounted(loadTopics)
 
-const displayTopics = () => trendingTopics.value.length ? trendingTopics.value : mockTrending
+const displayTopics = () => (trendingTopics.value.length ? trendingTopics.value : mockTrending)
 </script>
 
 <template>
-  <aside class="w-[288px] shrink-0 h-full overflow-y-auto bg-[#0d0d10] px-4 py-4 space-y-3 scrollbar-none">
-
+  <aside
+    class="w-[288px] shrink-0 h-full overflow-y-auto bg-[#0d0d10] px-4 py-4 space-y-3 scrollbar-none"
+  >
     <!-- ① Trending Now -->
     <div class="bg-[#111115] rounded-2xl p-4">
       <div class="flex items-center justify-between mb-3">
@@ -59,7 +64,9 @@ const displayTopics = () => trendingTopics.value.length ? trendingTopics.value :
           type="button"
           class="text-xs text-violet-400 hover:text-violet-300 transition-colors"
           @click="router.push({ name: 'discover' })"
-        >查看全部</button>
+        >
+          查看全部
+        </button>
       </div>
 
       <!-- Skeleton -->
@@ -85,7 +92,8 @@ const displayTopics = () => trendingTopics.value.length ? trendingTopics.value :
           <span
             class="text-sm font-bold w-4 text-center shrink-0"
             :class="i === 0 ? 'text-orange-400' : 'text-gray-600'"
-          >{{ i + 1 }}</span>
+            >{{ i + 1 }}</span
+          >
           <div class="flex-1 min-w-0 text-left">
             <p class="text-sm text-white font-medium truncate">{{ topic.name }}</p>
             <p class="text-xs text-gray-500">{{ fmtVideos(topic.videoCount) }}</p>
@@ -121,6 +129,7 @@ const displayTopics = () => trendingTopics.value.length ? trendingTopics.value :
           <button
             type="button"
             class="shrink-0 text-xs px-3 py-1.5 rounded-lg bg-white/[0.06] border border-white/[0.1] text-gray-300 hover:bg-white/[0.12] hover:text-white transition-all"
+            @click="authModal.requireLogin()"
           >
             关注
           </button>
@@ -129,10 +138,16 @@ const displayTopics = () => trendingTopics.value.length ? trendingTopics.value :
     </div>
 
     <!-- ③ Go Premium -->
-    <div class="rounded-2xl bg-gradient-to-br from-[#1e1b4b] via-[#2e1d6b] to-[#1a0d3e] p-5 relative overflow-hidden">
+    <div
+      class="rounded-2xl bg-gradient-to-br from-[#1e1b4b] via-[#2e1d6b] to-[#1a0d3e] p-5 relative overflow-hidden"
+    >
       <!-- Subtle glow blobs -->
-      <div class="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-violet-600/20 blur-2xl pointer-events-none" />
-      <div class="absolute -bottom-4 -left-4 w-20 h-20 rounded-full bg-indigo-600/15 blur-2xl pointer-events-none" />
+      <div
+        class="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-violet-600/20 blur-2xl pointer-events-none"
+      />
+      <div
+        class="absolute -bottom-4 -left-4 w-20 h-20 rounded-full bg-indigo-600/15 blur-2xl pointer-events-none"
+      />
 
       <div class="relative">
         <!-- Lightning icon badge -->
@@ -149,6 +164,5 @@ const displayTopics = () => trendingTopics.value.length ? trendingTopics.value :
         </button>
       </div>
     </div>
-
   </aside>
 </template>

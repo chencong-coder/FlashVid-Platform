@@ -16,6 +16,7 @@ info:
     - 上传模块：获取上传凭证、上传文件
     - 音乐模块：音乐列表、搜索音乐
     - 私信模块：会话列表、对话消息、发送私信、标记已读、删除消息、未读总数
+    - 播放列表模块：获取列表、创建、更新、删除、获取列表内视频、添加/移除视频
 
     ## 认证方式
     使用 JWT Token 认证，在请求头中添加：
@@ -69,6 +70,8 @@ tags:
     description: 音乐相关操作
   - name: 私信
     description: 用户私信相关操作
+  - name: 播放列表
+    description: 播放列表管理
 
 paths:
   # ==================== 认证模块 ====================
@@ -2142,6 +2145,304 @@ paths:
         - BearerAuth: []
 
 
+  # ==================== 播放列表模块 ====================
+  /playlists:
+    get:
+      tags:
+        - 播放列表
+      summary: 获取我的播放列表
+      description: 获取当前登录用户的所有播放列表（默认收藏列表排在最前）
+      operationId: getMyPlaylists
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          playlists:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/PlaylistInfo'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      security:
+        - BearerAuth: []
+
+    post:
+      tags:
+        - 播放列表
+      summary: 创建播放列表
+      description: 创建一个新的自定义播放列表
+      operationId: createPlaylist
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+              properties:
+                title:
+                  type: string
+                  maxLength: 50
+                  description: 播放列表标题
+                  example: 我最喜欢的视频
+                description:
+                  type: string
+                  maxLength: 500
+                  description: 描述（可选）
+                  example: 收藏的精彩视频
+                coverUrl:
+                  type: string
+                  format: uri
+                  description: 封面URL（可选）
+                  example: https://cdn.flashvid.com/cover/playlist.jpg
+      responses:
+        '200':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          playlist:
+                            $ref: '#/components/schemas/PlaylistInfo'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+      security:
+        - BearerAuth: []
+
+  /playlists/{id}:
+    put:
+      tags:
+        - 播放列表
+      summary: 更新播放列表
+      description: 更新播放列表的标题、描述或封面
+      operationId: updatePlaylist
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 播放列表ID
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  maxLength: 50
+                  example: 新标题
+                description:
+                  type: string
+                  maxLength: 500
+                  example: 新描述
+                coverUrl:
+                  type: string
+                  format: uri
+                  example: https://cdn.flashvid.com/cover/new.jpg
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+
+    delete:
+      tags:
+        - 播放列表
+      summary: 删除播放列表
+      description: 删除指定播放列表（默认收藏列表不可删除）
+      operationId: deletePlaylist
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 播放列表ID
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+
+  /playlists/{id}/videos:
+    get:
+      tags:
+        - 播放列表
+      summary: 获取播放列表内的视频
+      description: 分页获取指定播放列表内的视频列表（按加入时间倒序）
+      operationId: getPlaylistVideos
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 播放列表ID
+          schema:
+            type: integer
+            format: int64
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          playlist:
+                            $ref: '#/components/schemas/PlaylistInfo'
+                          videos:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Video'
+                          pagination:
+                            $ref: '#/components/schemas/Pagination'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+
+    post:
+      tags:
+        - 播放列表
+      summary: 添加视频到播放列表
+      description: 将指定视频添加到播放列表（幂等，重复添加返回已在列表错误）
+      operationId: addVideoToPlaylist
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 播放列表ID
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - videoId
+              properties:
+                videoId:
+                  type: integer
+                  format: int64
+                  description: 视频ID
+                  example: 12345
+      responses:
+        '200':
+          description: 添加成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: 视频已在播放列表中
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+      security:
+        - BearerAuth: []
+
+  /playlists/{id}/videos/{videoId}:
+    delete:
+      tags:
+        - 播放列表
+      summary: 从播放列表移除视频
+      description: 将指定视频从播放列表中移除
+      operationId: removeVideoFromPlaylist
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 播放列表ID
+          schema:
+            type: integer
+            format: int64
+        - name: videoId
+          in: path
+          required: true
+          description: 视频ID
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 移除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      security:
+        - BearerAuth: []
+
+
 components:
   securitySchemes:
     BearerAuth:
@@ -2688,6 +2989,42 @@ components:
         updatedAt:
           type: string
           description: 会话更新时间（最后消息时间）
+          example: '2024-01-01 12:00:00'
+
+    PlaylistInfo:
+      type: object
+      description: 播放列表信息
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: 播放列表ID
+          example: 1
+        title:
+          type: string
+          description: 标题
+          example: 收藏
+        description:
+          type: string
+          description: 描述
+          example: 我的收藏视频
+        coverUrl:
+          type: string
+          format: uri
+          description: 封面URL
+          example: https://cdn.flashvid.com/cover/playlist.jpg
+        isDefault:
+          type: boolean
+          description: 是否为默认收藏列表
+          example: false
+        videoCount:
+          type: integer
+          format: int32
+          description: 视频数量
+          example: 12
+        createdAt:
+          type: string
+          description: 创建时间（格式：2006-01-02 15:04:05）
           example: '2024-01-01 12:00:00'
 
     Message:

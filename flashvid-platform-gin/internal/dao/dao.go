@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 	"flashvid-platform-gin/internal/dao/query"
+	"flashvid-platform-gin/internal/model"
 	"github.com/redis/go-redis/v9"
 	"github.com/spf13/viper"
 	"gorm.io/driver/mysql"
@@ -41,6 +42,11 @@ func MustInitMySQL(cfg *viper.Viper) {
 	// 初始化 GORM Gen Query（使用 Gen 自动生成的全局 Q）
 	query.SetDefault(db)
 	DB = db
+
+	// 迁移手工维护的新表（playlists、playlist_videos）
+	if err := db.AutoMigrate(&model.Playlist{}, &model.PlaylistVideo{}); err != nil {
+		panic(fmt.Errorf("auto migrate playlist tables fail: %w", err))
+	}
 }
  
 

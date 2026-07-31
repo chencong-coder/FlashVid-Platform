@@ -1,17 +1,37 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { Loading as VanLoading } from 'vant'
 
 import BottomNav from '@/components/BottomNav.vue'
 import LeftSidebar from '@/components/layout/LeftSidebar.vue'
 import RightPanel from '@/components/layout/RightPanel.vue'
 import TopHeader from '@/components/layout/TopHeader.vue'
+import AuthModal from '@/components/AuthModal.vue'
 import { useAppStore } from '@/store/app'
+import { useAuthModalStore } from '@/store/authModal'
 
 const route = useRoute()
+const router = useRouter()
 const appStore = useAppStore()
+const authModal = useAuthModalStore()
 const showBottomNav = computed(() => !route.meta.hideBottomNav)
+
+// 拦截 /login 和 /register 路由 → 弹出 Modal 而不是整页跳转
+watch(
+  route,
+  (to) => {
+    if (to.name === 'login') {
+      const redirect = to.query.redirect as string | undefined
+      authModal.open('prompt', redirect)
+      void router.replace('/')
+    } else if (to.name === 'register') {
+      authModal.open('prompt')
+      void router.replace('/')
+    }
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -52,5 +72,8 @@ const showBottomNav = computed(() => !route.meta.hideBottomNav)
         <VanLoading color="#7c3aed" size="32px" vertical>加载中</VanLoading>
       </div>
     </Transition>
+
+    <!-- 登录/注册弹窗（全局单例） -->
+    <AuthModal />
   </div>
 </template>
