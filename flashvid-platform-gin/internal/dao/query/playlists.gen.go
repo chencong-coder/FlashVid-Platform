@@ -33,7 +33,6 @@ func newPlaylist(db *gorm.DB, opts ...gen.DOOption) playlist {
 	_playlist.Title = field.NewString(tableName, "title")
 	_playlist.Description = field.NewString(tableName, "description")
 	_playlist.CoverURL = field.NewString(tableName, "cover_url")
-	_playlist.IsDefault = field.NewBool(tableName, "is_default")
 	_playlist.VideoCount = field.NewInt32(tableName, "video_count")
 	_playlist.CreatedAt = field.NewTime(tableName, "created_at")
 	_playlist.UpdatedAt = field.NewTime(tableName, "updated_at")
@@ -54,7 +53,6 @@ type playlist struct {
 	Title       field.String // 标题
 	Description field.String // 描述
 	CoverURL    field.String // 封面URL
-	IsDefault   field.Bool   // 是否为默认收藏列表
 	VideoCount  field.Int32  // 视频数量
 	CreatedAt   field.Time   // 创建时间
 	UpdatedAt   field.Time   // 更新时间
@@ -80,7 +78,6 @@ func (p *playlist) updateTableName(table string) *playlist {
 	p.Title = field.NewString(table, "title")
 	p.Description = field.NewString(table, "description")
 	p.CoverURL = field.NewString(table, "cover_url")
-	p.IsDefault = field.NewBool(table, "is_default")
 	p.VideoCount = field.NewInt32(table, "video_count")
 	p.CreatedAt = field.NewTime(table, "created_at")
 	p.UpdatedAt = field.NewTime(table, "updated_at")
@@ -109,13 +106,12 @@ func (p *playlist) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (p *playlist) fillFieldMap() {
-	p.fieldMap = make(map[string]field.Expr, 10)
+	p.fieldMap = make(map[string]field.Expr, 9)
 	p.fieldMap["id"] = p.ID
 	p.fieldMap["user_id"] = p.UserID
 	p.fieldMap["title"] = p.Title
 	p.fieldMap["description"] = p.Description
 	p.fieldMap["cover_url"] = p.CoverURL
-	p.fieldMap["is_default"] = p.IsDefault
 	p.fieldMap["video_count"] = p.VideoCount
 	p.fieldMap["created_at"] = p.CreatedAt
 	p.fieldMap["updated_at"] = p.UpdatedAt

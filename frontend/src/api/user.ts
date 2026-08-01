@@ -80,7 +80,6 @@ export interface PlaylistInfo {
   title: string
   description: string
   coverUrl: string
-  isDefault: boolean
   videoCount: number
   createdAt: string
 }

@@ -290,20 +290,19 @@ CREATE TABLE `playlists` (
   `title` VARCHAR(50) NOT NULL COMMENT '标题',
   `description` VARCHAR(500) DEFAULT '' COMMENT '描述',
   `cover_url` VARCHAR(500) DEFAULT '' COMMENT '封面URL',
-  `is_default` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否为默认收藏列表',
   `video_count` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '视频数量（冗余计数）',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `deleted_at` DATETIME DEFAULT NULL COMMENT '软删除时间',
   PRIMARY KEY (`id`),
   KEY `idx_user_id` (`user_id`),
-  KEY `idx_is_default` (`is_default`),
   KEY `idx_deleted_at` (`deleted_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='播放列表表';
 ```
 
 **设计说明**：
-- `is_default=1` 表示用户收藏视频时自动同步的默认收藏列表，不可删除
+- 播放列表与收藏（`favorites` 表）相互独立：收藏在主页「收藏」tab 展示，播放列表由用户手动创建，用于给视频分类
+- 所有播放列表均由用户主动创建，无默认列表概念
 - `video_count` 为冗余计数字段，在添加/移除视频时通过事务同步更新
 - `cover_url` 随最后加入的视频封面自动回填，也可手动设置
 
@@ -314,7 +313,6 @@ CREATE TABLE `playlist_videos` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'ID',
   `playlist_id` BIGINT UNSIGNED NOT NULL COMMENT '播放列表ID',
   `video_id` BIGINT UNSIGNED NOT NULL COMMENT '视频ID',
-  `sort_order` INT NOT NULL DEFAULT 0 COMMENT '排序权重（保留字段）',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '加入时间',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_playlist_video` (`playlist_id`, `video_id`),
@@ -325,7 +323,7 @@ CREATE TABLE `playlist_videos` (
 
 **设计说明**：
 - `uk_playlist_video` 唯一索引保证同一视频不会重复加入同一播放列表
-- `sort_order` 为保留字段，当前按 `created_at DESC` 排序，后续可支持用户自定义排序
+- 按 `created_at DESC` 排序展示
 - 不设 `deleted_at`，移除即物理删除，通过 `playlist_videos` + 事务更新 `playlists.video_count` 保证一致性
 
 ## 3. 索引优化策略

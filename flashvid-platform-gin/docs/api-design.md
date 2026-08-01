@@ -934,6 +934,8 @@ GET /api/v1/messages/unread-count
 
 ### 2.10 播放列表模块
 
+播放列表是用户主动创建的视频合集，用来给收藏的视频分类整理（类似抖音的收藏夹）。与「收藏」功能（`favorites` 表，主页收藏 tab）相互独立：收藏记录用户喜欢的视频，播放列表用来把视频归类管理。播放列表全部由用户手动创建，无系统默认列表。
+
 > 全部接口需要登录（Authorization: Bearer \<token\>）。
 
 #### 2.10.1 获取我的播放列表
@@ -950,10 +952,9 @@ GET /api/v1/playlists
     "playlists": [
       {
         "id": 1,
-        "title": "收藏",
-        "description": "",
+        "title": "健身教程",
+        "description": "日常健身收藏",
         "coverUrl": "https://...",
-        "isDefault": true,
         "videoCount": 12,
         "createdAt": "2024-01-01 12:00:00"
       }
@@ -987,7 +988,6 @@ POST /api/v1/playlists
       "title": "稍后观看",
       "description": "以后再看",
       "coverUrl": "",
-      "isDefault": false,
       "videoCount": 0,
       "createdAt": "2024-01-03 12:00:00"
     }
@@ -1014,7 +1014,7 @@ PUT /api/v1/playlists/:id
 DELETE /api/v1/playlists/:id
 ```
 
-**说明**：默认收藏列表（isDefault=true）不可删除，返回错误码 `CodeCannotDeleteDefault`。删除时会同步删除所有视频关联。
+**说明**：只能删除自己创建的播放列表。删除时会同步删除所有视频关联。
 
 #### 2.10.5 获取播放列表内的视频
 ```
@@ -1033,7 +1033,7 @@ GET /api/v1/playlists/:id/videos
   "code": 0,
   "message": "success",
   "data": {
-    "playlist": { "id": 1, "title": "收藏", "isDefault": true, "videoCount": 12, "createdAt": "..." },
+    "playlist": { "id": 1, "title": "健身教程", "videoCount": 12, "createdAt": "..." },
     "videos": [ { "id": 12345, "title": "视频标题", "coverUrl": "...", "duration": 30 } ],
     "pagination": { "page": 1, "pageSize": 20, "total": 12, "totalPages": 1 }
   }

@@ -15,7 +15,6 @@ type PlaylistVideo struct {
 	ID         int64     `gorm:"column:id;primaryKey;autoIncrement:true;comment:ID" json:"id"`                        // ID
 	PlaylistID int64     `gorm:"column:playlist_id;not null;comment:播放列表ID" json:"playlist_id"`                       // 播放列表ID
 	VideoID    int64     `gorm:"column:video_id;not null;comment:视频ID" json:"video_id"`                               // 视频ID
-	SortOrder  int32     `gorm:"column:sort_order;not null;comment:排序" json:"sort_order"`                             // 排序
 	CreatedAt  time.Time `gorm:"column:created_at;not null;default:CURRENT_TIMESTAMP;comment:创建时间" json:"created_at"` // 创建时间
 }
 

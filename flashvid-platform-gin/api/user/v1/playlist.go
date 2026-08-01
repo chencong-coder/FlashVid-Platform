@@ -10,7 +10,6 @@ type PlaylistInfo struct {
 	Title       string `json:"title"`       // 标题
 	Description string `json:"description"` // 描述
 	CoverUrl    string `json:"coverUrl"`    // 封面
-	IsDefault   bool   `json:"isDefault"`   // 是否为默认收藏列表
 	VideoCount  int32  `json:"videoCount"`  // 视频数
 	CreatedAt   string `json:"createdAt"`   // 创建时间 "2006-01-02 15:04:05"
 }

@@ -466,11 +466,6 @@ const closePlaylist = (): void => {
                   <div v-else class="flex h-full w-full items-center justify-center">
                     <i class="fa-solid fa-film text-2xl text-neutral-600" />
                   </div>
-                  <span
-                    v-if="pl.isDefault"
-                    class="absolute right-1.5 top-1.5 rounded bg-primary px-1.5 py-0.5 text-[9px] font-medium text-white"
-                    >默认</span
-                  >
                 </div>
                 <div class="px-2 py-2">
                   <p class="truncate text-xs font-medium text-white">{{ pl.title }}</p>

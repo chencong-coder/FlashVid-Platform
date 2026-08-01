@@ -19,7 +19,6 @@ type Playlist struct {
 	Title       string         `gorm:"column:title;not null;comment:标题" json:"title"`                                       // 标题
 	Description string         `gorm:"column:description;comment:描述" json:"description"`                                    // 描述
 	CoverURL    string         `gorm:"column:cover_url;comment:封面URL" json:"cover_url"`                                     // 封面URL
-	IsDefault   bool           `gorm:"column:is_default;not null;comment:是否为默认收藏列表" json:"is_default"`                      // 是否为默认收藏列表
 	VideoCount  int32          `gorm:"column:video_count;not null;comment:视频数量" json:"video_count"`                         // 视频数量
 	CreatedAt   time.Time      `gorm:"column:created_at;not null;default:CURRENT_TIMESTAMP;comment:创建时间" json:"created_at"` // 创建时间
 	UpdatedAt   time.Time      `gorm:"column:updated_at;not null;default:CURRENT_TIMESTAMP;comment:更新时间" json:"updated_at"` // 更新时间

@@ -31,7 +31,6 @@ func newPlaylistVideo(db *gorm.DB, opts ...gen.DOOption) playlistVideo {
 	_playlistVideo.ID = field.NewInt64(tableName, "id")
 	_playlistVideo.PlaylistID = field.NewInt64(tableName, "playlist_id")
 	_playlistVideo.VideoID = field.NewInt64(tableName, "video_id")
-	_playlistVideo.SortOrder = field.NewInt32(tableName, "sort_order")
 	_playlistVideo.CreatedAt = field.NewTime(tableName, "created_at")
 
 	_playlistVideo.fillFieldMap()
@@ -47,7 +46,6 @@ type playlistVideo struct {
 	ID         field.Int64 // ID
 	PlaylistID field.Int64 // 播放列表ID
 	VideoID    field.Int64 // 视频ID
-	SortOrder  field.Int32 // 排序
 	CreatedAt  field.Time  // 创建时间
 
 	fieldMap map[string]field.Expr
@@ -68,7 +66,6 @@ func (p *playlistVideo) updateTableName(table string) *playlistVideo {
 	p.ID = field.NewInt64(table, "id")
 	p.PlaylistID = field.NewInt64(table, "playlist_id")
 	p.VideoID = field.NewInt64(table, "video_id")
-	p.SortOrder = field.NewInt32(table, "sort_order")
 	p.CreatedAt = field.NewTime(table, "created_at")
 
 	p.fillFieldMap()
@@ -98,11 +95,10 @@ func (p *playlistVideo) GetFieldByName(fieldName string) (field.OrderExpr, bool)
 }
 
 func (p *playlistVideo) fillFieldMap() {
-	p.fieldMap = make(map[string]field.Expr, 5)
+	p.fieldMap = make(map[string]field.Expr, 4)
 	p.fieldMap["id"] = p.ID
 	p.fieldMap["playlist_id"] = p.PlaylistID
 	p.fieldMap["video_id"] = p.VideoID
-	p.fieldMap["sort_order"] = p.SortOrder
 	p.fieldMap["created_at"] = p.CreatedAt
 }
 

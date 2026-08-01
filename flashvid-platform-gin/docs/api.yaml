@@ -2151,7 +2151,7 @@ paths:
       tags:
         - 播放列表
       summary: 获取我的播放列表
-      description: 获取当前登录用户的所有播放列表（默认收藏列表排在最前）
+      description: 获取当前登录用户的所有播放列表（按创建时间倒序）
       operationId: getMyPlaylists
       responses:
         '200':
@@ -2281,7 +2281,7 @@ paths:
       tags:
         - 播放列表
       summary: 删除播放列表
-      description: 删除指定播放列表（默认收藏列表不可删除）
+      description: 删除指定播放列表及其所有视频关联
       operationId: deletePlaylist
       parameters:
         - name: id
@@ -3003,20 +3003,16 @@ components:
         title:
           type: string
           description: 标题
-          example: 收藏
+          example: 我最喜欢的视频
         description:
           type: string
           description: 描述
-          example: 我的收藏视频
+          example: 收藏的精彩视频
         coverUrl:
           type: string
           format: uri
           description: 封面URL
           example: https://cdn.flashvid.com/cover/playlist.jpg
-        isDefault:
-          type: boolean
-          description: 是否为默认收藏列表
-          example: false
         videoCount:
           type: integer
           format: int32
