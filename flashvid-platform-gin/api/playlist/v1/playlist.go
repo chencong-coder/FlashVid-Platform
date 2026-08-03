@@ -52,7 +52,7 @@ type GetPlaylistVideosResp struct {
 // 添加视频到播放列表请求
 type AddVideoToPlaylistReq struct {
 	PlaylistID int64 `uri:"id" binding:"required"`      // 播放列表ID（路径参数）
-	VideoID    int64 `json:"videoId" binding:"required"` // 视频ID
+	VideoID    int64 `json:"videoId,string" binding:"required"` // 视频ID（雪花ID，前端以字符串传递避免精度丢失）
 }
 
 // 从播放列表移除视频请求

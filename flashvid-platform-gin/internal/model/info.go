@@ -4,7 +4,7 @@ import "time"
 
 // 用户信息输出
 type UserInfoOutput struct {
-	UserId         int64     `json:"userId"`
+	UserId         int64     `json:"userId,string"`
 	Username       string    `json:"username"`
 	Gender         int32     `json:"gender"`
 	Nickname       string    `json:"nickname"`
@@ -24,7 +24,7 @@ type UserInfoOutput struct {
 // 更新用户输出
 // 用户信息输出
 type UpdateUserInfoOutput struct {
-	UserId         int64     `json:"userId"`
+	UserId         int64     `json:"userId,string"`
 	Username       string    `json:"username"`
 	Gender         int32     `json:"gender"`
 	Nickname       string    `json:"nickname"`

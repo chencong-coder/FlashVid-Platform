@@ -2,7 +2,7 @@ package model
 
 // MessageUserInfo 私信中对方用户简要信息
 type MessageUserInfo struct {
-	ID       int64  `json:"id"`
+	ID       int64  `json:"id,string"`
 	Username string `json:"username"`
 	Nickname string `json:"nickname"`
 	Avatar   string `json:"avatar"`
@@ -10,7 +10,7 @@ type MessageUserInfo struct {
 
 // LastMessageInfo 会话中最后一条消息的摘要
 type LastMessageInfo struct {
-	ID          int64  `json:"id"`
+	ID          int64  `json:"id,string"`
 	MessageType int32  `json:"messageType"`
 	Content     string `json:"content"`
 	MediaURL    string `json:"mediaUrl"`
@@ -35,9 +35,9 @@ type ConversationListOutput struct {
 
 // MessageInfo 单条私信
 type MessageInfo struct {
-	ID          int64  `json:"id"`
-	FromUserID  int64  `json:"fromUserId"`
-	ToUserID    int64  `json:"toUserId"`
+	ID          int64  `json:"id,string"`
+	FromUserID  int64  `json:"fromUserId,string"`
+	ToUserID    int64  `json:"toUserId,string"`
 	MessageType int32  `json:"messageType"`
 	Content     string `json:"content"`
 	MediaURL    string `json:"mediaUrl"`

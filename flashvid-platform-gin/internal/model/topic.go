@@ -2,7 +2,7 @@ package model
 
 // 话题信息
 type TopicInfo struct {
-	ID 		int64  `json:"id"`          // 话题ID
+	ID 		int64  `json:"id,string"`   // 话题ID（雪花ID，序列化为字符串避免前端精度丢失）
 	Name 	string `json:"name"`        // 话题名称
 	Description string `json:"description"` // 话题描述
 	CoverURL    string `json:"coverUrl"`   // 话题封面

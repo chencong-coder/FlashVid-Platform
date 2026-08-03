@@ -2,7 +2,7 @@ package model
 
 // 评论信息
 type CommentInfo struct {
-	ID		int64  `json:"id"`         // 评论ID
+	ID		int64  `json:"id,string"`         // 评论ID
 	Content string `json:"content"`    // 评论内容
 	User CommentUser `json:"user"`       // 评论作者信息
 	LikeCount int32  `json:"likeCount"`  // 点赞数
@@ -15,7 +15,7 @@ type CommentInfo struct {
 
 // 评论用户信息
 type CommentUser struct {
-	ID       int64  `json:"id"`       // 用户ID
+	ID       int64  `json:"id,string"`       // 用户ID
 	Username string `json:"username"` // 用户名
 	Nickname string `json:"nickname"` // 昵称
 	Avatar   string `json:"avatar"`   // 头像
@@ -23,7 +23,7 @@ type CommentUser struct {
 
 // 回复信息
 type ReplyInfo struct {
-	ID		int64  `json:"id"`        // 回复ID(评论)
+	ID		int64  `json:"id,string"`        // 回复ID(评论)
 	Content string `json:"content"`   // 回复内容
 	User CommentUser `json:"user"`      // 回复作者信息
 	ReplyTo ReplyToUser `json:"replyTo"`  // 被回复的用户信息 
@@ -34,7 +34,7 @@ type ReplyInfo struct {
 
 // 评论回复用户信息
 type ReplyToUser struct {
-	ID       int64  `json:"id"`       // 被回复的用户ID
+	ID       int64  `json:"id,string"`       // 被回复的用户ID
 	Nickname string `json:"nickname"` // 昵称
 }
 

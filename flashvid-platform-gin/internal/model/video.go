@@ -2,10 +2,10 @@ package model
 
 // 视频作者信息
 type VideoAuthor struct {
-	ID       int64  `json:"id"`       // 用户ID
-	Username string `json:"username"` // 用户名
-	Nickname string `json:"nickname"` // 昵称
-	Avatar   string `json:"avatar"`   // 头像
+	ID       int64  `json:"id,string"` // 用户ID（雪花ID，序列化为字符串避免前端精度丢失）
+	Username string `json:"username"`  // 用户名
+	Nickname string `json:"nickname"`  // 昵称
+	Avatar   string `json:"avatar"`    // 头像
 }
 
 // 视频统计数据
@@ -20,20 +20,23 @@ type VideoStats struct {
 
 // 视频信息
 type VideoInfo struct {
-	ID              int64           `json:"id"`               // 视频ID
-	Title           string          `json:"title"`            // 标题
-	Description     string          `json:"description"`      // 描述
-	CoverUrl        string          `json:"coverUrl"`        // 封面URL
-	VideoUrl        string          `json:"videoUrl"`        // 视频URL
-	Duration        int32           `json:"duration"`         // 时长（秒）
-	Width           int32           `json:"width"`            // 宽度
-	Height          int32           `json:"height"`           // 高度
-	MusicId       int64          `json:"musicId"`       // 背景音乐ID
-	City            string          `json:"city"`             // 城市
-	Topics          []string        `json:"topics"`           // 话题标签
-	Author          VideoAuthor     `json:"author"`           // 作者信息
-	Stats           VideoStats      `json:"stats"`            // 统计数据
-	PublishedAt      	string         `json:"publishedAt"`       // "2006-01-02 15:04:05" 
+	ID          int64       `json:"id,string"`      // 视频ID（雪花ID，序列化为字符串避免前端精度丢失）
+	Title       string      `json:"title"`          // 标题
+	Description string      `json:"description"`    // 描述
+	CoverUrl    string      `json:"coverUrl"`       // 封面URL
+	VideoUrl    string      `json:"videoUrl"`       // 视频URL
+	Duration    int32       `json:"duration"`       // 时长（秒）
+	Width       int32       `json:"width"`          // 宽度
+	Height      int32       `json:"height"`         // 高度
+	MusicId     int64       `json:"musicId,string"` // 背景音乐ID
+	City        string      `json:"city"`           // 城市
+	Topics      []string    `json:"topics"`         // 话题标签
+	Author      VideoAuthor `json:"author"`         // 作者信息
+	Stats       VideoStats  `json:"stats"`          // 统计数据
+	IsLiked     bool        `json:"isLiked"`        // 当前登录用户是否已点赞
+	IsFavorited bool        `json:"isFavorited"`    // 当前登录用户是否已收藏
+	IsFollowing bool        `json:"isFollowing"`    // 当前登录用户是否已关注作者
+	PublishedAt string      `json:"publishedAt"`    // "2006-01-02 15:04:05"
 }
 
 // 分页信息
@@ -52,7 +55,7 @@ type VideoListOutput struct {
 
 // 创建视频输出
 type CreateVideoOutput struct {
-	VideoID int64 `json:"videoId"` // 创建成功的视频ID
+	VideoID int64 `json:"videoId,string"` // 创建成功的视频ID（雪花ID，序列化为字符串避免前端精度丢失）
 	Status  int   `json:"status"`  // 创建状态，1表示审核中，2表示成功 3.为通过 4.下架
 }
 

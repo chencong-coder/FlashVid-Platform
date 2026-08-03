@@ -11,7 +11,7 @@ import (
 )
 
 // GetFeedRecommend 获取推荐视频流
-func GetFeedRecommend(ctx context.Context, cursor string, count int) (*model.FeedOutput, api.ResCode, error) {
+func GetFeedRecommend(ctx context.Context, userID int64, cursor string, count int) (*model.FeedOutput, api.ResCode, error) {
 	// 1. 获取推荐视频流 查已发布 并且按发布时间降序
 	var err error
 	var videos []*model.Video
@@ -144,6 +144,10 @@ func GetFeedRecommend(ctx context.Context, cursor string, count int) (*model.Fee
 			},
 			PublishedAt: video.PublishedAt.Format("2006-01-02 15:04:05"),
 		})
+	}
+	// 附加当前登录用户的互动状态（点赞/收藏/关注作者）
+	if err = attachViewerState(ctx, userID, outputVideos); err != nil {
+		return nil, api.CodeInternalError, err
 	}
 	// 4. 返回视频流和下一个游标
 	hasMore := false
@@ -315,7 +319,11 @@ func GetFeedFollow(ctx context.Context, userId int64, cursor string, count int) 
 			PublishedAt: video.PublishedAt.Format("2006-01-02 15:04:05"),
 		})
 	}
-	// 5. 返回视频流和下一个游标
+	// 5. 附加当前用户的互动状态（点赞/收藏/关注）
+	if err = attachViewerState(ctx, userId, outputVideos); err != nil {
+		return nil, api.CodeInternalError, err
+	}
+	// 6. 返回视频流和下一个游标
 	hasMore := false
 	nextCursor := ""
 	if len(videos) == count {
@@ -505,7 +513,11 @@ func GetFeedFriends(ctx context.Context, userId int64, cursor string, count int)
 			PublishedAt: video.PublishedAt.Format("2006-01-02 15:04:05"),
 		})
 	}
-	// 6. 返回视频流和下一个游标
+	// 6. 附加当前用户的互动状态（点赞/收藏/关注）
+	if err = attachViewerState(ctx, userId, outputVideos); err != nil {
+		return nil, api.CodeInternalError, err
+	}
+	// 7. 返回视频流和下一个游标
 	hasMore := false
 	nextCursor := ""
 	if len(videos) == count {
@@ -522,7 +534,7 @@ func GetFeedFriends(ctx context.Context, userId int64, cursor string, count int)
 }
 
 // GetFeedNearby 获取附近视频流
-func GetFeedNearby(ctx context.Context, latitude, longitude float64, distance int, cursor string, count int) (*model.FeedOutput, api.ResCode, error) {
+func GetFeedNearby(ctx context.Context, userID int64, latitude, longitude float64, distance int, cursor string, count int) (*model.FeedOutput, api.ResCode, error) {
 	// 1. 计算经纬度范围
 	latRange := float64(distance) / 111.0 // 1度纬度约等于111公里
 	lngRange := float64(distance) / (111.0 * math.Cos(latitude*math.Pi/180.0)) // 经度范围根据纬度计算
@@ -677,6 +689,10 @@ func GetFeedNearby(ctx context.Context, latitude, longitude float64, distance in
 			},
 			PublishedAt: video.PublishedAt.Format("2006-01-02 15:04:05"),
 		})
+	}
+	// 附加当前登录用户的互动状态（点赞/收藏/关注作者）
+	if err = attachViewerState(ctx, userID, outputVideos); err != nil {
+		return nil, api.CodeInternalError, err
 	}
 	// 4. 返回视频流和下一个游标
 	hasMore := false

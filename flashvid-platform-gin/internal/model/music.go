@@ -2,7 +2,7 @@ package model
 
 // MusicInfo 音乐信息
 type MusicInfo struct {
-	ID        int64  `json:"id"`
+	ID        int64  `json:"id,string"`
 	Name      string `json:"name"`
 	Artist    string `json:"artist"`
 	Album     string `json:"album"`

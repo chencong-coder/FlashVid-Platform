@@ -84,8 +84,8 @@ func UpdatePlaylistHandler(c *gin.Context) {
 		api.ResponseError(c, api.CodeInvalidParam)
 		return
 	}
-	// 再获取请求参数中的其他字段
-	if err := c.ShouldBindQuery(&req); err != nil {
+	// 再获取请求体中的其他字段
+	if err := c.ShouldBindJSON(&req); err != nil {
 		api.ResponseError(c, api.CodeInvalidParam)
 		return
 	}

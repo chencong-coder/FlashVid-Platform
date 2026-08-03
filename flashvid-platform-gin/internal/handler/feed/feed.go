@@ -10,7 +10,10 @@ import (
 
 // GetFeedRecommendHandler 获取推荐视频流接口
 func GetFeedRecommendHandler(c *gin.Context) {
-	// 1. 获取游标和分页参数
+	// 1. 获取当前登录用户ID
+	loginUserID, _ := c.Get(middleware.CtxKeyUserID)
+	userID, _ := loginUserID.(int64)
+	// 2. 获取游标和分页参数
 	var req v1.RecommendFeedReq
 	if err := c.ShouldBindQuery(&req); err != nil {
 		api.ResponseError(c, api.CodeInvalidParam)
@@ -19,17 +22,17 @@ func GetFeedRecommendHandler(c *gin.Context) {
 	if req.Count < 10 {
 		req.Count = 10
 	}
-	// 2. 调用service获取推荐视频流
-	output, resCode, err := feed.GetFeedRecommend(c, req.Cursor, req.Count)
+	// 3. 调用service获取推荐视频流
+	output, resCode, err := feed.GetFeedRecommend(c, userID, req.Cursor, req.Count)
 	if err != nil {
 		api.ResponseError(c, resCode)
 		return
 	}
-	// 3. 返回响应
+	// 4. 返回响应
 	api.ResponseSuccess(c, v1.FeedResp{
-		Videos:     output.Videos,
+		Videos:          output.Videos,
 		NextCursorToken: output.NextCursorToken,
-		HasMore:    output.HasMore,
+		HasMore:         output.HasMore,
 	})
 }
 
@@ -107,7 +110,10 @@ func GetFeedFriendsHandler(c *gin.Context) {
 
 // GetFeedNearbyHandler 获取附近视频流接口
 func GetFeedNearbyHandler(c *gin.Context) {
-	// 1. 获取表单参数
+	// 1. 获取当前登录用户ID
+	loginUserID, _ := c.Get(middleware.CtxKeyUserID)
+	userID, _ := loginUserID.(int64)
+	// 2. 获取表单参数
 	var req v1.NearbyFeedReq
 	if err := c.ShouldBindQuery(&req); err != nil {
 		api.ResponseError(c, api.CodeInvalidParam)
@@ -119,8 +125,8 @@ func GetFeedNearbyHandler(c *gin.Context) {
 	if req.Distance <= 0 {
 		req.Distance = 10
 	}
-	// 2. 调用service获取推荐视频流
-	output, resCode, err := feed.GetFeedNearby(c, req.Latitude, req.Longitude, req.Distance, req.Cursor, req.Count)
+	// 3. 调用service获取附近视频流
+	output, resCode, err := feed.GetFeedNearby(c, userID, req.Latitude, req.Longitude, req.Distance, req.Cursor, req.Count)
 	if err != nil {
 		api.ResponseError(c, resCode)
 		return

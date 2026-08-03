@@ -74,9 +74,10 @@ func CreatePlaylist(ctx context.Context, userID int64, req v1.CreatePlaylistReq)
 }
 
 // 更新播放列表信息
-func UpdatePlaylist(ctx context.Context, playlistID int64, req v1.UpdatePlaylistReq) (api.ResCode, error) {
+func UpdatePlaylist(ctx context.Context, userID int64, req v1.UpdatePlaylistReq) (api.ResCode, error) {
+	playlistID := req.ID
 	// 1.根据播放列表ID查找播放列表是否存在
-	_, err := query.Playlist.WithContext(ctx).
+	pl, err := query.Playlist.WithContext(ctx).
 		Where(query.Playlist.ID.Eq(playlistID)).
 		First()
 	if err != nil {
@@ -84,6 +85,10 @@ func UpdatePlaylist(ctx context.Context, playlistID int64, req v1.UpdatePlaylist
 			return api.CodePlaylistNotExist, nil
 		}
 		return  api.CodeInternalError, err
+	}
+	// 校验归属权
+	if pl.UserID != userID {
+		return api.CodeNotPlaylistOwner, nil
 	}
 	// 2.更新播放列表信息 如果存在
 	var updateData = make(map[string]any)
