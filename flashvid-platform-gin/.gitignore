@@ -40,3 +40,7 @@ uploads/
 
 .DS_Store
 **/.DS_Store
+
+# local-only docs & seed data (never commit)
+docs/upload-module.md
+scripts/seed_videos.sql
