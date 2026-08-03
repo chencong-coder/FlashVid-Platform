@@ -2312,7 +2312,7 @@ paths:
       tags:
         - 播放列表
       summary: 获取播放列表内的视频
-      description: 分页获取指定播放列表内的视频列表（按加入时间倒序）
+      description: 游标分页获取指定播放列表内的视频列表（按加入时间倒序）
       operationId: getPlaylistVideos
       parameters:
         - name: id
@@ -2322,8 +2322,21 @@ paths:
           schema:
             type: integer
             format: int64
-        - $ref: '#/components/parameters/Page'
-        - $ref: '#/components/parameters/PageSize'
+        - name: cursor
+          in: query
+          required: false
+          description: 游标（上一页最后一条记录的 created_at，格式 "yyyy-MM-dd HH:mm:ss"，首次请求不传）
+          schema:
+            type: string
+            example: "2026-08-01 12:00:00"
+        - name: count
+          in: query
+          required: false
+          description: 每页数量，默认 20，最大 50
+          schema:
+            type: integer
+            default: 20
+            maximum: 50
       responses:
         '200':
           description: 获取成功
@@ -2343,8 +2356,14 @@ paths:
                             type: array
                             items:
                               $ref: '#/components/schemas/Video'
-                          pagination:
-                            $ref: '#/components/schemas/Pagination'
+                          nextCursor:
+                            type: string
+                            nullable: true
+                            description: 下一页游标，为 null 表示没有更多数据
+                            example: "2026-07-20T08:30:00Z"
+                          hasMore:
+                            type: boolean
+                            description: 是否还有更多数据
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':

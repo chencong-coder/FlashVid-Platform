@@ -89,6 +89,9 @@ const (
 	CodeOSSError           ResCode = 50004 // 对象存储错误
 	CodeThirdPartyError    ResCode = 50005 // 第三方服务错误
 	CodeValueNotExist 	ResCode = 50006 // 值不存在
+
+	// ==================== 播放列表错误 60000-69999 ====================
+	CodeCreatePlaylistFailed ResCode = 60001 // 创建播放列表失败
 )
 
 var codeMsgMap = map[ResCode]string{
@@ -170,6 +173,9 @@ var codeMsgMap = map[ResCode]string{
 	CodeOSSError:        "对象存储错误",
 	CodeThirdPartyError: "第三方服务错误",
 	CodeValueNotExist: "值不存在",
+
+	// ==================== 播放列表错误 ====================
+	CodeCreatePlaylistFailed: "创建播放列表失败",
 }
 
 func (c ResCode) Msg() string {
