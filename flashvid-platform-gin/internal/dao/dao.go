@@ -26,7 +26,12 @@ func MustInitMySQL(cfg *viper.Viper) {
 		cfg.GetString("mysql.port"),
 		cfg.GetString("mysql.dbname"),
 	)
-	db, err := gorm.Open(mysql.Open(dsn))
+	db, err := gorm.Open(mysql.New(mysql.Config{
+		DSN:                       dsn,
+		DisableDatetimePrecision:  true, // 使用 datetime 而非 datetime(3)，与 schema.sql 保持一致
+		DontSupportRenameIndex:    true,
+		DontSupportRenameColumn:   true,
+	}))
 	if err != nil {
 		panic(fmt.Errorf("connect db fail: %w", err))
 	}
