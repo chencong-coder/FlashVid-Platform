@@ -3,25 +3,22 @@ package feed
 import (
 	"context"
 	"errors"
-	"fmt"
 	"flashvid-platform-gin/api"
 	"flashvid-platform-gin/internal/dao/query"
 	"flashvid-platform-gin/internal/model"
-	"strconv"
-	"strings"
 	"time"
 	"math"
 )
 
-// GetFeedRecommend 获取推荐视频流（按点赞数降序，无需登录）
+// GetFeedRecommend 获取推荐视频流（按发布时间降序，无需登录）
 func GetFeedRecommend(ctx context.Context, userID int64, cursor string, count int) (*model.FeedOutput, api.ResCode, error) {
-	// 1. 获取推荐视频流：已发布，按点赞数降序、ID降序
+	// 1. 获取推荐视频流：已发布，按发布时间降序
 	var err error
 	var videos []*model.Video
 	if cursor == "" {
 		videos, err = query.Video.WithContext(ctx).
 			Where(query.Video.Status.Eq(2)).
-			Order(query.Video.LikeCount.Desc(), query.Video.ID.Desc()).
+			Order(query.Video.PublishedAt.Desc(), query.Video.ID.Desc()).
 			Limit(count).
 			Find()
 		if err != nil {
@@ -35,24 +32,16 @@ func GetFeedRecommend(ctx context.Context, userID int64, cursor string, count in
 			}, api.CodeSuccess, nil
 		}
 	} else {
-		// 2. 游标格式："{likeCount}:{id}"，实现 keyset 分页
-		parts := strings.SplitN(cursor, ":", 2)
-		if len(parts) != 2 {
-			return nil, api.CodeInvalidParam, errors.New("invalid cursor format")
+		// 2. 将游标转换为时间戳，获取下一页
+		cursorTime, err := time.Parse("2006-01-02 15:04:05", cursor)
+		if err != nil {
+			return nil, api.CodeInvalidParam, err
 		}
-		cursorLike, e1 := strconv.ParseInt(parts[0], 10, 64)
-		cursorID, e2 := strconv.ParseInt(parts[1], 10, 64)
-		if e1 != nil || e2 != nil {
-			return nil, api.CodeInvalidParam, errors.New("invalid cursor value")
-		}
-		// 取 like_count < cursor 或 (like_count = cursor AND id < cursorID) 的记录
-		// gen 的 Where 只接受 gen.Condition，用 UnderlyingDB 传原生 SQL 条件
-		err = query.Video.WithContext(ctx).UnderlyingDB().
-			Where("status = ? AND (like_count < ? OR (like_count = ? AND id < ?))",
-				2, cursorLike, cursorLike, cursorID).
-			Order("like_count DESC, id DESC").
+		videos, err = query.Video.WithContext(ctx).
+			Where(query.Video.Status.Eq(2), query.Video.PublishedAt.Lt(cursorTime)).
+			Order(query.Video.PublishedAt.Desc(), query.Video.ID.Desc()).
 			Limit(count).
-			Find(&videos).Error
+			Find()
 		if err != nil {
 			return nil, api.CodeInternalError, err
 		}
@@ -156,13 +145,13 @@ func GetFeedRecommend(ctx context.Context, userID int64, cursor string, count in
 	if err = attachViewerState(ctx, userID, outputVideos); err != nil {
 		return nil, api.CodeInternalError, err
 	}
-	// 4. 返回视频流和下一个游标（格式："{likeCount}:{id}"）
+	// 4. 返回视频流和下一个游标
 	hasMore := false
 	nextCursor := ""
 	if len(videos) == count {
 		hasMore = true
 		lastVideo := videos[len(videos)-1]
-		nextCursor = fmt.Sprintf("%d:%d", lastVideo.LikeCount, lastVideo.ID)
+		nextCursor = lastVideo.PublishedAt.Format("2006-01-02 15:04:05")
 	}
 
 	return &model.FeedOutput{
