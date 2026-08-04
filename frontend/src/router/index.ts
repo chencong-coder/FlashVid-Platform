@@ -17,25 +17,25 @@ const routes: RouteRecordRaw[] = [
     path: '/',
     name: 'recommend',
     component: () => import('@/views/RecommendView.vue'),
-    meta: { title: '推荐', bottomTab: 'home', requiresAuth: true },
+    meta: { title: '推荐', bottomTab: 'home' },
   },
   {
     path: '/follow',
     name: 'follow',
     component: () => import('@/views/FollowView.vue'),
-    meta: { title: '关注', bottomTab: 'home', requiresAuth: true },
+    meta: { title: '关注', bottomTab: 'home' },
   },
   {
     path: '/nearby',
     name: 'nearby',
     component: () => import('@/views/NearbyView.vue'),
-    meta: { title: '同城', bottomTab: 'home', requiresAuth: true },
+    meta: { title: '同城', bottomTab: 'home' },
   },
   {
     path: '/friends',
     name: 'friends',
     component: () => import('@/views/FriendsView.vue'),
-    meta: { title: '朋友', bottomTab: 'friends', requiresAuth: true },
+    meta: { title: '朋友', bottomTab: 'friends' },
   },
   {
     path: '/discover',
@@ -65,7 +65,7 @@ const routes: RouteRecordRaw[] = [
     path: '/messages',
     name: 'messages',
     component: () => import('@/views/MessagesView.vue'),
-    meta: { title: '消息', bottomTab: 'messages', requiresAuth: true },
+    meta: { title: '消息', bottomTab: 'messages' },
   },
   {
     path: '/chat/:userId',

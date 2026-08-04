@@ -3,28 +3,30 @@ package feed
 import (
 	"context"
 	"errors"
+	"fmt"
 	"flashvid-platform-gin/api"
 	"flashvid-platform-gin/internal/dao/query"
 	"flashvid-platform-gin/internal/model"
+	"strconv"
+	"strings"
 	"time"
 	"math"
 )
 
-// GetFeedRecommend 获取推荐视频流
+// GetFeedRecommend 获取推荐视频流（按点赞数降序，无需登录）
 func GetFeedRecommend(ctx context.Context, userID int64, cursor string, count int) (*model.FeedOutput, api.ResCode, error) {
-	// 1. 获取推荐视频流 查已发布 并且按发布时间降序
+	// 1. 获取推荐视频流：已发布，按点赞数降序、ID降序
 	var err error
 	var videos []*model.Video
 	if cursor == "" {
 		videos, err = query.Video.WithContext(ctx).
 			Where(query.Video.Status.Eq(2)).
-			Order(query.Video.PublishedAt.Desc(), query.Video.ID.Desc()).
+			Order(query.Video.LikeCount.Desc(), query.Video.ID.Desc()).
 			Limit(count).
 			Find()
 		if err != nil {
 			return nil, api.CodeInternalError, err
 		}
-		// 如果没有搜索到视频，返回空列表和空游标
 		if len(videos) == 0 {
 			return &model.FeedOutput{
 				Videos:          []model.VideoInfo{},
@@ -33,22 +35,27 @@ func GetFeedRecommend(ctx context.Context, userID int64, cursor string, count in
 			}, api.CodeSuccess, nil
 		}
 	} else {
-		// 2. 如果有游标，则按游标获取下一页数据
-		// 将游标转换为时间戳
-		cursorTime, err := time.Parse("2006-01-02 15:04:05", cursor)
-		if err != nil {
-			return nil, api.CodeInvalidParam, err
+		// 2. 游标格式："{likeCount}:{id}"，实现 keyset 分页
+		parts := strings.SplitN(cursor, ":", 2)
+		if len(parts) != 2 {
+			return nil, api.CodeInvalidParam, errors.New("invalid cursor format")
 		}
-		// 查询发布时间小于游标的已发布视频，并按发布时间降序排序 如果发布时间相同，则按ID降序排序，确保分页的稳定性
-		videos, err = query.Video.WithContext(ctx).
-			Where(query.Video.Status.Eq(2), query.Video.PublishedAt.Lt(cursorTime)).
-			Order(query.Video.PublishedAt.Desc(), query.Video.ID.Desc()).
+		cursorLike, e1 := strconv.ParseInt(parts[0], 10, 64)
+		cursorID, e2 := strconv.ParseInt(parts[1], 10, 64)
+		if e1 != nil || e2 != nil {
+			return nil, api.CodeInvalidParam, errors.New("invalid cursor value")
+		}
+		// 取 like_count < cursor 或 (like_count = cursor AND id < cursorID) 的记录
+		// gen 的 Where 只接受 gen.Condition，用 UnderlyingDB 传原生 SQL 条件
+		err = query.Video.WithContext(ctx).UnderlyingDB().
+			Where("status = ? AND (like_count < ? OR (like_count = ? AND id < ?))",
+				2, cursorLike, cursorLike, cursorID).
+			Order("like_count DESC, id DESC").
 			Limit(count).
-			Find()
+			Find(&videos).Error
 		if err != nil {
 			return nil, api.CodeInternalError, err
 		}
-		// 如果没有搜索到视频，返回空列表和空游标
 		if len(videos) == 0 {
 			return &model.FeedOutput{
 				Videos:          []model.VideoInfo{},
@@ -149,13 +156,13 @@ func GetFeedRecommend(ctx context.Context, userID int64, cursor string, count in
 	if err = attachViewerState(ctx, userID, outputVideos); err != nil {
 		return nil, api.CodeInternalError, err
 	}
-	// 4. 返回视频流和下一个游标
+	// 4. 返回视频流和下一个游标（格式："{likeCount}:{id}"）
 	hasMore := false
 	nextCursor := ""
 	if len(videos) == count {
 		hasMore = true
 		lastVideo := videos[len(videos)-1]
-		nextCursor = lastVideo.PublishedAt.Format("2006-01-02 15:04:05")
+		nextCursor = fmt.Sprintf("%d:%d", lastVideo.LikeCount, lastVideo.ID)
 	}
 
 	return &model.FeedOutput{

@@ -74,14 +74,16 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 			videoR.DELETE("/:id", middleware.Auth(), video.DeleteVideoHandler) // 删除视频
 		}
 
-		// 视频流路由组
+		// 推荐视频流（公开接口，无需登录；登录后可附加互动状态）
+		apiV1.GET("/feed/recommend", middleware.OptionalAuth(), feed.GetFeedRecommendHandler)
+
+		// 视频流路由组（需要登录）
 		feedR := apiV1.Group("/feed")
 		feedR.Use(middleware.Auth())
 		{
-			feedR.GET("recommend", feed.GetFeedRecommendHandler) // 获取推荐视频流
-			feedR.GET("follow", feed.GetFeedFollowHandler)       // 获取关注视频流
-			feedR.GET("friends", feed.GetFeedFriendsHandler)     // 获取好友视频流（互相关注）
-			feedR.GET("nearby", feed.GetFeedNearbyHandler)       // 获取附近视频流
+			feedR.GET("follow", feed.GetFeedFollowHandler)   // 获取关注视频流
+			feedR.GET("friends", feed.GetFeedFriendsHandler) // 获取好友视频流（互相关注）
+			feedR.GET("nearby", feed.GetFeedNearbyHandler)   // 获取附近视频流
 		}
 
 		// 互动相关路由组
