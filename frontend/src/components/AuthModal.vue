@@ -181,7 +181,7 @@ watch(
           <div class="mb-6 flex items-center gap-2">
             <button
               class="flex h-8 w-8 items-center justify-center rounded-full text-neutral-400 transition-colors hover:bg-white/10"
-              @click="authModal.switchView('prompt')"
+              @click="authModal.close()"
             >
               <i class="fa-solid fa-arrow-left text-sm" />
             </button>
@@ -237,7 +237,7 @@ watch(
           <div class="mb-6 flex items-center gap-2">
             <button
               class="flex h-8 w-8 items-center justify-center rounded-full text-neutral-400 transition-colors hover:bg-white/10"
-              @click="authModal.switchView('prompt')"
+              @click="authModal.close()"
             >
               <i class="fa-solid fa-arrow-left text-sm" />
             </button>
