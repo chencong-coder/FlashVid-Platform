@@ -185,13 +185,55 @@ func UnfavoriteVideo(ctx context.Context, userId int64, videoId int64) (*v1.Favo
 	if count == 0 {
 		return nil, api.CodeNotFavorited, errors.New("未收藏过该视频")
 	}
-	// 3. 事务：删除收藏记录 + 收藏数 -1
+	// 3. 事务：级联删除 playlist_videos + 删除收藏记录 + 收藏数 -1
 	err = query.Q.Transaction(func(tx *query.Query) error {
+		// 3-a. 查出该用户所有包含该视频的播放列表（playlist_videos JOIN playlists WHERE playlists.user_id = userId）
+		userPlaylists, err := tx.Playlist.WithContext(ctx).
+			Where(tx.Playlist.UserID.Eq(userId)).
+			Find()
+		if err != nil {
+			return err
+		}
+		if len(userPlaylists) > 0 {
+			playlistIDs := make([]int64, 0, len(userPlaylists))
+			for _, pl := range userPlaylists {
+				playlistIDs = append(playlistIDs, pl.ID)
+			}
+			// 3-b. 找到需要删除的关联行（每个播放列表最多一条，因为有唯一约束）
+			pvRows, err := tx.PlaylistVideo.WithContext(ctx).
+				Where(
+					tx.PlaylistVideo.PlaylistID.In(playlistIDs...),
+					tx.PlaylistVideo.VideoID.Eq(videoId),
+				).Find()
+			if err != nil {
+				return err
+			}
+			if len(pvRows) > 0 {
+				// 3-c. 硬删除 playlist_videos
+				if _, err = tx.PlaylistVideo.WithContext(ctx).
+					Where(
+						tx.PlaylistVideo.PlaylistID.In(playlistIDs...),
+						tx.PlaylistVideo.VideoID.Eq(videoId),
+					).Delete(); err != nil {
+					return err
+				}
+				// 3-d. 对每个受影响的播放列表 video_count - 1
+				for _, pv := range pvRows {
+					if _, err = tx.Playlist.WithContext(ctx).
+						Where(tx.Playlist.ID.Eq(pv.PlaylistID)).
+						UpdateSimple(tx.Playlist.VideoCount.Sub(1)); err != nil {
+						return err
+					}
+				}
+			}
+		}
+		// 3-e. 删除收藏记录
 		if _, err := tx.Favorite.WithContext(ctx).
 			Where(tx.Favorite.UserID.Eq(userId), tx.Favorite.VideoID.Eq(videoId)).
 			Delete(); err != nil {
 			return err
 		}
+		// 3-f. 视频收藏数 -1
 		if _, err := tx.Video.WithContext(ctx).Where(tx.Video.ID.Eq(videoId)).
 			UpdateSimple(tx.Video.FavoriteCount.Sub(1)); err != nil {
 			return err

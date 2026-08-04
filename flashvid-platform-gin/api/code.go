@@ -53,6 +53,7 @@ const (
 	CodeNotPlaylistOwner     ResCode = 20017 // 无权操作该播放列表
 	CodeVideoAlreadyInList   ResCode = 20018 // 视频已在播放列表中
 	CodeVideoNotInList       ResCode = 20019 // 视频不在播放列表中
+	CodeVideoNotFavorited    ResCode = 20020 // 视频未收藏，不能加入播放列表
 
 	// ==================== 评论相关错误 30000-39999 ====================
 	CodeCommentNotExist    ResCode = 30001 // 评论不存在
@@ -136,6 +137,7 @@ var codeMsgMap = map[ResCode]string{
 	CodeNotPlaylistOwner:     "无权操作该播放列表",
 	CodeVideoAlreadyInList:   "视频已在播放列表中",
 	CodeVideoNotInList:       "视频不在播放列表中",
+	CodeVideoNotFavorited:    "请先收藏视频再加入播放列表",
 	CodeAlreadyUnliked:     "已取消点赞",
 
 	// ==================== 评论相关错误 ====================

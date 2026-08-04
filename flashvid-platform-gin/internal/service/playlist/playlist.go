@@ -327,7 +327,17 @@ func AddVideoToPlaylist(ctx context.Context, userID, playlistID, videoID int64) 
 		}
 		return api.CodeInternalError, err
 	}
-	// 3. 幂等校验：视频是否已在列表中
+	// 3. 校验用户已收藏该视频（只有收藏过才能加入播放列表）
+	favCount, err := query.Favorite.WithContext(ctx).
+		Where(query.Favorite.UserID.Eq(userID), query.Favorite.VideoID.Eq(videoID)).
+		Count()
+	if err != nil {
+		return api.CodeInternalError, err
+	}
+	if favCount == 0 {
+		return api.CodeVideoNotFavorited, nil
+	}
+	// 4. 幂等校验：视频是否已在列表中
 	_, err = query.PlaylistVideo.WithContext(ctx).
 		Where(query.PlaylistVideo.PlaylistID.Eq(playlistID), query.PlaylistVideo.VideoID.Eq(videoID)).
 		First()
