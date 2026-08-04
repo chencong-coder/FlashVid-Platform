@@ -2,7 +2,7 @@ package v1
 
 // 用户信息响应
 type UserInfoResp struct {
-	UserId         int64  `json:"userId"`         // 用户ID
+	UserId         int64  `json:"userId,string"`  // 用户ID
 	Username       string `json:"username"`       // 用户名
 	Nickname       string `json:"nickname"`       // 昵称
 	Avatar         string `json:"avatar"`         // 头像
@@ -35,7 +35,7 @@ type UpdateUserInfoReq struct {
 
 // 更新用户信息响应
 type UpdateUserInfoResp struct {
-	UserId         int64  `json:"userId"`         // 用户ID
+	UserId         int64  `json:"userId,string"`  // 用户ID
 	Username       string `json:"username"`       // 用户名
 	Nickname       string `json:"nickname"`       // 昵称
 	Avatar         string `json:"avatar"`         // 头像
@@ -51,5 +51,3 @@ type UpdateUserInfoResp struct {
 	Email          string `json:"email"`          // 邮箱
 	UpdatedAt      string `json:"updatedAt"`      // 更新时间（格式：YYYY-MM-DD HH:mm:ss）
 }
-
-

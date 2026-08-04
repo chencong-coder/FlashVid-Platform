@@ -56,7 +56,7 @@ function sendCode(): void {
   }
   codeSent.value = true
   codeCooldown.value = 60
-  showToast('演示：填000000')
+  showToast('演示验证码：123456')
   const t = setInterval(() => {
     if (--codeCooldown.value <= 0) {
       clearInterval(t)
@@ -68,6 +68,10 @@ function sendCode(): void {
 async function handleRegister(): Promise<void> {
   if (!regUsername.value || !regPhone.value || !regCode.value || !regPassword.value) {
     showToast('请填写所有信息')
+    return
+  }
+  if (!/^\d{6}$/.test(regCode.value)) {
+    showToast('请输入6位数字验证码')
     return
   }
   regLoading.value = true
@@ -246,7 +250,14 @@ watch(
           </div>
           <div class="field-row mt-2">
             <i class="fa-solid fa-shield-halved field-icon" />
-            <input v-model="regCode" type="text" placeholder="验证码" class="field-input" />
+            <input
+              v-model="regCode"
+              type="text"
+              inputmode="numeric"
+              maxlength="6"
+              placeholder="验证码"
+              class="field-input"
+            />
           </div>
           <div class="field-row mt-2">
             <i class="fa-solid fa-lock field-icon" />

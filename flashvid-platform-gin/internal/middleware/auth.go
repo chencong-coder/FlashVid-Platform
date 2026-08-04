@@ -46,3 +46,31 @@ func Auth() gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+// OptionalAuth parses a Bearer token when one is supplied, while allowing
+// anonymous requests to continue without a user ID in the context.
+func OptionalAuth() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		authorizationValue := c.GetHeader("Authorization")
+		if authorizationValue == "" {
+			c.Next()
+			return
+		}
+
+		if !strings.HasPrefix(authorizationValue, tokenPrefix) || len(authorizationValue) <= len(tokenPrefix) {
+			api.ResponseError(c, api.CodeInvalidToken)
+			c.Abort()
+			return
+		}
+
+		claims, err := jwt.ParseAccessToken(strings.TrimPrefix(authorizationValue, tokenPrefix))
+		if err != nil {
+			zap.L().Sugar().Debugf("parse access token error: %v", err)
+			api.ResponseError(c, api.CodeInvalidToken)
+			c.Abort()
+			return
+		}
+		c.Set(CtxKeyUserID, claims.UserId)
+		c.Next()
+	}
+}

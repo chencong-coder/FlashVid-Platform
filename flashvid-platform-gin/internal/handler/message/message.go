@@ -83,8 +83,13 @@ func SendMessageHandler(c *gin.Context) {
 		api.ResponseError(c, api.CodeInvalidParam)
 		return
 	}
+	toUserID, err := strconv.ParseInt(req.ToUserID, 10, 64)
+	if err != nil || toUserID <= 0 {
+		api.ResponseError(c, api.CodeInvalidParam)
+		return
+	}
 	info, resCode, err := svc.SendMessage(c, loginUserID, &model.SendMessageInput{
-		ToUserID:    req.ToUserID,
+		ToUserID:    toUserID,
 		MessageType: req.MessageType,
 		Content:     req.Content,
 		MediaURL:    req.MediaURL,

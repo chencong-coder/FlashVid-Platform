@@ -69,7 +69,17 @@ func CreateCommentHandler(c *gin.Context) {
 		api.ResponseError(c, api.CodeInvalidParam)
 		return
 	}
-	commentInfo, replyInfo, resCode, err := comment.CreateComment(c, userId, videoId, req.Content, req.ParentID, req.ReplyToUserID)
+	parentID, err := parseOptionalID(req.ParentID)
+	if err != nil {
+		api.ResponseError(c, api.CodeInvalidParam)
+		return
+	}
+	replyToUserID, err := parseOptionalID(req.ReplyToUserID)
+	if err != nil {
+		api.ResponseError(c, api.CodeInvalidParam)
+		return
+	}
+	commentInfo, replyInfo, resCode, err := comment.CreateComment(c, userId, videoId, req.Content, parentID, replyToUserID)
 	if err != nil {
 		api.ResponseError(c, resCode)
 		return
@@ -78,6 +88,17 @@ func CreateCommentHandler(c *gin.Context) {
 		Comment: commentInfo,
 		Reply:   replyInfo,
 	})
+}
+
+func parseOptionalID(value string) (int64, error) {
+	if value == "" {
+		return 0, nil
+	}
+	id, err := strconv.ParseInt(value, 10, 64)
+	if err != nil || id < 0 {
+		return 0, strconv.ErrSyntax
+	}
+	return id, nil
 }
 
 // 删除评论接口（需要登录）

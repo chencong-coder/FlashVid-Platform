@@ -5,7 +5,7 @@ import type { FeedType, VideoItem } from '@/types/video'
 
 // ===== 后端返回结构 =====
 export interface FeedAuthor {
-  id: number
+  id: string
   username: string
   avatar: string
   nickname: string
@@ -20,7 +20,7 @@ export interface FeedStats {
 }
 
 export interface FeedVideo {
-  id: number
+  id: string
   title: string
   description: string
   coverUrl: string
@@ -28,11 +28,14 @@ export interface FeedVideo {
   duration: number
   width: number
   height: number
-  musicId: number
+  musicId: string
   city: string
   topics: string[]
   author: FeedAuthor
   stats: FeedStats
+  isLiked: boolean
+  isFavorited: boolean
+  isFollowing: boolean
   publishedAt: string
 }
 
@@ -73,8 +76,7 @@ export const mapFeedVideo = (v: FeedVideo, feed: FeedType): VideoItem => ({
     id: String(v.author.id),
     nickname: v.author.nickname || v.author.username,
     avatar: v.author.avatar,
-    // 关注流 / 好友流里的作者一定是已关注的
-    followed: feed === 'follow' || feed === 'friends',
+    followed: v.isFollowing,
   },
   description: v.description || v.title,
   topics: v.topics ?? [],
@@ -88,7 +90,7 @@ export const mapFeedVideo = (v: FeedVideo, feed: FeedType): VideoItem => ({
     favorites: v.stats.favoriteCount,
     shares: v.stats.shareCount,
   },
-  liked: false,
-  favorited: false,
+  liked: v.isLiked,
+  favorited: v.isFavorited,
   city: feed === 'nearby' ? v.city : undefined,
 })

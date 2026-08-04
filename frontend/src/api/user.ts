@@ -7,7 +7,7 @@ import type { FeedVideo } from './feed'
 
 // ===== 用户信息 =====
 export interface UserInfo {
-  userId: number
+  userId: string
   username: string
   nickname: string
   avatar: string
@@ -22,6 +22,10 @@ export interface UserInfo {
   birthday: string
   email: string
   createdAt: string
+}
+
+export interface UpdateUserResult extends Omit<UserInfo, 'createdAt'> {
+  updatedAt: string
 }
 
 export interface Pagination {
@@ -57,13 +61,12 @@ export interface PageParams {
 }
 
 // ===== 用户资料 =====
-export const getUserInfo = (userId: string | number) =>
-  http.get<ApiResponse<UserInfo>>(`/user/${userId}`)
+export const getUserInfo = (userId: string) => http.get<ApiResponse<UserInfo>>(`/user/${userId}`)
 
 export const updateUserInfo = (payload: UpdateUserPayload) =>
-  http.put<ApiResponse<UserInfo>>('/user/profile', payload)
+  http.put<ApiResponse<UpdateUserResult>>('/user/profile', payload)
 
-export const getUserVideos = (userId: string | number, params: PageParams = {}) =>
+export const getUserVideos = (userId: string, params: PageParams = {}) =>
   http.get<ApiResponse<VideoListResp>>(`/user/${userId}/videos`, { params })
 
 // 我的点赞列表（私有）
@@ -76,7 +79,7 @@ export const getMyFavorites = (params: PageParams = {}) =>
 
 // ===== 播放列表 =====
 export interface PlaylistInfo {
-  id: number
+  id: string
   title: string
   description: string
   coverUrl: string
@@ -91,46 +94,138 @@ export interface GetPlaylistsResp {
 export interface PlaylistVideosResp {
   playlist: PlaylistInfo
   videos: FeedVideo[]
-  pagination: Pagination
+  nextCursor: string
+  hasMore: boolean
 }
 
-export const getMyPlaylists = () =>
-  http.get<ApiResponse<GetPlaylistsResp>>('/playlists')
+export interface PlaylistVideosParams {
+  cursor?: string
+  count?: number
+}
 
-export const createPlaylist = (payload: { title: string; description?: string; coverUrl?: string }) =>
-  http.post<ApiResponse<{ playlist: PlaylistInfo }>>('/playlists', payload)
+export interface CreatePlaylistPayload {
+  title: string
+  description?: string
+  coverUrl?: string
+}
 
-export const updatePlaylist = (
-  playlistId: number,
-  payload: { title?: string; description?: string; coverUrl?: string },
-) => http.put<ApiResponse<unknown>>(`/playlists/${playlistId}`, payload)
+export interface UpdatePlaylistPayload {
+  title?: string
+  description?: string
+  coverUrl?: string
+}
 
-export const deletePlaylist = (playlistId: number) =>
-  http.delete<ApiResponse<unknown>>(`/playlists/${playlistId}`)
+interface PlaylistWire {
+  id: string
+  title: string
+  description: string
+  cover_url: string
+  video_count: number
+  created_at: string
+}
 
-export const getPlaylistVideos = (playlistId: number, params: PageParams = {}) =>
-  http.get<ApiResponse<PlaylistVideosResp>>(`/playlists/${playlistId}/videos`, { params })
+interface PlaylistWriteWire {
+  title?: string
+  description?: string
+  cover_url?: string
+}
 
-export const addVideoToPlaylist = (playlistId: number, videoId: number) =>
-  http.post<ApiResponse<unknown>>(`/playlists/${playlistId}/videos`, { videoId })
+interface GetPlaylistsWireResp {
+  playlists: PlaylistWire[] | null
+}
 
-export const removeVideoFromPlaylist = (playlistId: number, videoId: number) =>
-  http.delete<ApiResponse<unknown>>(`/playlists/${playlistId}/videos/${videoId}`)
+interface PlaylistVideosWireResp {
+  playlist: PlaylistWire
+  videos: FeedVideo[]
+  nextCursor: string
+  hasMore: boolean
+}
+
+const mapPlaylist = (playlist: PlaylistWire): PlaylistInfo => ({
+  id: playlist.id,
+  title: playlist.title,
+  description: playlist.description,
+  coverUrl: playlist.cover_url,
+  videoCount: playlist.video_count,
+  createdAt: playlist.created_at,
+})
+
+const mapPlaylistPayload = (payload: UpdatePlaylistPayload): PlaylistWriteWire => ({
+  ...(payload.title !== undefined ? { title: payload.title } : {}),
+  ...(payload.description !== undefined ? { description: payload.description } : {}),
+  ...(payload.coverUrl !== undefined ? { cover_url: payload.coverUrl } : {}),
+})
+
+export const getMyPlaylists = async () => {
+  const response = await http.get<ApiResponse<GetPlaylistsWireResp>>('/playlists')
+  return {
+    ...response,
+    data: {
+      ...response.data,
+      data: {
+        playlists: (response.data.data.playlists ?? []).map(mapPlaylist),
+      },
+    },
+  }
+}
+
+export const createPlaylist = async (payload: CreatePlaylistPayload) => {
+  const response = await http.post<ApiResponse<{ playlist: PlaylistWire }>>('/playlists', {
+    ...mapPlaylistPayload(payload),
+    title: payload.title,
+  })
+  return {
+    ...response,
+    data: {
+      ...response.data,
+      data: { playlist: mapPlaylist(response.data.data.playlist) },
+    },
+  }
+}
+
+export const updatePlaylist = (playlistId: string, payload: UpdatePlaylistPayload) =>
+  http.put<ApiResponse<string>>(`/playlists/${playlistId}`, mapPlaylistPayload(payload))
+
+export const deletePlaylist = (playlistId: string) =>
+  http.delete<ApiResponse<string>>(`/playlists/${playlistId}`)
+
+export const getPlaylistVideos = async (playlistId: string, params: PlaylistVideosParams = {}) => {
+  const response = await http.get<ApiResponse<PlaylistVideosWireResp>>(
+    `/playlists/${playlistId}/videos`,
+    { params },
+  )
+  return {
+    ...response,
+    data: {
+      ...response.data,
+      data: {
+        ...response.data.data,
+        playlist: mapPlaylist(response.data.data.playlist),
+      },
+    },
+  }
+}
+
+export const addVideoToPlaylist = (playlistId: string, videoId: string) =>
+  http.post<ApiResponse<string>>(`/playlists/${playlistId}/videos`, { videoId })
+
+export const removeVideoFromPlaylist = (playlistId: string, videoId: string) =>
+  http.delete<ApiResponse<string>>(`/playlists/${playlistId}/videos/${videoId}`)
 
 // ===== 关注 =====
-export const followUser = (userId: string | number) =>
+export const followUser = (userId: string) =>
   http.post<ApiResponse<FollowResp>>(`/user/${userId}/follow`)
 
-export const unfollowUser = (userId: string | number) =>
+export const unfollowUser = (userId: string) =>
   http.delete<ApiResponse<FollowResp>>(`/user/${userId}/follow`)
 
-export const getUserFollowers = (userId: string | number, params: PageParams = {}) =>
+export const getUserFollowers = (userId: string, params: PageParams = {}) =>
   http.get<ApiResponse<{ followers: UserInfo[]; pagination: Pagination }>>(
     `/user/${userId}/followers`,
     { params },
   )
 
-export const getUserFollowing = (userId: string | number, params: PageParams = {}) =>
+export const getUserFollowing = (userId: string, params: PageParams = {}) =>
   http.get<ApiResponse<{ following: UserInfo[]; pagination: Pagination }>>(
     `/user/${userId}/followings`,
     { params },

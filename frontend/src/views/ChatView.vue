@@ -5,13 +5,14 @@ import { useRoute, useRouter } from 'vue-router'
 import { getMessages, sendMessage, markConversationRead, type MessageInfo } from '@/api/message'
 import { getUserInfo, type UserInfo } from '@/api/user'
 import { useUserStore } from '@/store/user'
+import { parseApiDate } from '@/utils/date'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 
-const targetUserId = computed(() => Number(route.params.userId))
-const currentUserId = computed(() => Number(userStore.profile?.id ?? 0))
+const targetUserId = computed(() => String(route.params.userId ?? ''))
+const currentUserId = computed(() => userStore.profile?.id ?? '')
 
 const messages = ref<MessageInfo[]>([])
 const targetUser = ref<UserInfo | null>(null)
@@ -26,7 +27,9 @@ async function loadTargetUser() {
   try {
     const res = await getUserInfo(targetUserId.value)
     targetUser.value = res.data.data
-  } catch {}
+  } catch {
+    targetUser.value = null
+  }
 }
 
 async function loadMessages(prepend = false) {
@@ -51,7 +54,9 @@ async function loadMessages(prepend = false) {
 async function markRead() {
   try {
     await markConversationRead(targetUserId.value)
-  } catch {}
+  } catch {
+    return
+  }
 }
 
 function scrollToBottom() {
@@ -64,7 +69,7 @@ async function handleSend() {
   sendingMessage.value = true
   // 乐观更新：先展示，再确认
   const optimistic: MessageInfo = {
-    id: Date.now(),
+    id: `local-${Date.now()}`,
     fromUserId: currentUserId.value,
     toUserId: targetUserId.value,
     messageType: 1,
@@ -91,14 +96,14 @@ async function handleSend() {
 
 function formatMsgTime(dateStr: string): string {
   if (!dateStr) return ''
-  const d = new Date(dateStr)
-  if (isNaN(d.getTime())) return ''
+  const d = parseApiDate(dateStr)
+  if (!d) return ''
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
 onMounted(async () => {
   await Promise.all([loadTargetUser(), loadMessages()])
-  markRead()
+  await markRead()
   await nextTick()
   scrollToBottom()
 })
@@ -150,12 +155,16 @@ onMounted(async () => {
             <span v-else-if="msg.messageType === 3">[视频]</span>
             <span v-else>{{ msg.content }}</span>
           </div>
-          <time class="shrink-0 text-[10px] text-neutral-600">{{ formatMsgTime(msg.createdAt) }}</time>
+          <time class="shrink-0 text-[10px] text-neutral-600">{{
+            formatMsgTime(msg.createdAt)
+          }}</time>
         </div>
 
         <!-- 自己的消息 -->
         <div v-else class="flex max-w-[70%] items-end gap-2">
-          <time class="shrink-0 text-[10px] text-neutral-600">{{ formatMsgTime(msg.createdAt) }}</time>
+          <time class="shrink-0 text-[10px] text-neutral-600">{{
+            formatMsgTime(msg.createdAt)
+          }}</time>
           <div class="rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-sm leading-relaxed">
             <span v-if="msg.messageType === 2">[图片]</span>
             <span v-else-if="msg.messageType === 3">[视频]</span>

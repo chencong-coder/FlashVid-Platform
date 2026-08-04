@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { getConversations, type ConversationInfo } from '@/api/message'
+import { parseApiDate } from '@/utils/date'
 
 const router = useRouter()
 
@@ -33,14 +34,18 @@ async function loadConversations() {
 /** 将后端时间字符串格式化为会话列表时间显示 */
 function formatTime(dateStr: string): string {
   if (!dateStr) return ''
-  const d = new Date(dateStr)
-  if (isNaN(d.getTime())) return dateStr
+  const d = parseApiDate(dateStr)
+  if (!d) return dateStr
   const now = new Date()
   const diffMs = now.getTime() - d.getTime()
   const diffDays = Math.floor(diffMs / 86_400_000)
-  if (diffDays === 0) return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  if (diffDays === 0)
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
   if (diffDays === 1) return '昨天'
-  if (diffDays < 7) return ['日', '一', '二', '三', '四', '五', '六'][d.getDay()] ? `星期${['日', '一', '二', '三', '四', '五', '六'][d.getDay()]}` : '昨天'
+  if (diffDays < 7)
+    return ['日', '一', '二', '三', '四', '五', '六'][d.getDay()]
+      ? `星期${['日', '一', '二', '三', '四', '五', '六'][d.getDay()]}`
+      : '昨天'
   return `${d.getMonth() + 1}/${d.getDate()}`
 }
 
@@ -54,7 +59,7 @@ function previewText(conv: ConversationInfo): string {
 }
 
 function openChat(conv: ConversationInfo) {
-  router.push({ name: 'chat', params: { userId: conv.targetUser.id } })
+  void router.push({ name: 'chat', params: { userId: conv.targetUser.id } })
 }
 
 onMounted(loadConversations)
@@ -93,11 +98,16 @@ onMounted(loadConversations)
     <!-- 错误提示 -->
     <div v-else-if="error" class="px-4 py-6 text-center text-sm text-red-400">
       {{ error }}
-      <button type="button" class="mt-2 block w-full text-primary" @click="loadConversations">重试</button>
+      <button type="button" class="mt-2 block w-full text-primary" @click="loadConversations">
+        重试
+      </button>
     </div>
 
     <!-- 空状态 -->
-    <div v-else-if="conversations.length === 0" class="px-4 py-12 text-center text-sm text-neutral-500">
+    <div
+      v-else-if="conversations.length === 0"
+      class="px-4 py-12 text-center text-sm text-neutral-500"
+    >
       暂无私信
     </div>
 
@@ -118,7 +128,8 @@ onMounted(loadConversations)
           <span
             v-if="conv.unreadCount > 0"
             class="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px]"
-          >{{ conv.unreadCount > 99 ? '99+' : conv.unreadCount }}</span>
+            >{{ conv.unreadCount > 99 ? '99+' : conv.unreadCount }}</span
+          >
         </div>
         <div class="min-w-0 flex-1">
           <div class="flex justify-between">

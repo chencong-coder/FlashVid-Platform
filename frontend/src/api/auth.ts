@@ -13,7 +13,7 @@ export interface RegisterPayload {
 }
 
 export interface RegisterResult {
-  userId: number
+  userId: string
   username: string
 }
 
@@ -27,7 +27,7 @@ export interface LoginPayload {
 }
 
 export interface LoginResult {
-  userId: number
+  userId: string
   username: string
   nickname: string
   avatar: string

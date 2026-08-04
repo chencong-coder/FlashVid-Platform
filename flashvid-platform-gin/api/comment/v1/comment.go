@@ -6,8 +6,8 @@ import (
 
 // 获取评论请求
 type GetCommentsReq struct {
-	Cursor   string `form:"cursor" binding:"omitempty"` // 游标，首次不传
-    Count    int    `form:"count"    binding:"omitempty,max=50"` // 请求数量，最大50，小于10时handler层默认为10
+	Cursor string `form:"cursor" binding:"omitempty"`          // 游标，首次不传
+	Count  int    `form:"count"    binding:"omitempty,max=50"` // 请求数量，最大50，小于10时handler层默认为10
 }
 
 // 获取评论响应
@@ -24,9 +24,9 @@ type GetRepliesResp struct {
 
 // 创建评论请求
 type CreateCommentReq struct {
-	Content       string `json:"content" binding:"required,min=1,max=500"`        // 评论内容
-	ParentID      int64  `json:"parentId" binding:"omitempty,min=0"`              // 父评论ID，0表示一级评论
-	ReplyToUserID int64  `json:"replyToUserId" binding:"omitempty,min=0"`         // 被回复的用户ID
+	Content       string `json:"content" binding:"required,min=1,max=500"`  // 评论内容
+	ParentID      string `json:"parentId" binding:"omitempty,numeric"`      // 父评论ID，空或0表示一级评论
+	ReplyToUserID string `json:"replyToUserId" binding:"omitempty,numeric"` // 被回复的用户ID
 }
 
 // 创建评论响应（根据parentId返回不同类型）

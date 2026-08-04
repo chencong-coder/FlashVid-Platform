@@ -31,7 +31,7 @@ type GetMessagesResp struct {
 
 // SendMessageReq 发送私信请求
 type SendMessageReq struct {
-	ToUserID    int64  `json:"toUserId" binding:"required,min=1"`
+	ToUserID    string `json:"toUserId" binding:"required,numeric"`
 	MessageType int32  `json:"messageType" binding:"required,oneof=1 2 3"`
 	Content     string `json:"content" binding:"omitempty,max=1000"`
 	MediaURL    string `json:"mediaUrl" binding:"omitempty"`

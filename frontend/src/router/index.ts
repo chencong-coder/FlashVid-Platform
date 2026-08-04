@@ -17,7 +17,7 @@ const routes: RouteRecordRaw[] = [
     path: '/',
     name: 'recommend',
     component: () => import('@/views/RecommendView.vue'),
-    meta: { title: '推荐', bottomTab: 'home' },
+    meta: { title: '推荐', bottomTab: 'home', requiresAuth: true },
   },
   {
     path: '/follow',
@@ -29,7 +29,7 @@ const routes: RouteRecordRaw[] = [
     path: '/nearby',
     name: 'nearby',
     component: () => import('@/views/NearbyView.vue'),
-    meta: { title: '同城', bottomTab: 'home' },
+    meta: { title: '同城', bottomTab: 'home', requiresAuth: true },
   },
   {
     path: '/friends',
@@ -102,7 +102,7 @@ const router = createRouter({
 
 router.beforeEach((to, from) => {
   if (to.meta.requiresAuth && !useAuthModalStore().requireLogin(to.fullPath)) {
-    return from.name ? false : { name: 'recommend' }
+    return from.name && !from.meta.requiresAuth ? false : { name: 'profile' }
   }
   document.title = `${to.meta.title} - 闪视`
   return true

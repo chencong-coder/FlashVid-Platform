@@ -4,7 +4,7 @@ import type { ApiResponse } from '@/types/api'
 
 // ===== 音乐 =====
 export interface MusicItem {
-  id: number
+  id: string
   name: string
   artist: string
   album: string

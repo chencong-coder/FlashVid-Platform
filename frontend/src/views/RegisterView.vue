@@ -26,7 +26,7 @@ const sendCode = (): void => {
   }
   codeSent.value = true
   codeCooldown.value = 60
-  showToast('验证码已发送（演示：填 000000）')
+  showToast('验证码已发送（演示：填 123456）')
   cooldownTimer = setInterval(() => {
     codeCooldown.value--
     if (codeCooldown.value <= 0) {
@@ -47,6 +47,10 @@ const handleRegister = async (): Promise<void> => {
   }
   if (password.value.length < 6 || password.value.length > 20) {
     showToast('密码须 6-20 个字符')
+    return
+  }
+  if (!/^\d{6}$/.test(code.value)) {
+    showToast('请输入6位数字验证码')
     return
   }
   loading.value = true

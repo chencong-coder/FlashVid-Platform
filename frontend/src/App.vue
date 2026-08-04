@@ -24,10 +24,10 @@ watch(
     if (to.name === 'login') {
       const redirect = to.query.redirect as string | undefined
       authModal.open('prompt', redirect)
-      void router.replace('/')
+      void router.replace({ name: 'profile' })
     } else if (to.name === 'register') {
       authModal.open('prompt')
-      void router.replace('/')
+      void router.replace({ name: 'profile' })
     }
   },
   { immediate: true },

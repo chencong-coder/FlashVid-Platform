@@ -82,7 +82,7 @@ const saveProfile = async (): Promise<void> => {
     if (res.data.code === 0) {
       if (userStore.profile && payload.nickname) userStore.profile.nickname = payload.nickname
       if (userStore.profile && payload.bio !== undefined) userStore.profile.bio = payload.bio
-      userInfo.value = res.data.data
+      if (userInfo.value) userInfo.value = { ...userInfo.value, ...res.data.data }
       showToast('保存成功')
       showEditModal.value = false
     } else {

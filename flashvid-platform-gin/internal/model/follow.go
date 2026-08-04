@@ -14,20 +14,19 @@ type UserFollowingOutput struct {
 
 // 用户信息
 type UserInfo struct {
-	UserId         int64     `json:"userId"`
-	Username       string    `json:"username"`
-	Gender         int32     `json:"gender"`
-	Nickname       string    `json:"nickname"`
-	Avatar         string    `json:"avatar"`
-	Bio            string    `json:"bio"`
-	City           string    `json:"city"`
-	FollowersCount int32     `json:"followersCount"`
-	FollowingCount int32     `json:"followingCount"`
-	VideosCount    int32     `json:"videosCount"`
-	LikesCount     int32     `json:"likesCount"`
-	Phone          string    `json:"phone"`
+	UserId         int64  `json:"userId,string"`
+	Username       string `json:"username"`
+	Gender         int32  `json:"gender"`
+	Nickname       string `json:"nickname"`
+	Avatar         string `json:"avatar"`
+	Bio            string `json:"bio"`
+	City           string `json:"city"`
+	FollowersCount int32  `json:"followersCount"`
+	FollowingCount int32  `json:"followingCount"`
+	VideosCount    int32  `json:"videosCount"`
+	LikesCount     int32  `json:"likesCount"`
+	Phone          string `json:"phone"`
 	Birthday       string `json:"birthday"`
-	Email          string    `json:"email"`
+	Email          string `json:"email"`
 	CreatedAt      string `json:"createdAt"`
 }
-

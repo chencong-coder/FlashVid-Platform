@@ -10,13 +10,7 @@ import {
   type FeedResponse,
 } from '@/api/feed'
 import { followUser, unfollowUser } from '@/api/user'
-import {
-  favoriteVideo,
-  likeVideo,
-  shareVideo,
-  unfavoriteVideo,
-  unlikeVideo,
-} from '@/api/video'
+import { favoriteVideo, likeVideo, shareVideo, unfavoriteVideo, unlikeVideo } from '@/api/video'
 import { getTopicVideos } from '@/api/topic'
 import type { FeedCache, FeedType, GeoLocation, VideoItem } from '@/types/video'
 
@@ -106,14 +100,12 @@ export const useVideoStore = defineStore('video', {
       if (cache.loading || !cache.hasMore) return
       cache.loading = true
       try {
-        const data = await fetchFeedPage(
-          feed,
-          { cursor: cache.cursor },
-          this.location,
-          { id: this.topicId, sort: this.topicSort },
-        )
+        const data = await fetchFeedPage(feed, { cursor: cache.cursor }, this.location, {
+          id: this.topicId,
+          sort: this.topicSort,
+        })
         const mapped = (data.videos ?? []).map((v) => mapFeedVideo(v, feed))
-        cache.items.push(...mapped)
+        cache.items = [...cache.items, ...mapped]
         cache.cursor = data.nextCursorToken ?? ''
         cache.hasMore = data.hasMore && cache.cursor !== ''
       } catch {

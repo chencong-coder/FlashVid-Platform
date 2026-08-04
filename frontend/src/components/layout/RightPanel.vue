@@ -10,13 +10,13 @@ const trendingTopics = ref<TopicItem[]>([])
 const loading = ref(true)
 
 // API 无数据时的兜底 mock
-const mockTrending = [
-  { id: 1, name: '慵懒周末', videoCount: 2_400_000 },
-  { id: 2, name: '晨间routine', videoCount: 1_800_000 },
-  { id: 3, name: '旅行日记', videoCount: 1_200_000 },
-  { id: 4, name: '舞蹈挑战', videoCount: 965_000 },
-  { id: 5, name: '美食ASMR', videoCount: 872_000 },
-] as TopicItem[]
+const mockTrending: Array<Pick<TopicItem, 'id' | 'name' | 'videoCount'>> = [
+  { id: 'mock-1', name: '慵懒周末', videoCount: 2_400_000 },
+  { id: 'mock-2', name: '晨间routine', videoCount: 1_800_000 },
+  { id: 'mock-3', name: '旅行日记', videoCount: 1_200_000 },
+  { id: 'mock-4', name: '舞蹈挑战', videoCount: 965_000 },
+  { id: 'mock-5', name: '美食ASMR', videoCount: 872_000 },
+]
 
 const suggestions = [
   { name: '林朴', cat: '旅行', avatar: 'https://picsum.photos/40/40?random=31' },

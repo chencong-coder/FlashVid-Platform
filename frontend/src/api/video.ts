@@ -14,7 +14,7 @@ export interface CreateVideoPayload {
   description?: string // 最长 500
   width?: number
   height?: number
-  musicId?: number // 背景音乐 ID
+  musicId?: string // 背景音乐 ID
   city?: string
   location?: string
   latitude?: number // [-90, 90]
@@ -23,8 +23,12 @@ export interface CreateVideoPayload {
 }
 
 export interface CreateVideoResp {
-  video_id: number // 后端返回 snake_case
+  video_id: string // 后端返回 snake_case
   status: number // 1-审核中 2-成功 3-未通过 4-下架
+}
+
+export interface DeleteVideoResp {
+  message: string
 }
 
 export interface SearchVideosParams {
@@ -43,11 +47,11 @@ export const createVideo = (payload: CreateVideoPayload) =>
   http.post<ApiResponse<CreateVideoResp>>('/videos', payload)
 
 // 删除视频（需登录）
-export const deleteVideo = (videoId: string | number) =>
-  http.delete<ApiResponse<null>>(`/videos/${videoId}`)
+export const deleteVideo = (videoId: string) =>
+  http.delete<ApiResponse<DeleteVideoResp>>(`/videos/${videoId}`)
 
 // 获取视频详情（公开）
-export const getVideoDetail = (videoId: string | number) =>
+export const getVideoDetail = (videoId: string) =>
   http.get<ApiResponse<{ video: FeedVideo }>>(`/videos/${videoId}`)
 
 // 搜索视频（公开）
@@ -77,20 +81,24 @@ export interface LikeCommentResp {
   likeCount: number
 }
 
+export interface DeleteCommentResp {
+  [key: string]: never
+}
+
 // 获取视频评论列表（公开，游标分页）
 export const getVideoComments = (videoId: string, params?: CommentCursorParams) =>
   http.get<ApiResponse<CommentPageResp>>(`/videos/${videoId}/comments`, { params })
 
 // 获取某条评论的回复列表（公开）
-export const getCommentReplies = (commentId: string | number) =>
+export const getCommentReplies = (commentId: string) =>
   http.get<ApiResponse<{ replies: ReplyItem[] }>>(`/comments/${commentId}/replies`)
 
 // 发表评论 / 回复（需登录）；parentId=0 为一级评论，>0 为回复
 export const postComment = (
   videoId: string,
   content: string,
-  parentId = 0,
-  replyToUserId = 0,
+  parentId = '0',
+  replyToUserId = '0',
 ) =>
   http.post<ApiResponse<CreateCommentResp>>(`/videos/${videoId}/comments`, {
     content,
@@ -99,8 +107,8 @@ export const postComment = (
   })
 
 // 删除评论（需登录）
-export const deleteComment = (commentId: string | number) =>
-  http.delete<ApiResponse<null>>(`/comments/${commentId}`)
+export const deleteComment = (commentId: string) =>
+  http.delete<ApiResponse<DeleteCommentResp>>(`/comments/${commentId}`)
 
 // 点赞 / 取消点赞评论（需登录）
 export const likeComment = (commentId: string) =>

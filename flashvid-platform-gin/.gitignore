@@ -44,3 +44,4 @@ uploads/
 # local-only docs & seed data (never commit)
 docs/upload-module.md
 scripts/seed_videos.sql
+scripts/seed_comments_music.sql

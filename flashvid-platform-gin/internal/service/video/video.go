@@ -8,6 +8,7 @@ import (
 	"flashvid-platform-gin/internal/dao/query"
 	"flashvid-platform-gin/internal/model"
 	"fmt"
+	"strconv"
 
 	"time"
 
@@ -29,12 +30,12 @@ func CreateVideo(ctx context.Context, userId int64, req v1.CreateVideoReq) (*mod
 	}
 	// 2. 创建视频记录
 	newVideo := &model.Video{
-		UserID:   userId,
-		Title:    *req.Title,
-		CoverURL: *req.CoverUrl,
-		VideoURL: *req.VideoUrl,
-		Duration: *req.Duration,
-		Status:   2,
+		UserID:      userId,
+		Title:       *req.Title,
+		CoverURL:    *req.CoverUrl,
+		VideoURL:    *req.VideoUrl,
+		Duration:    *req.Duration,
+		Status:      2,
 		PublishedAt: time.Now(),
 	}
 	// 判断可选字段是否为空，如果不为空则赋值
@@ -60,7 +61,14 @@ func CreateVideo(ctx context.Context, userId int64, req v1.CreateVideoReq) (*mod
 		selectFields = append(selectFields, query.Video.Height)
 	}
 	if req.MusicId != nil {
-		newVideo.MusicID = *req.MusicId
+		musicID, err := strconv.ParseInt(*req.MusicId, 10, 64)
+		if err != nil || musicID <= 0 {
+			if err == nil {
+				err = strconv.ErrSyntax
+			}
+			return nil, api.CodeInvalidParam, err
+		}
+		newVideo.MusicID = musicID
 		selectFields = append(selectFields, query.Video.MusicID)
 	}
 	if req.Location != nil {
@@ -251,7 +259,7 @@ func DeleteVideo(ctx context.Context, videoId int64, userId int64) (api.ResCode,
 		return api.CodeInternalError, err
 	}
 	return api.CodeSuccess, nil
-}	
+}
 
 // SearchVideos 搜索视频
 func SearchVideos(ctx context.Context, keyword string, page int, pageSize int) (*model.VideoListOutput, api.ResCode, error) {
@@ -286,7 +294,7 @@ func SearchVideos(ctx context.Context, keyword string, page int, pageSize int) (
 	// 4. 构建videoIds -> topicIds map
 	videoMap := make(map[int64]*model.Video) // videoId -> video
 	videoIds := make([]int64, 0, len(videos))
-	authorIds := make([]int64, 0, len(videos)) // 用于批量查询作者信息 
+	authorIds := make([]int64, 0, len(videos)) // 用于批量查询作者信息
 	for _, video := range videos {
 		videoMap[video.ID] = video
 		authorIds = append(authorIds, video.UserID)

@@ -2,9 +2,9 @@ package playlist
 
 import (
 	"flashvid-platform-gin/api"
+	v1 "flashvid-platform-gin/api/playlist/v1"
 	"flashvid-platform-gin/internal/middleware"
 	"flashvid-platform-gin/internal/service/playlist"
-	v1 "flashvid-platform-gin/api/playlist/v1"
 	"github.com/gin-gonic/gin"
 )
 
@@ -91,14 +91,12 @@ func UpdatePlaylistHandler(c *gin.Context) {
 	}
 	// 3.调用service层更新播放列表
 	resCode, err := playlist.UpdatePlaylist(c, userID, req)
-	if err != nil {
+	if err != nil || resCode != api.CodeSuccess {
 		api.ResponseError(c, resCode)
 		return
 	}
 	// 4.返回更新后的播放列表信息
-	if resCode == api.CodeSuccess {
-		api.ResponseSuccess(c, "更新播放列表成功")
-	}
+	api.ResponseSuccess(c, "更新播放列表成功")
 }
 
 // 获取播放列表内的视频接口（游标分页）
@@ -215,12 +213,10 @@ func DeletePlaylistHandler(c *gin.Context) {
 	}
 	// 3.调用service层删除播放列表
 	resCode, err := playlist.DeletePlaylist(c, userID, req.ID)
-	if err != nil {
+	if err != nil || resCode != api.CodeSuccess {
 		api.ResponseError(c, resCode)
 		return
 	}
 	// 4.返回删除结果
-	if resCode == api.CodeSuccess {
-		api.ResponseSuccess(c, "删除播放列表成功")
-	}
+	api.ResponseSuccess(c, "删除播放列表成功")
 }

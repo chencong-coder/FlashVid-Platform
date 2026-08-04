@@ -2,9 +2,9 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  Switch as VanSwitch,
   Uploader as VanUploader,
   showToast,
+  type UploaderBeforeRead,
   type UploaderFileListItem,
 } from 'vant'
 
@@ -18,10 +18,30 @@ const authModal = useAuthModalStore()
 const files = ref<UploaderFileListItem[]>([])
 const title = ref('')
 const caption = ref('')
-const allowComments = ref(true)
 const publishing = ref(false)
 const uploadProgress = ref(0)
 const statusText = ref('')
+
+const MAX_VIDEO_FILE_SIZE = 500 * 1024 * 1024
+const SUPPORTED_VIDEO_EXTENSIONS = new Set(['mp4', 'mov', 'avi', 'mkv'])
+
+const beforeReadVideo: UploaderBeforeRead = (file) => {
+  const selectedFiles = Array.isArray(file) ? file : [file]
+
+  for (const selectedFile of selectedFiles) {
+    const extension = selectedFile.name.split('.').pop()?.toLowerCase() ?? ''
+    if (!SUPPORTED_VIDEO_EXTENSIONS.has(extension)) {
+      showToast('仅支持 MP4、MOV、AVI、MKV 格式')
+      return false
+    }
+    if (selectedFile.size > MAX_VIDEO_FILE_SIZE) {
+      showToast('视频大小不能超过 500 MB')
+      return false
+    }
+  }
+
+  return true
+}
 
 /** 从视频文件截取第一帧作为封面 */
 const extractCover = (videoFile: File): Promise<File> =>
@@ -140,7 +160,7 @@ const publish = async (): Promise<void> => {
     })
     if (createRes.data.code === 0) {
       uploadProgress.value = 100
-      showToast('作品已进入发布队列')
+      showToast('发布成功')
       await router.push('/')
     } else {
       showToast(createRes.data.message || '发布失败')
@@ -171,7 +191,13 @@ const publish = async (): Promise<void> => {
     </header>
 
     <section class="mt-4">
-      <van-uploader v-model="files" accept="video/*" :max-count="1" :max-size="200 * 1024 * 1024">
+      <van-uploader
+        v-model="files"
+        accept=".mp4,.mov,.avi,.mkv"
+        :before-read="beforeReadVideo"
+        :max-count="1"
+        :max-size="MAX_VIDEO_FILE_SIZE"
+      >
         <div
           class="flex aspect-[9/13] w-44 flex-col items-center justify-center rounded-md border border-dashed border-white/30 bg-white/5 text-neutral-400"
         >
@@ -181,7 +207,7 @@ const publish = async (): Promise<void> => {
           <template v-else>
             <i class="fa-solid fa-video mb-3 text-3xl" />
             <span class="text-sm font-medium text-white">选择视频</span>
-            <span class="mt-2 text-xs">最长 15 分钟</span>
+            <span class="mt-2 text-xs">最大 500 MB</span>
           </template>
         </div>
       </van-uploader>
@@ -204,7 +230,7 @@ const publish = async (): Promise<void> => {
       <textarea
         v-model="caption"
         rows="3"
-        maxlength="200"
+        maxlength="500"
         placeholder="添加作品描述，让更多人看见..."
         class="w-full resize-none bg-transparent text-sm leading-6 text-white outline-none placeholder:text-neutral-500"
       />
@@ -214,15 +240,11 @@ const publish = async (): Promise<void> => {
       </div>
     </section>
 
-    <section class="mt-2 divide-y divide-white/5 text-sm">
+    <section class="mt-2 text-sm">
       <button type="button" class="flex w-full items-center justify-between py-4">
         <span><i class="fa-solid fa-location-dot mr-3 w-4 text-center" />添加位置</span>
         <i class="fa-solid fa-chevron-right text-xs text-neutral-600" />
       </button>
-      <div class="flex items-center justify-between py-4">
-        <span><i class="fa-solid fa-comment mr-3 w-4 text-center" />允许评论</span>
-        <van-switch v-model="allowComments" size="20px" active-color="#fe2c55" />
-      </div>
     </section>
 
     <!-- 上传进度 -->

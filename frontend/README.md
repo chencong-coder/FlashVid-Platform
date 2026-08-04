@@ -64,7 +64,7 @@ npm run preview
 | `.env.test`        | 测试环境     |
 | `.env.production`  | 生产环境     |
 
-接口基础地址通过 `VITE_API_BASE_URL` 配置。开发环境默认使用 `/api`，需要由本地代理或后端服务提供对应接口。
+接口基础地址通过 `VITE_API_BASE_URL` 配置。开发环境使用 `/api/v1`，Vite 会将 `/api` 请求代理到本地 Gin 服务 `http://127.0.0.1:8089`。启动前端前需先启动后端服务。
 
 ## 目录结构
 
@@ -86,6 +86,4 @@ frontend/
 └── vite.config.ts
 ```
 
-当前视频 Feed 使用 `src/data/mockVideos.ts` 中的演示数据。真实后端接入点位于 `src/api/`。
-
-交互原型保留在仓库根目录的 `../proto/prototype.html`，仅作为 UI 参考，不参与前端打包。
+视频 Feed、用户、互动、消息、上传等请求均通过 `src/api/` 接入后端 `/api/v1` 接口。

@@ -1,66 +1,67 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
 
-import { getTopics, searchTopics, type TopicItem } from '@/api/topic'
+import { getTopics, searchTopics, type TopicItem, type TopicSort } from '@/api/topic'
 import { formatCount } from '@/utils/format'
 
 const router = useRouter()
 
-type SortMode = 'hot' | 'latest'
-const sort = ref<SortMode>('hot')
+const sort = ref<TopicSort>('hot')
 const keyword = ref('')
 
 const topics = ref<TopicItem[]>([])
 const cursor = ref('')
 const hasMore = ref(true)
 const loading = ref(false)
-const searching = ref(false)
+const searching = computed(() => keyword.value.trim().length > 0)
 
-// 拉取热门/最新话题（游标分页）
+let requestVersion = 0
+let searchTimer: number | undefined
+
+// 普通列表和搜索列表共用游标；请求版本用于丢弃关键词或排序变化后的旧响应。
 const loadTopics = async (reset = false): Promise<void> => {
-  if (loading.value || (!reset && !hasMore.value)) return
+  if (!reset && (loading.value || !hasMore.value)) return
+
+  const currentVersion = reset ? ++requestVersion : requestVersion
+  const currentKeyword = keyword.value.trim()
+  const requestCursor = reset ? undefined : cursor.value || undefined
+
+  if (reset) {
+    topics.value = []
+    cursor.value = ''
+    hasMore.value = true
+  }
   loading.value = true
+
   try {
-    const res = await getTopics({
-      sort: sort.value,
-      cursor: reset ? undefined : cursor.value || undefined,
-      count: 20,
-    })
+    const res = currentKeyword
+      ? await searchTopics(currentKeyword, requestCursor, 20)
+      : await getTopics({
+          sort: sort.value,
+          cursor: requestCursor,
+          count: 20,
+        })
+
+    if (currentVersion !== requestVersion || currentKeyword !== keyword.value.trim()) return
+
     const page = res.data.data
     topics.value = reset ? page.topics : [...topics.value, ...page.topics]
     cursor.value = page.nextCursorToken
     hasMore.value = page.hasMore
   } catch {
-    showToast('加载话题失败')
+    if (currentVersion === requestVersion && currentKeyword === keyword.value.trim()) {
+      showToast(currentKeyword ? '搜索失败' : '加载话题失败')
+    }
   } finally {
-    loading.value = false
+    if (currentVersion === requestVersion && currentKeyword === keyword.value.trim()) {
+      loading.value = false
+    }
   }
 }
 
-// 搜索话题（关键词非空时覆盖列表）
-const runSearch = async (): Promise<void> => {
-  const kw = keyword.value.trim()
-  if (!kw) {
-    searching.value = false
-    void loadTopics(true)
-    return
-  }
-  searching.value = true
-  loading.value = true
-  try {
-    const res = await searchTopics(kw, undefined, 20)
-    topics.value = res.data.data.topics
-    hasMore.value = false
-  } catch {
-    showToast('搜索失败')
-  } finally {
-    loading.value = false
-  }
-}
-
-const switchSort = (mode: SortMode): void => {
+const switchSort = (mode: TopicSort): void => {
   if (sort.value === mode || searching.value) return
   sort.value = mode
   void loadTopics(true)
@@ -70,14 +71,19 @@ const openTopic = (topic: TopicItem): void => {
   void router.push({ name: 'topic', params: { id: String(topic.id) } })
 }
 
-let searchTimer: number | undefined
 watch(keyword, () => {
   window.clearTimeout(searchTimer)
-  searchTimer = window.setTimeout(() => void runSearch(), 350)
+  requestVersion += 1
+  searchTimer = window.setTimeout(() => void loadTopics(true), 350)
 })
 
 onMounted(() => {
   void loadTopics(true)
+})
+
+onBeforeUnmount(() => {
+  window.clearTimeout(searchTimer)
+  requestVersion += 1
 })
 </script>
 
@@ -153,7 +159,7 @@ onMounted(() => {
       <!-- 加载更多 -->
       <div v-if="topics.length" class="py-5 text-center">
         <button
-          v-if="hasMore && !searching"
+          v-if="hasMore"
           type="button"
           class="text-xs text-neutral-500 hover:text-neutral-300 disabled:opacity-40"
           :disabled="loading"
@@ -161,9 +167,8 @@ onMounted(() => {
         >
           {{ loading ? '加载中…' : '加载更多' }}
         </button>
-        <span v-else-if="!searching" class="text-xs text-neutral-600">没有更多了</span>
+        <span v-else class="text-xs text-neutral-600">没有更多了</span>
       </div>
     </section>
   </main>
 </template>
-

@@ -2,23 +2,23 @@ package server
 
 import (
 	"flashvid-platform-gin/internal/handler/auth"
-	"flashvid-platform-gin/internal/handler/user"
-	"flashvid-platform-gin/internal/middleware"
-	"flashvid-platform-gin/pkg/logging"
-	"net/http"
-	"flashvid-platform-gin/internal/handler/video"
+	"flashvid-platform-gin/internal/handler/comment"
 	"flashvid-platform-gin/internal/handler/feed"
 	"flashvid-platform-gin/internal/handler/interaction"
-	"flashvid-platform-gin/internal/handler/comment"
-	"flashvid-platform-gin/internal/handler/topic"
-	"flashvid-platform-gin/internal/handler/music"
-	"flashvid-platform-gin/internal/handler/upload"
 	"flashvid-platform-gin/internal/handler/message"
+	"flashvid-platform-gin/internal/handler/music"
 	"flashvid-platform-gin/internal/handler/playlist"
+	"flashvid-platform-gin/internal/handler/topic"
+	"flashvid-platform-gin/internal/handler/upload"
+	"flashvid-platform-gin/internal/handler/user"
+	"flashvid-platform-gin/internal/handler/video"
+	"flashvid-platform-gin/internal/middleware"
+	"flashvid-platform-gin/pkg/logging"
 	"flashvid-platform-gin/pkg/storage"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
+	"net/http"
 )
 
 func SetupRoutes(cfg *viper.Viper) *gin.Engine {
@@ -38,8 +38,8 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 		authUser := apiV1.Group("/auth")
 		{
 			authUser.POST("/register", auth.RegisterHandler) // 注册
-			authUser.POST("/login", auth.LoginHandler) // 登录
-			authUser.POST("/refresh", auth.RefreshHandler) // 刷新Token
+			authUser.POST("/login", auth.LoginHandler)       // 登录
+			authUser.POST("/refresh", auth.RefreshHandler)   // 刷新Token
 		}
 
 		// 用户相关路由组
@@ -51,11 +51,11 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 			userR.GET("/profile/likes", user.GetUserLikesHandler)         // 查看自己的点赞列表（私有）
 			userR.GET("/profile/favorites", user.GetUserFavoritesHandler) // 查看自己的收藏列表（私有）
 			// 动态路由
-			userR.GET("/:id", user.GetUserInfoHandler)                    // 查看任意用户主页（公开）
-			userR.GET("/:id/videos", user.GetUserVideosHandler)           // 查看用户发布的视频（公开）
-			userR.POST("/:id/follow", user.FollowUserHandler)                 // 关注用户（私有）
-			userR.DELETE("/:id/follow", user.UnfollowUserHandler) // 取消关注用户（私有）
-			userR.GET("/:id/followers", user.GetUserFollowersHandler) // 查看用户的粉丝列表（公开）
+			userR.GET("/:id", user.GetUserInfoHandler)                 // 查看任意用户主页（公开）
+			userR.GET("/:id/videos", user.GetUserVideosHandler)        // 查看用户发布的视频（公开）
+			userR.POST("/:id/follow", user.FollowUserHandler)          // 关注用户（私有）
+			userR.DELETE("/:id/follow", user.UnfollowUserHandler)      // 取消关注用户（私有）
+			userR.GET("/:id/followers", user.GetUserFollowersHandler)  // 查看用户的粉丝列表（公开）
 			userR.GET("/:id/followings", user.GetUserFollowingHandler) // 查看用户的关注列表（公开）
 		}
 
@@ -64,10 +64,10 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 		{
 			// 公开路由（无需登录）— 静态路由必须在动态路由 /:id 之前注册
 			videoR.GET("/search", video.SearchVideosHandler) // 搜索视频
-			videoR.GET("/:id", video.GetVideoHandler) // 获取视频详情
+			videoR.GET("/:id", video.GetVideoHandler)        // 获取视频详情
 
 			// 需要登录
-			videoR.POST("", middleware.Auth(), video.CreateVideoHandler) // 发布视频
+			videoR.POST("", middleware.Auth(), video.CreateVideoHandler)       // 发布视频
 			videoR.DELETE("/:id", middleware.Auth(), video.DeleteVideoHandler) // 删除视频
 		}
 
@@ -76,24 +76,25 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 		feedR.Use(middleware.Auth())
 		{
 			feedR.GET("recommend", feed.GetFeedRecommendHandler) // 获取推荐视频流
-			feedR.GET("follow", feed.GetFeedFollowHandler) // 获取关注视频流
-			feedR.GET("friends", feed.GetFeedFriendsHandler) // 获取好友视频流（互相关注）
-			feedR.GET("nearby", feed.GetFeedNearbyHandler) // 获取附近视频流
+			feedR.GET("follow", feed.GetFeedFollowHandler)       // 获取关注视频流
+			feedR.GET("friends", feed.GetFeedFriendsHandler)     // 获取好友视频流（互相关注）
+			feedR.GET("nearby", feed.GetFeedNearbyHandler)       // 获取附近视频流
 		}
 
 		// 互动相关路由组
 		interactionR := apiV1.Group("/videos")
 		interactionR.Use(middleware.Auth())
 		{
-			interactionR.POST("/:id/like", interaction.LikeVideoHandler) // 点赞视频
-			interactionR.DELETE("/:id/like", interaction.UnlikeVideoHandler) // 取消点赞视频
-			interactionR.POST("/:id/favorite", interaction.FavoriteVideoHandler) // 收藏视频
+			interactionR.POST("/:id/like", interaction.LikeVideoHandler)             // 点赞视频
+			interactionR.DELETE("/:id/like", interaction.UnlikeVideoHandler)         // 取消点赞视频
+			interactionR.POST("/:id/favorite", interaction.FavoriteVideoHandler)     // 收藏视频
 			interactionR.DELETE("/:id/favorite", interaction.UnfavoriteVideoHandler) // 取消收藏视频
-			interactionR.POST("/:id/share", interaction.ShareVideoHandler) // 分享视频
+			interactionR.POST("/:id/share", interaction.ShareVideoHandler)           // 分享视频
 		}
 
 		// 评论相关路由组（公开接口，不强制登录）
 		commentR := apiV1.Group("/videos")
+		commentR.Use(middleware.OptionalAuth())
 		{
 			commentR.GET("/:id/comments", comment.GetCommentsHandler) // 获取评论列表
 		}
@@ -107,6 +108,7 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 
 		// 评论回复路由
 		replyR := apiV1.Group("/comments")
+		replyR.Use(middleware.OptionalAuth())
 		{
 			replyR.GET("/:id/replies", comment.GetRepliesHandler) // 获取回复列表
 		}
@@ -122,7 +124,7 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 		commentLikeR := apiV1.Group("/comments")
 		commentLikeR.Use(middleware.Auth())
 		{
-			commentLikeR.POST("/:id/like", comment.LikeCommentHandler)    // 点赞评论
+			commentLikeR.POST("/:id/like", comment.LikeCommentHandler)     // 点赞评论
 			commentLikeR.DELETE("/:id/like", comment.UnlikeCommentHandler) // 取消点赞评论
 		}
 
@@ -130,16 +132,16 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 		topicR := apiV1.Group("/topics")
 		{
 			topicR.GET("", topic.GetTopicsHandler)
-		 	topicR.GET("/search", topic.SearchTopicsHandler)
-		 	topicR.GET("/:id", topic.GetTopicByIDHandler)
-		 	topicR.GET("/:id/videos", topic.GetTopicVideosHandler)
+			topicR.GET("/search", topic.SearchTopicsHandler)
+			topicR.GET("/:id", topic.GetTopicByIDHandler)
+			topicR.GET("/:id/videos", topic.GetTopicVideosHandler)
 		}
 
 		// 音乐相关路由组
 		musicR := apiV1.Group("/music")
 		{
-			musicR.GET("", music.GetMusicListHandler)           // 获取音乐列表
-			musicR.GET("/search", music.SearchMusicHandler)     // 搜索音乐
+			musicR.GET("", music.GetMusicListHandler)       // 获取音乐列表
+			musicR.GET("/search", music.SearchMusicHandler) // 搜索音乐
 		}
 
 		// 上传相关路由组（需要登录）
@@ -153,25 +155,25 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 		msgR := apiV1.Group("")
 		msgR.Use(middleware.Auth())
 		{
-			msgR.GET("/conversations", message.GetConversationsHandler)                            // 会话列表
-			msgR.GET("/conversations/:userId/messages", message.GetConversationMessagesHandler)    // 对话消息
-			msgR.PUT("/conversations/:userId/read", message.MarkConversationReadHandler)           // 标记已读
-			msgR.GET("/messages/unread-count", message.GetUnreadCountHandler)                      // 未读总数（必须在 /:id 之前注册）
-			msgR.POST("/messages", message.SendMessageHandler)                                     // 发送私信
-			msgR.DELETE("/messages/:id", message.DeleteMessageHandler)                             // 删除消息
+			msgR.GET("/conversations", message.GetConversationsHandler)                         // 会话列表
+			msgR.GET("/conversations/:userId/messages", message.GetConversationMessagesHandler) // 对话消息
+			msgR.PUT("/conversations/:userId/read", message.MarkConversationReadHandler)        // 标记已读
+			msgR.GET("/messages/unread-count", message.GetUnreadCountHandler)                   // 未读总数（必须在 /:id 之前注册）
+			msgR.POST("/messages", message.SendMessageHandler)                                  // 发送私信
+			msgR.DELETE("/messages/:id", message.DeleteMessageHandler)                          // 删除消息
 		}
 
 		// 播放列表相关路由组（全部需要登录）
 		playlistR := apiV1.Group("/playlists")
 		playlistR.Use(middleware.Auth())
 		{
-			playlistR.GET("", playlist.GetUserPlaylistsHandler)                              // 获取我的播放列表
-			playlistR.POST("", playlist.CreatePlaylistHandler)                               // 创建播放列表
-			playlistR.PUT("/:id", playlist.UpdatePlaylistHandler)                            // 更新播放列表信息
-			playlistR.DELETE("/:id", playlist.DeletePlaylistHandler)                         // 删除播放列表
+			playlistR.GET("", playlist.GetUserPlaylistsHandler)                               // 获取我的播放列表
+			playlistR.POST("", playlist.CreatePlaylistHandler)                                // 创建播放列表
+			playlistR.PUT("/:id", playlist.UpdatePlaylistHandler)                             // 更新播放列表信息
+			playlistR.DELETE("/:id", playlist.DeletePlaylistHandler)                          // 删除播放列表
 			playlistR.GET("/:id/videos", playlist.GetPlaylistVideosHandler)                   // 获取播放列表内的视频
-			playlistR.POST("/:id/videos", playlist.AddVideoToPlaylistHandler)                  // 添加视频到播放列表
-			playlistR.DELETE("/:id/videos/:videoId", playlist.RemoveVideoFromPlaylistHandler)  // 从播放列表移除视频
+			playlistR.POST("/:id/videos", playlist.AddVideoToPlaylistHandler)                 // 添加视频到播放列表
+			playlistR.DELETE("/:id/videos/:videoId", playlist.RemoveVideoFromPlaylistHandler) // 从播放列表移除视频
 		}
 	}
 
