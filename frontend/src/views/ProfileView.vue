@@ -203,47 +203,10 @@ const closePlaylist = (): void => {
 
 <template>
   <main class="no-scrollbar relative h-full overflow-y-auto bg-[#0d0d0d] text-white">
-    <div class="relative h-44 bg-neutral-900">
-      <img
-        src="https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?q=80&w=1080&auto=format&fit=crop"
-        alt="主页背景"
-        class="h-full w-full object-cover opacity-60"
-      />
-      <div class="absolute inset-0 bg-gradient-to-b from-black/20 to-[#0d0d0d]" />
-      <div class="safe-top absolute inset-x-0 top-0 z-30 flex justify-end gap-2 px-4 pt-4 text-lg">
-        <button
-          type="button"
-          aria-label="添加朋友"
-          class="flex h-9 w-9 items-center justify-center rounded-full bg-black/20 text-white/90 backdrop-blur-sm transition-colors hover:bg-white/10 hover:text-white"
-          @click="authModal.requireLogin()"
-        >
-          <i class="fa-solid fa-user-plus text-sm" />
-        </button>
-        <button
-          v-if="userStore.isLoggedIn"
-          type="button"
-          aria-label="退出登录"
-          title="退出登录"
-          class="flex h-9 w-9 items-center justify-center rounded-full bg-black/20 text-white/90 backdrop-blur-sm transition-colors hover:bg-white/10 hover:text-white"
-          @click="handleLogout"
-        >
-          <i class="fa-solid fa-right-from-bracket" />
-        </button>
-        <button
-          v-else
-          type="button"
-          aria-label="更多"
-          class="flex h-9 w-9 items-center justify-center rounded-full bg-black/20 text-white/90 backdrop-blur-sm transition-colors hover:bg-white/10 hover:text-white"
-        >
-          <i class="fa-solid fa-ellipsis text-sm" />
-        </button>
-      </div>
-    </div>
-
-    <!-- 未登录：引导登录 -->
+    <!-- 未登录：引导登录（与 LoginGate 保持一致的布局） -->
     <section
       v-if="!userStore.isLoggedIn"
-      class="absolute inset-0 z-10 flex items-center justify-center px-5 pb-20 pt-10 sm:px-8"
+      class="safe-top flex h-full flex-col items-center justify-center px-8"
     >
       <div class="flex w-full max-w-[25rem] flex-col items-center text-center">
         <div
@@ -282,19 +245,43 @@ const closePlaylist = (): void => {
           class="mt-6 flex flex-wrap items-center justify-center gap-x-1 text-[11px] leading-5 text-neutral-600"
         >
           <span>登录即表示同意</span>
-          <button type="button" class="transition-colors hover:text-neutral-400">
-            《用户协议》
-          </button>
+          <button type="button" class="transition-colors hover:text-neutral-400">《用户协议》</button>
           <span>与</span>
-          <button type="button" class="transition-colors hover:text-neutral-400">
-            《隐私政策》
-          </button>
+          <button type="button" class="transition-colors hover:text-neutral-400">《隐私政策》</button>
         </p>
       </div>
     </section>
 
-    <!-- 已登录：个人资料 + 内容 -->
+    <!-- 已登录：完整个人资料 -->
     <template v-else>
+    <div class="relative h-44 bg-neutral-900">
+      <img
+        src="https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?q=80&w=1080&auto=format&fit=crop"
+        alt="主页背景"
+        class="h-full w-full object-cover opacity-60"
+      />
+      <div class="absolute inset-0 bg-gradient-to-b from-black/20 to-[#0d0d0d]" />
+      <div class="safe-top absolute inset-x-0 top-0 z-30 flex justify-end gap-2 px-4 pt-4 text-lg">
+        <button
+          type="button"
+          aria-label="退出登录"
+          title="退出登录"
+          class="flex h-9 w-9 items-center justify-center rounded-full bg-black/20 text-white/90 backdrop-blur-sm transition-colors hover:bg-white/10 hover:text-white"
+          @click="handleLogout"
+        >
+          <i class="fa-solid fa-right-from-bracket" />
+        </button>
+        <button
+          type="button"
+          aria-label="更多"
+          class="flex h-9 w-9 items-center justify-center rounded-full bg-black/20 text-white/90 backdrop-blur-sm transition-colors hover:bg-white/10 hover:text-white"
+        >
+          <i class="fa-solid fa-ellipsis text-sm" />
+        </button>
+      </div>
+    </div>
+
+    <!-- 已登录：个人资料 + 内容（接上方 v-else 的 template） -->
       <section class="relative -mt-11 px-4">
         <img
           :src="profile.avatar"
