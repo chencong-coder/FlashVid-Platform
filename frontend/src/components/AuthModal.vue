@@ -122,14 +122,21 @@ watch(
 <template>
   <Teleport to="body">
     <Transition name="auth-fade">
-      <!-- 半透明遮罩，点遮罩本身可关闭 -->
+      <!-- 遮罩层 + 卡片容器 -->
       <div
         v-if="authModal.visible"
-        class="fixed inset-0 z-[4000] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
-        @click.self="authModal.close()"
+        class="fixed inset-0 z-[4000] flex items-center justify-center px-4"
       >
-        <!-- 居中卡片 -->
-        <div class="relative w-full max-w-[22rem] rounded-2xl bg-[#1c1c1e] px-8 py-8 text-white shadow-2xl">
+        <!-- 半透明遮罩：独立绝对层，点击关闭 -->
+        <div
+          class="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          @click="authModal.close()"
+        />
+        <!-- 居中卡片：z-10 确保在遮罩上方，@click.stop 防止事件冒泡到遮罩 -->
+        <div
+          class="relative z-10 w-full max-w-[22rem] rounded-2xl bg-[#1c1c1e] px-8 py-8 text-white shadow-2xl"
+          @click.stop
+        >
           <!-- 关闭按钮 -->
           <button
             type="button"
