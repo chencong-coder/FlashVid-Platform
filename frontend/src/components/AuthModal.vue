@@ -122,26 +122,29 @@ watch(
 <template>
   <Teleport to="body">
     <Transition name="auth-fade">
-      <!-- 全屏覆盖，与第一张截图一致 -->
+      <!-- 半透明遮罩，点遮罩本身可关闭 -->
       <div
         v-if="authModal.visible"
-        class="fixed inset-0 z-[4000] flex flex-col items-center bg-[#0d0d0d] pt-[20vh] text-white"
+        class="fixed inset-0 z-[4000] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
+        @click.self="authModal.close()"
       >
-        <!-- 关闭按钮 -->
-        <button
-          type="button"
-          aria-label="关闭登录"
-          class="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full text-neutral-400 transition-colors hover:bg-white/10 hover:text-white"
-          @click="authModal.close()"
-        >
-          <i class="fa-solid fa-xmark text-lg" />
-        </button>
+        <!-- 居中卡片 -->
+        <div class="relative w-full max-w-[22rem] rounded-2xl bg-[#1c1c1e] px-8 py-8 text-white shadow-2xl">
+          <!-- 关闭按钮 -->
+          <button
+            type="button"
+            aria-label="关闭登录"
+            class="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full text-neutral-400 transition-colors hover:bg-white/10 hover:text-white"
+            @click="authModal.close()"
+          >
+            <i class="fa-solid fa-xmark" />
+          </button>
 
-        <!-- ── 引导页 prompt ───────────────────────────── -->
-        <div
-          v-if="authModal.view === 'prompt'"
-          class="flex w-full max-w-sm flex-col items-center px-8"
-        >
+          <!-- ── 引导页 prompt ───────────────────────────── -->
+          <div
+            v-if="authModal.view === 'prompt'"
+            class="flex w-full flex-col items-center"
+          >
           <div
             class="flex h-20 w-20 items-center justify-center rounded-3xl bg-primary shadow-xl shadow-primary/40"
           >
@@ -166,8 +169,8 @@ watch(
           <p class="mt-6 text-xs text-neutral-600">登录即表示同意《用户协议》与《隐私政策》</p>
         </div>
 
-        <!-- ── 登录表单 login ──────────────────────────── -->
-        <div v-else-if="authModal.view === 'login'" class="w-full max-w-sm px-8">
+          <!-- ── 登录表单 login ──────────────────────────── -->
+          <div v-else-if="authModal.view === 'login'" class="w-full">
           <div class="mb-6 flex items-center gap-2">
             <button
               class="flex h-8 w-8 items-center justify-center rounded-full text-neutral-400 transition-colors hover:bg-white/10"
@@ -222,8 +225,8 @@ watch(
           </p>
         </div>
 
-        <!-- ── 注册表单 register ───────────────────────── -->
-        <div v-else class="w-full max-w-sm px-8">
+          <!-- ── 注册表单 register ───────────────────────── -->
+          <div v-else class="w-full">
           <div class="mb-6 flex items-center gap-2">
             <button
               class="flex h-8 w-8 items-center justify-center rounded-full text-neutral-400 transition-colors hover:bg-white/10"
@@ -290,6 +293,7 @@ watch(
               去登录
             </button>
           </p>
+        </div>
         </div>
       </div>
     </Transition>
