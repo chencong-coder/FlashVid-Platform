@@ -1,11 +1,14 @@
 <script setup lang="ts">
+import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-
 import { useAuthModalStore } from '@/store/authModal'
+import { useUserStore } from '@/store/user'
+import { getMyPlaylists, type PlaylistInfo } from '@/api/user'
 
 const route = useRoute()
 const router = useRouter()
 const authModal = useAuthModalStore()
+const userStore = useUserStore()
 
 interface NavItem {
   label: string
@@ -18,25 +21,66 @@ interface NavItem {
 const navItems: NavItem[] = [
   { label: '推荐', icon: 'fa-house', name: 'recommend' },
   { label: '发现', icon: 'fa-compass', name: 'discover' },
-  { label: '关注', icon: 'fa-user-group', name: 'follow', badge: 12 },
+  { label: '关注', icon: 'fa-user-group', name: 'follow' },
   { label: '朋友', icon: 'fa-users', name: 'friends' },
-  { label: '消息', icon: 'fa-message', name: 'messages', badge: 5 },
+  { label: '消息', icon: 'fa-message', name: 'messages' },
   { label: '我的', icon: 'fa-user', name: 'profile' },
 ]
 
-const playlists = [
-  { name: '旅行日常', count: 24, cover: 'https://picsum.photos/40/40?random=21' },
-  { name: '每日欢乐', count: 18, cover: 'https://picsum.photos/40/40?random=22' },
-  { name: '吃货生活', count: 32, cover: 'https://picsum.photos/40/40?random=23' },
-  { name: '健身技巧', count: 16, cover: 'https://picsum.photos/40/40?random=24' },
-]
+// ---- 我的播放列表 ----
+const playlists = ref<PlaylistInfo[]>([])
+const playlistsLoading = ref(false)
 
+const loadPlaylists = async () => {
+  if (!userStore.isLoggedIn) return
+  playlistsLoading.value = true
+  try {
+    const res = await getMyPlaylists()
+    playlists.value = res.data.data.playlists
+  } catch {
+    playlists.value = []
+  } finally {
+    playlistsLoading.value = false
+  }
+}
+
+// 登录态变化时重新加载
+watch(
+  () => userStore.isLoggedIn,
+  (loggedIn) => {
+    if (loggedIn) {
+      loadPlaylists()
+    } else {
+      playlists.value = []
+    }
+  },
+)
+
+onMounted(loadPlaylists)
+
+// ---- 导航 ----
 const isActive = (item: NavItem): boolean => {
   if (item.name === 'recommend') return ['recommend', 'nearby'].includes(route.name as string)
   return route.name === item.name
 }
 
 const navigate = (item: NavItem) => router.push({ name: item.name, query: item.query })
+
+const onPlaylistClick = () => {
+  if (!userStore.isLoggedIn) {
+    authModal.requireLogin()
+    return
+  }
+  router.push({ name: 'profile' })
+}
+
+const onCreatePlaylist = () => {
+  if (!userStore.isLoggedIn) {
+    authModal.requireLogin()
+    return
+  }
+  router.push({ name: 'profile' })
+}
 </script>
 
 <template>
@@ -77,36 +121,65 @@ const navigate = (item: NavItem) => router.push({ name: item.name, query: item.q
     <!-- Divider -->
     <div class="mx-4 my-4 border-t border-white/[0.07] shrink-0" />
 
-    <!-- Playlists -->
+    <!-- 我的播放列表 -->
     <div class="px-4 shrink-0">
       <p class="text-[11px] font-semibold text-gray-500 uppercase tracking-widest mb-3 px-1">
         我的播放列表
       </p>
-      <div class="space-y-0.5">
-        <button
-          v-for="pl in playlists"
-          :key="pl.name"
-          type="button"
-          class="w-full flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-white/5 transition-colors"
-          @click="authModal.requireLogin()"
-        >
-          <img :src="pl.cover" :alt="pl.name" class="w-10 h-10 rounded-lg object-cover shrink-0" />
-          <div class="min-w-0 text-left">
-            <p class="text-sm text-white font-medium truncate">{{ pl.name }}</p>
-            <p class="text-xs text-gray-500">{{ pl.count }} 个视频</p>
+
+      <!-- 未登录提示 -->
+      <template v-if="!userStore.isLoggedIn">
+        <p class="text-xs text-gray-600 px-2 py-1">登录后查看播放列表</p>
+      </template>
+
+      <!-- 加载骨架 -->
+      <template v-else-if="playlistsLoading">
+        <div v-for="i in 3" :key="i" class="flex items-center gap-3 px-2 py-2">
+          <div class="w-10 h-10 bg-white/5 rounded-lg animate-pulse shrink-0" />
+          <div class="flex-1 space-y-1.5">
+            <div class="h-3 bg-white/5 rounded animate-pulse w-3/4" />
+            <div class="h-2 bg-white/5 rounded animate-pulse w-1/3" />
           </div>
-        </button>
-      </div>
+        </div>
+      </template>
+
+      <!-- 空状态 -->
+      <template v-else-if="playlists.length === 0">
+        <p class="text-xs text-gray-600 px-2 py-1">暂无播放列表</p>
+      </template>
+
+      <!-- 列表 -->
+      <template v-else>
+        <div class="space-y-0.5">
+          <button
+            v-for="pl in playlists"
+            :key="pl.id"
+            type="button"
+            class="w-full flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-white/5 transition-colors"
+            @click="onPlaylistClick"
+          >
+            <img
+              :src="pl.coverUrl || `https://picsum.photos/40/40?random=${pl.id}`"
+              :alt="pl.title"
+              class="w-10 h-10 rounded-lg object-cover shrink-0"
+            />
+            <div class="min-w-0 text-left">
+              <p class="text-sm text-white font-medium truncate">{{ pl.title }}</p>
+              <p class="text-xs text-gray-500">{{ pl.videoCount }} 个视频</p>
+            </div>
+          </button>
+        </div>
+      </template>
     </div>
 
     <div class="flex-1" />
 
-    <!-- Create Playlist -->
+    <!-- 创建播放列表 -->
     <div class="px-4 pb-4 shrink-0">
       <button
         type="button"
         class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/[0.06] border border-white/[0.08] text-sm text-gray-400 hover:bg-white/10 hover:text-white transition-all"
-        @click="authModal.requireLogin()"
+        @click="onCreatePlaylist"
       >
         <i class="fa-solid fa-plus text-xs" />
         创建播放列表

@@ -431,6 +431,12 @@ const toggleFollow = (videoId: string): void => {
   void videoStore.toggleFollow(props.feed, videoId)
 }
 
+const goToUserProfile = (videoId: string): void => {
+  const video = videoStore.findVideo(props.feed, videoId)
+  if (!video) return
+  void router.push({ name: 'user-profile', params: { id: video.author.id } })
+}
+
 const toggleLike = (videoId: string): void => {
   if (!requireInteractionLogin()) return
   void videoStore.toggleLike(props.feed, videoId)
@@ -525,6 +531,7 @@ onBeforeUnmount(() => {
           :active="index === currentIndex"
           :muted="videoStore.muted"
           @follow="toggleFollow"
+          @profile="goToUserProfile"
           @like="toggleLike"
           @comment="openComments"
           @favorite="toggleFavorite"

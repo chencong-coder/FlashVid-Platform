@@ -2,29 +2,17 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { getTopics, type TopicItem } from '@/api/topic'
+import { getRecommendUsers, followUser, unfollowUser, type RecommendUser } from '@/api/user'
 import { useAuthModalStore } from '@/store/authModal'
+import { useUserStore } from '@/store/user'
 
 const router = useRouter()
 const authModal = useAuthModalStore()
+const userStore = useUserStore()
+
+// ---- 正在流行 ----
 const trendingTopics = ref<TopicItem[]>([])
 const loading = ref(true)
-
-// API 无数据时的兜底 mock
-const mockTrending: Array<Pick<TopicItem, 'id' | 'name' | 'videoCount'>> = [
-  { id: 'mock-1', name: '慵懒周末', videoCount: 2_400_000 },
-  { id: 'mock-2', name: '晨间routine', videoCount: 1_800_000 },
-  { id: 'mock-3', name: '旅行日记', videoCount: 1_200_000 },
-  { id: 'mock-4', name: '舞蹈挑战', videoCount: 965_000 },
-  { id: 'mock-5', name: '美食ASMR', videoCount: 872_000 },
-]
-
-const suggestions = [
-  { name: '林朴', cat: '旅行', avatar: 'https://picsum.photos/40/40?random=31' },
-  { name: '李杰森', cat: '搞笑', avatar: 'https://picsum.photos/40/40?random=32' },
-  { name: '阮索菲', cat: '生活', avatar: 'https://picsum.photos/40/40?random=33' },
-  { name: '瑞麦克', cat: '健身', avatar: 'https://picsum.photos/40/40?random=34' },
-  { name: '陈艾娃', cat: '艺术', avatar: 'https://picsum.photos/40/40?random=35' },
-]
 
 const fmtVideos = (n: number): string => {
   if (n >= 100_000_000) return `${(n / 100_000_000).toFixed(1)}亿个视频`
@@ -38,22 +26,69 @@ const loadTopics = async () => {
     const res = await getTopics({ sort: 'hot', count: 5 })
     trendingTopics.value = res.data.data?.topics ?? []
   } catch {
-    /* use mock */
+    trendingTopics.value = []
   } finally {
     loading.value = false
   }
 }
 
-onMounted(loadTopics)
+// ---- 为你推荐 ----
+const suggestedUsers = ref<RecommendUser[]>([])
+const suggestLoading = ref(true)
+const followingSet = ref(new Set<string>())
 
-const displayTopics = () => (trendingTopics.value.length ? trendingTopics.value : mockTrending)
+const fmtFollowers = (n: number): string => {
+  if (n >= 100_000_000) return `${(n / 100_000_000).toFixed(1)}亿粉丝`
+  if (n >= 10_000) return `${(n / 10_000).toFixed(0)}万粉丝`
+  return `${n} 粉丝`
+}
+
+const loadSuggestions = async () => {
+  suggestLoading.value = true
+  try {
+    const res = await getRecommendUsers(5)
+    suggestedUsers.value = res.data.data?.users ?? []
+  } catch {
+    suggestedUsers.value = []
+  } finally {
+    suggestLoading.value = false
+  }
+}
+
+const toggleFollow = async (userId: string) => {
+  if (!userStore.isLoggedIn) {
+    authModal.requireLogin()
+    return
+  }
+  try {
+    if (followingSet.value.has(userId)) {
+      await unfollowUser(userId)
+      followingSet.value = new Set([...followingSet.value].filter((id) => id !== userId))
+    } else {
+      await followUser(userId)
+      followingSet.value = new Set([...followingSet.value, userId])
+    }
+  } catch {
+    // 忽略网络错误，状态保持不变
+  }
+}
+
+const refresh = () => {
+  loadTopics()
+  loadSuggestions()
+}
+
+onMounted(() => {
+  loadTopics()
+  loadSuggestions()
+})
 </script>
 
 <template>
   <aside
     class="w-[288px] shrink-0 h-full overflow-y-auto bg-[#0d0d10] px-4 py-4 space-y-3 scrollbar-none"
   >
-    <!-- ① Trending Now -->
+    <!-- ① 正在流行 -->
     <div class="bg-[#111115] rounded-2xl p-4">
       <div class="flex items-center justify-between mb-3">
         <h3 class="text-sm font-semibold text-white flex items-center gap-2">
@@ -80,10 +115,15 @@ const displayTopics = () => (trendingTopics.value.length ? trendingTopics.value 
         </div>
       </template>
 
-      <!-- List -->
+      <!-- 空状态 -->
+      <template v-else-if="trendingTopics.length === 0">
+        <p class="text-xs text-gray-600 text-center py-3">暂无热门话题</p>
+      </template>
+
+      <!-- 列表 -->
       <template v-else>
         <button
-          v-for="(topic, i) in displayTopics()"
+          v-for="(topic, i) in trendingTopics"
           :key="topic.id"
           type="button"
           class="w-full flex items-center gap-3 py-2 px-1 rounded-lg hover:bg-white/[0.04] transition-colors"
@@ -102,42 +142,69 @@ const displayTopics = () => (trendingTopics.value.length ? trendingTopics.value 
       </template>
     </div>
 
-    <!-- ② Suggested for you -->
+    <!-- ② 为你推荐 -->
     <div class="bg-[#111115] rounded-2xl p-4">
       <div class="flex items-center justify-between mb-3">
         <h3 class="text-sm font-semibold text-white">为你推荐</h3>
         <button
           type="button"
           class="w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-500 hover:text-white transition-colors"
-          @click="loadTopics"
+          @click="refresh"
         >
           <i class="fa-solid fa-rotate-right text-xs" />
         </button>
       </div>
 
-      <div class="space-y-1">
-        <div v-for="user in suggestions" :key="user.name" class="flex items-center gap-3 py-1.5">
+      <!-- Skeleton -->
+      <template v-if="suggestLoading">
+        <div v-for="i in 5" :key="i" class="flex items-center gap-3 py-1.5">
+          <div class="w-9 h-9 bg-white/5 rounded-full animate-pulse shrink-0" />
+          <div class="flex-1 space-y-1">
+            <div class="h-3 bg-white/5 rounded animate-pulse w-2/3" />
+            <div class="h-2 bg-white/5 rounded animate-pulse w-1/3" />
+          </div>
+          <div class="w-12 h-7 bg-white/5 rounded-lg animate-pulse shrink-0" />
+        </div>
+      </template>
+
+      <!-- 空状态 -->
+      <template v-else-if="suggestedUsers.length === 0">
+        <p class="text-xs text-gray-600 text-center py-3">暂无推荐用户</p>
+      </template>
+
+      <!-- 列表 -->
+      <template v-else>
+        <div
+          v-for="u in suggestedUsers"
+          :key="u.userId"
+          class="flex items-center gap-3 py-1.5"
+        >
           <img
-            :src="user.avatar"
-            :alt="user.name"
+            :src="u.avatar || `https://picsum.photos/40/40?random=${u.userId}`"
+            :alt="u.nickname"
             class="w-9 h-9 rounded-full object-cover shrink-0"
           />
           <div class="flex-1 min-w-0">
-            <p class="text-sm text-white font-medium truncate">{{ user.name }}</p>
-            <p class="text-xs text-gray-500">{{ user.cat }}</p>
+            <p class="text-sm text-white font-medium truncate">{{ u.nickname }}</p>
+            <p class="text-xs text-gray-500">{{ fmtFollowers(u.followerCount) }}</p>
           </div>
           <button
             type="button"
-            class="shrink-0 text-xs px-3 py-1.5 rounded-lg bg-white/[0.06] border border-white/[0.1] text-gray-300 hover:bg-white/[0.12] hover:text-white transition-all"
-            @click="authModal.requireLogin()"
+            class="shrink-0 text-xs px-3 py-1.5 rounded-lg border transition-all"
+            :class="
+              followingSet.has(u.userId)
+                ? 'bg-violet-600/20 border-violet-500/40 text-violet-300 hover:bg-red-500/20 hover:border-red-500/40 hover:text-red-300'
+                : 'bg-white/[0.06] border-white/[0.1] text-gray-300 hover:bg-white/[0.12] hover:text-white'
+            "
+            @click="toggleFollow(u.userId)"
           >
-            关注
+            {{ followingSet.has(u.userId) ? '已关注' : '关注' }}
           </button>
         </div>
-      </div>
+      </template>
     </div>
 
-    <!-- ③ Go Premium -->
+    <!-- ③ 开通会员 -->
     <div
       class="rounded-2xl bg-gradient-to-br from-[#1e1b4b] via-[#2e1d6b] to-[#1a0d3e] p-5 relative overflow-hidden"
     >

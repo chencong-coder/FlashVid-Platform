@@ -212,6 +212,18 @@ export const addVideoToPlaylist = (playlistId: string, videoId: string) =>
 export const removeVideoFromPlaylist = (playlistId: string, videoId: string) =>
   http.delete<ApiResponse<string>>(`/playlists/${playlistId}/videos/${videoId}`)
 
+// ===== 推荐用户 =====
+export interface RecommendUser {
+  userId: string
+  nickname: string
+  avatar: string
+  bio: string
+  followerCount: number
+}
+
+export const getRecommendUsers = (count = 5) =>
+  http.get<ApiResponse<{ users: RecommendUser[] }>>('/user/recommend', { params: { count } })
+
 // ===== 关注 =====
 export const followUser = (userId: string) =>
   http.post<ApiResponse<FollowResp>>(`/user/${userId}/follow`)

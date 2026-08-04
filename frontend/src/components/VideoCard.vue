@@ -13,6 +13,7 @@ interface Props {
 
 interface Emits {
   (event: 'follow', videoId: string): void
+  (event: 'profile', videoId: string): void
   (event: 'like', videoId: string): void
   (event: 'comment', videoId: string): void
   (event: 'favorite', videoId: string): void
@@ -164,6 +165,7 @@ onBeforeUnmount(() => {
       :video="video"
       :playing="playing"
       @follow="emit('follow', video.id)"
+      @profile="emit('profile', video.id)"
       @like="emit('like', video.id)"
       @comment="emit('comment', video.id)"
       @favorite="emit('favorite', video.id)"

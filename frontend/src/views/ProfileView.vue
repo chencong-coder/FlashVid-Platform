@@ -7,6 +7,7 @@ import type { FeedVideo } from '@/api/feed'
 import type { UserInfo, UpdateUserPayload, PlaylistInfo } from '@/api/user'
 import {
   getMyLikes,
+  getMyFavorites,
   getMyPlaylists,
   getPlaylistVideos,
   getUserInfo,
@@ -31,11 +32,11 @@ const activeTab = ref<ProfileTab>(
 const userInfo = ref<UserInfo | null>(null)
 const worksVideos = ref<FeedVideo[]>([])
 const likesVideos = ref<FeedVideo[]>([])
+const favoritesVideos = ref<FeedVideo[]>([])
 const playlists = ref<PlaylistInfo[]>([])
 const selectedPlaylist = ref<PlaylistInfo | null>(null)
 const playlistVideos = ref<FeedVideo[]>([])
 const playlistVideosLoading = ref(false)
-const loadedTabs = ref<Set<ProfileTab>>(new Set())
 const tabLoading = ref(false)
 
 // 编辑资料弹窗
@@ -136,11 +137,12 @@ const profile = computed(() => {
 
 const gridItems = computed<FeedVideo[]>(() => {
   if (activeTab.value === 'likes') return likesVideos.value
+  if (activeTab.value === 'favorites') return favoritesVideos.value
   return worksVideos.value
 })
 
 const loadTab = async (tab: ProfileTab): Promise<void> => {
-  if (loadedTabs.value.has(tab) || !userStore.profile) return
+  if (!userStore.profile) return
   tabLoading.value = true
   try {
     if (tab === 'works') {
@@ -149,13 +151,10 @@ const loadTab = async (tab: ProfileTab): Promise<void> => {
     } else if (tab === 'likes') {
       const res = await getMyLikes({ page: 1, pageSize: 20 })
       likesVideos.value = res.data.data.videos
-    } else {
-      const res = await getMyPlaylists()
-      if (res.data.code === 0) {
-        playlists.value = res.data.data.playlists
-      }
+    } else if (tab === 'favorites') {
+      const res = await getMyFavorites({ page: 1, pageSize: 20 })
+      favoritesVideos.value = res.data.data.videos
     }
-    loadedTabs.value.add(tab)
   } catch {
     /* silently keep empty */
   } finally {
@@ -394,7 +393,35 @@ const closePlaylist = (): void => {
           </div>
         </template>
 
-        <!-- 收藏：播放列表卡片 或 已选列表的视频 -->
+        <!-- 收藏：收藏的视频网格 -->
+        <template v-else-if="activeTab === 'favorites'">
+          <div v-if="tabLoading && !gridItems.length" class="grid grid-cols-3 gap-0.5">
+            <div v-for="n in 9" :key="n" class="aspect-[3/4] animate-pulse bg-neutral-800" />
+          </div>
+          <div v-else-if="gridItems.length" class="grid grid-cols-3 gap-0.5">
+            <div
+              v-for="item in gridItems"
+              :key="item.id"
+              class="relative aspect-[3/4] overflow-hidden bg-neutral-900"
+            >
+              <img
+                :src="item.coverUrl"
+                alt="视频封面"
+                loading="lazy"
+                class="h-full w-full object-cover"
+              />
+              <span class="absolute bottom-1 left-1 text-[10px] text-white">
+                <i class="fa-solid fa-play mr-1" />{{ formatCount(item.stats.likeCount) }}
+              </span>
+            </div>
+          </div>
+          <div v-else class="flex flex-col items-center justify-center py-16 text-neutral-500">
+            <i class="fa-regular fa-star mb-3 text-3xl" />
+            <p class="text-sm">暂无收藏</p>
+          </div>
+        </template>
+
+        <!-- 播放列表（已移除，收藏现在显示收藏的视频） -->
         <template v-else>
           <!-- 播放列表详情 -->
           <div v-if="selectedPlaylist">

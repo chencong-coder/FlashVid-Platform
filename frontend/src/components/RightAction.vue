@@ -9,6 +9,7 @@ interface Props {
 
 interface Emits {
   (event: 'follow'): void
+  (event: 'profile'): void
   (event: 'like'): void
   (event: 'comment'): void
   (event: 'favorite'): void
@@ -22,14 +23,12 @@ const emit = defineEmits<Emits>()
 <template>
   <aside class="absolute bottom-6 right-3 z-20 flex w-14 flex-col items-center gap-4 text-white">
     <!-- 作者头像 - 更大的圆形设计，带发光效果 -->
-    <button
-      type="button"
-      aria-label="关注作者"
-      class="action-item relative mb-1 h-14 w-14"
-      @click.stop="emit('follow')"
-    >
-      <div
+    <div class="action-item relative mb-1 h-14 w-14">
+      <button
+        type="button"
+        aria-label="查看用户主页"
         class="h-14 w-14 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 p-0.5 transition-transform duration-300 hover:scale-110 active:scale-95"
+        @click.stop="emit('profile')"
       >
         <img
           :src="video.author.avatar"
@@ -37,20 +36,23 @@ const emit = defineEmits<Emits>()
           loading="lazy"
           class="h-full w-full rounded-full border-2 border-black object-cover"
         />
-      </div>
-      <span
+      </button>
+      <button
         v-if="!video.author.followed"
+        type="button"
+        aria-label="关注作者"
         class="absolute -bottom-1 left-1/2 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full bg-gradient-to-br from-pink-500 to-rose-500 text-xs shadow-lg transition-transform duration-300 hover:scale-110"
+        @click.stop="emit('follow')"
       >
         <i class="fa-solid fa-plus" />
-      </span>
+      </button>
       <span
         v-else
         class="absolute -bottom-1 left-1/2 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full bg-white text-xs text-rose-500 shadow-lg"
       >
         <i class="fa-solid fa-check" />
       </span>
-    </button>
+    </div>
 
     <!-- 点赞按钮 - 带心跳动画 -->
     <button

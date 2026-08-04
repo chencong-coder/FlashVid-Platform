@@ -42,6 +42,9 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 			authUser.POST("/refresh", auth.RefreshHandler)   // 刷新Token
 		}
 
+		// 用户推荐（公开接口，OptionalAuth：登录后排除自己和已关注的用户）
+		apiV1.GET("/user/recommend", middleware.OptionalAuth(), user.GetRecommendUsersHandler)
+
 		// 用户相关路由组
 		userR := apiV1.Group("/user")
 		userR.Use(middleware.Auth())
