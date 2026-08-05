@@ -1,12 +1,28 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import SearchPopup from '@/components/SearchPopup.vue'
+import SearchDropdown from '@/components/SearchDropdown.vue'
 import { useUserStore } from '@/store/user'
+import { getUnreadCount } from '@/api/message'
 
 const router = useRouter()
 const userStore = useUserStore()
 const searchVisible = ref(false)
+const unreadCount = ref(0)
+
+const loadUnreadCount = async () => {
+  if (!userStore.isLoggedIn) { unreadCount.value = 0; return }
+  try {
+    const res = await getUnreadCount()
+    unreadCount.value = res.data.data.unreadCount
+  } catch {
+    unreadCount.value = 0
+  }
+}
+
+onMounted(loadUnreadCount)
+watch(() => userStore.isLoggedIn, loadUnreadCount)
 </script>
 
 <template>
@@ -22,20 +38,9 @@ const searchVisible = ref(false)
       </span>
     </div>
 
-    <!-- Search bar (desktop, centered) -->
+    <!-- Search dropdown (desktop only — inline with dropdown panel) -->
     <div class="hidden lg:flex flex-1 justify-center">
-      <button
-        type="button"
-        class="flex items-center gap-3 w-full max-w-md px-4 py-2.5 rounded-full bg-[#1c1c22] border border-white/[0.07] text-gray-500 text-sm hover:border-white/[0.15] transition-all"
-        @click="searchVisible = true"
-      >
-        <i class="fa-solid fa-magnifying-glass text-xs shrink-0" />
-        <span class="flex-1 text-left">搜索创作者、视频、话题…</span>
-        <kbd
-          class="shrink-0 text-[10px] bg-white/[0.06] border border-white/10 rounded px-1.5 py-0.5 font-mono text-gray-600"
-          >⌘ K</kbd
-        >
-      </button>
+      <SearchDropdown />
     </div>
 
     <!-- Right actions -->
@@ -49,16 +54,6 @@ const searchVisible = ref(false)
         <i class="fa-solid fa-magnifying-glass" />
       </button>
 
-      <!-- Upload button -->
-      <button
-        type="button"
-        class="hidden sm:flex items-center gap-2 px-5 py-2 rounded-full bg-violet-600 hover:bg-violet-500 active:bg-violet-700 text-white text-sm font-semibold transition-colors"
-        @click="router.push({ name: 'publish' })"
-      >
-        <i class="fa-solid fa-arrow-up-from-bracket text-xs" />
-        上传
-      </button>
-
       <!-- Notification bell with badge -->
       <button
         type="button"
@@ -68,8 +63,9 @@ const searchVisible = ref(false)
       >
         <i class="fa-regular fa-bell text-[18px]" />
         <span
+          v-if="userStore.isLoggedIn && unreadCount > 0"
           class="absolute top-1.5 right-1.5 w-[18px] h-[18px] flex items-center justify-center rounded-full bg-violet-600 text-[9px] font-bold text-white leading-none"
-          >3</span
+          >{{ unreadCount > 99 ? '99+' : unreadCount }}</span
         >
       </button>
 
@@ -94,6 +90,10 @@ const searchVisible = ref(false)
       </button>
     </div>
 
-    <SearchPopup v-model:show="searchVisible" />
+    <!-- Mobile fullscreen search popup -->
+    <SearchPopup
+      :show="searchVisible"
+      @update:show="(v) => (searchVisible = v)"
+    />
   </header>
 </template>

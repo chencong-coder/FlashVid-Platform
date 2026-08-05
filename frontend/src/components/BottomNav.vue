@@ -14,8 +14,8 @@ const route = useRoute()
 const router = useRouter()
 
 const leftItems: NavItem[] = [
-  { icon: 'fa-house',  name: 'recommend', tab: 'home' },
-  { icon: 'fa-users',  name: 'friends',   tab: 'friends' },
+  { icon: 'fa-house',   name: 'recommend', tab: 'home' },
+  { icon: 'fa-compass', name: 'discover',  tab: 'discover' },
 ]
 const rightItems: NavItem[] = [
   { icon: 'fa-message', name: 'messages', tab: 'messages' },

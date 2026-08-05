@@ -2,14 +2,12 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
+import LoginGate from '@/components/LoginGate.vue'
 import { getConversations, type ConversationInfo } from '@/api/message'
 import { parseApiDate } from '@/utils/date'
 import { useUserStore } from '@/store/user'
-import { useAuthModalStore } from '@/store/authModal'
 
 const userStore = useUserStore()
-const authModal = useAuthModalStore()
-
 const router = useRouter()
 
 const shortcuts = [
@@ -67,49 +65,14 @@ function openChat(conv: ConversationInfo) {
   void router.push({ name: 'chat', params: { userId: conv.targetUser.id } })
 }
 
-onMounted(loadConversations)
+onMounted(() => {
+  if (userStore.isLoggedIn) void loadConversations()
+})
 </script>
 
 <template>
-  <!-- 未登录：引导登录 -->
-  <main
-    v-if="!userStore.isLoggedIn"
-    class="safe-top flex h-full flex-col items-center justify-center bg-[#0d0d0d] px-8 text-white"
-  >
-    <div class="flex w-full max-w-[25rem] flex-col items-center text-center">
-      <div
-        class="flex h-[4.75rem] w-[4.75rem] items-center justify-center rounded-2xl border border-white/15 bg-primary shadow-[0_18px_45px_rgba(254,44,85,0.3)]"
-      >
-        <i class="fa-solid fa-play ml-1 text-[1.75rem] text-white" />
-      </div>
-      <h1 class="mt-5 text-[1.75rem] font-bold">闪视</h1>
-      <p class="mt-2 text-sm leading-6 text-neutral-400">登录后查看消息与私信</p>
-      <button
-        type="button"
-        class="mt-8 flex h-[3.25rem] w-full items-center justify-center gap-2 rounded-lg bg-primary text-sm font-semibold text-white shadow-[0_12px_28px_rgba(254,44,85,0.28)] transition-all hover:bg-[#ff3e63] active:scale-[0.98]"
-        @click="authModal.open('login')"
-      >
-        <i class="fa-solid fa-arrow-right-to-bracket text-xs" />
-        登录
-      </button>
-      <div class="my-4 flex w-full items-center gap-3 text-[11px] text-neutral-600">
-        <span class="h-px flex-1 bg-white/10" />
-        <span>还没有账号？</span>
-        <span class="h-px flex-1 bg-white/10" />
-      </div>
-      <button
-        type="button"
-        class="flex h-[3.25rem] w-full items-center justify-center gap-2 rounded-lg border border-white/15 bg-white/[0.03] text-sm font-medium text-neutral-200 transition-all hover:border-white/25 hover:bg-white/[0.07] active:scale-[0.98]"
-        @click="authModal.open('register')"
-      >
-        <i class="fa-solid fa-user-plus text-xs text-neutral-400" />
-        新用户注册
-      </button>
-    </div>
-  </main>
-
-  <!-- 已登录：正常消息页面 -->
-  <main v-else class="safe-top h-full bg-[#0d0d0d] text-white">
+  <LoginGate>
+    <main class="safe-top h-full bg-[#0d0d0d] text-white">
     <header
       class="flex h-14 items-center justify-center border-b border-white/5 text-base font-semibold"
     >
@@ -185,5 +148,6 @@ onMounted(loadConversations)
         </div>
       </article>
     </section>
-  </main>
+    </main>
+  </LoginGate>
 </template>

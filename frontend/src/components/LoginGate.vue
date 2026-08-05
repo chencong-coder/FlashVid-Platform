@@ -10,7 +10,7 @@ const authModal = useAuthModalStore()
   <slot v-if="userStore.isLoggedIn" />
   <main
     v-else
-    class="safe-top flex h-full flex-col items-center justify-center bg-[#0d0d0d] px-8 text-white"
+    class="safe-top flex h-full flex-col items-center justify-center bg-[#0d0d0d] px-8 pb-28 text-white"
   >
     <div class="flex w-full max-w-[25rem] flex-col items-center text-center">
       <div

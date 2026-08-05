@@ -203,33 +203,5 @@ onMounted(() => {
         </div>
       </template>
     </div>
-
-    <!-- ③ 开通会员 -->
-    <div
-      class="rounded-2xl bg-gradient-to-br from-[#1e1b4b] via-[#2e1d6b] to-[#1a0d3e] p-5 relative overflow-hidden"
-    >
-      <!-- Subtle glow blobs -->
-      <div
-        class="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-violet-600/20 blur-2xl pointer-events-none"
-      />
-      <div
-        class="absolute -bottom-4 -left-4 w-20 h-20 rounded-full bg-indigo-600/15 blur-2xl pointer-events-none"
-      />
-
-      <div class="relative">
-        <!-- Lightning icon badge -->
-        <div class="w-10 h-10 rounded-xl bg-yellow-400/15 flex items-center justify-center mb-3">
-          <i class="fa-solid fa-bolt text-yellow-400 text-lg" />
-        </div>
-        <h3 class="text-white font-bold text-base mb-1">开通会员</h3>
-        <p class="text-gray-300 text-xs mb-4 leading-relaxed">解锁专属内容与特效。</p>
-        <button
-          type="button"
-          class="w-full py-2.5 rounded-xl bg-white/[0.12] hover:bg-white/[0.2] active:bg-white/[0.08] text-white text-sm font-medium border border-white/[0.15] transition-all"
-        >
-          免费试用
-        </button>
-      </div>
-    </div>
   </aside>
 </template>

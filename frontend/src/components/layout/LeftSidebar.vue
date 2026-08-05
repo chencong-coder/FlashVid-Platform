@@ -196,7 +196,7 @@ const onCreatePlaylist = () => {
           >{{ link }}</span
         >
       </div>
-      <p class="text-[10px] text-gray-700 mt-1">© 2024 闪视</p>
+      <p class="text-[10px] text-gray-700 mt-1">© 2026 闪视</p>
     </div>
   </aside>
 </template>

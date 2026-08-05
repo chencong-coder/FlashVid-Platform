@@ -206,7 +206,7 @@ const closePlaylist = (): void => {
     <!-- 未登录：引导登录（与 LoginGate 保持一致的布局） -->
     <section
       v-if="!userStore.isLoggedIn"
-      class="safe-top flex h-full flex-col items-center justify-center px-8"
+      class="safe-top flex h-full flex-col items-center justify-center px-8 pb-28"
     >
       <div class="flex w-full max-w-[25rem] flex-col items-center text-center">
         <div
