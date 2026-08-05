@@ -589,7 +589,8 @@ onBeforeUnmount(() => {
     <button
       type="button"
       :aria-label="videoStore.muted ? '打开声音' : '静音'"
-      class="safe-top absolute left-4 top-4 z-40 flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-white/20 to-white/5 text-base text-white backdrop-blur-xl transition-all duration-300 hover:scale-110 hover:from-white/30 hover:to-white/10 active:scale-95"
+      class="safe-top absolute top-4 z-40 flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-white/20 to-white/5 text-base text-white backdrop-blur-xl transition-all duration-300 hover:scale-110 hover:from-white/30 hover:to-white/10 active:scale-95"
+      :class="feed === 'profile' ? 'right-4' : 'left-4'"
       @click="videoStore.toggleMuted"
     >
       <i
