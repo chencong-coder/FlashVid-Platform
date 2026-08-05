@@ -18,6 +18,7 @@ interface Emits {
   (event: 'comment', videoId: string): void
   (event: 'favorite', videoId: string): void
   (event: 'share', videoId: string): void
+  (event: 'playlist', videoId: string): void
 }
 
 const props = defineProps<Props>()
@@ -170,6 +171,7 @@ onBeforeUnmount(() => {
       @comment="emit('comment', video.id)"
       @favorite="emit('favorite', video.id)"
       @share="emit('share', video.id)"
+      @playlist="emit('playlist', video.id)"
     />
   </article>
 </template>

@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { RecycleScroller } from 'vue-virtual-scroller'
 
+import AddToPlaylistModal from '@/components/AddToPlaylistModal.vue'
 import CommentDrawer from '@/components/CommentDrawer.vue'
 import SearchPopup from '@/components/SearchPopup.vue'
 import TabHeader from '@/components/TabHeader.vue'
@@ -36,6 +37,7 @@ const currentIndex = ref(0)
 const commentVideoId = ref('')
 const commentsVisible = ref(false)
 const searchVisible = ref(false)
+const playlistVideoId = ref<string | null>(null)
 const dragging = ref(false)
 const wheelLocked = ref(false)
 let scrollEndTimer: number | undefined
@@ -452,6 +454,11 @@ const openComments = (videoId: string): void => {
   commentsVisible.value = true
 }
 
+const handlePlaylist = (videoId: string): void => {
+  if (!requireInteractionLogin()) return
+  playlistVideoId.value = videoId
+}
+
 const share = async (): Promise<void> => {
   if (!currentVideo.value) return
   if (!requireInteractionLogin()) return
@@ -536,6 +543,7 @@ onBeforeUnmount(() => {
           @comment="openComments"
           @favorite="toggleFavorite"
           @share="share"
+          @playlist="handlePlaylist"
         />
       </template>
     </RecycleScroller>
@@ -584,5 +592,6 @@ onBeforeUnmount(() => {
       :total="commentTotal"
     />
     <SearchPopup v-model:show="searchVisible" />
+    <AddToPlaylistModal :video-id="playlistVideoId" @close="playlistVideoId = null" />
   </main>
 </template>

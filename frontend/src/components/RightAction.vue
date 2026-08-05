@@ -14,6 +14,7 @@ interface Emits {
   (event: 'comment'): void
   (event: 'favorite'): void
   (event: 'share'): void
+  (event: 'playlist'): void
 }
 
 defineProps<Props>()
@@ -135,6 +136,19 @@ const emit = defineEmits<Emits>()
       <span class="text-xs font-semibold text-shadow-strong">{{
         formatCount(video.stats.shares)
       }}</span>
+    </button>
+
+    <!-- 加入播放列表 -->
+    <button
+      type="button"
+      aria-label="加入播放列表"
+      class="action-item flex w-14 flex-col items-center gap-1"
+      @click.stop="emit('playlist')"
+    >
+      <i
+        class="fa-solid fa-list-ul text-[26px] drop-shadow-lg transition-all duration-300 hover:scale-110 hover:text-violet-300 active:scale-90"
+      />
+      <span class="text-xs font-semibold text-shadow-strong">列表</span>
     </button>
 
     <!-- 音乐唱片 - 3D 旋转效果 -->
