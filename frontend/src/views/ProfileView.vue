@@ -99,7 +99,8 @@ const saveProfile = async (): Promise<void> => {
 const handleLogout = (): void => {
   userStore.logout()
   showToast('已退出登录')
-  void router.push('/login')
+  // 跳回"我的"页面——未登录时该页面本身就是大登录界面
+  void router.push({ name: 'profile' })
 }
 
 // Merges fresh API data with cached store profile as fallback
@@ -496,18 +497,21 @@ const closePlaylist = (): void => {
       </section>
     </template>
 
-    <!-- 编辑资料弹窗（底部弹出） -->
+    <!-- 编辑资料弹窗（居中卡片） -->
     <transition name="fade">
       <div
         v-if="showEditModal"
-        class="fixed inset-0 z-50 flex flex-col"
+        class="fixed inset-0 z-50 flex items-center justify-center px-4"
         @click.self="showEditModal = false"
       >
-        <div class="flex-1 bg-black/60" @click="showEditModal = false" />
+        <!-- 半透明遮罩 -->
+        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" @click="showEditModal = false" />
+        <!-- 卡片 -->
         <div
-          class="no-scrollbar max-h-[82vh] overflow-y-auto rounded-t-2xl bg-[#1a1a1a] px-4 pb-10"
+          class="no-scrollbar relative z-10 max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-[#1a1a1a]"
+          @click.stop
         >
-          <div class="flex h-14 items-center justify-between text-white">
+          <div class="flex h-14 items-center justify-between px-4 text-white">
             <button type="button" class="text-sm text-neutral-400" @click="showEditModal = false">
               取消
             </button>
@@ -521,7 +525,7 @@ const closePlaylist = (): void => {
               {{ editLoading ? '保存中...' : '保存' }}
             </button>
           </div>
-          <div class="space-y-3 text-white">
+          <div class="space-y-3 px-4 pb-6 text-white">
             <div class="rounded-lg bg-white/5 px-4 py-3">
               <label class="block text-xs text-neutral-400">昵称</label>
               <input

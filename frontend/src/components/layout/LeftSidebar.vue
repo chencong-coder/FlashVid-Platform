@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { showToast } from 'vant'
 import { useAuthModalStore } from '@/store/authModal'
 import { useUserStore } from '@/store/user'
-import { getMyPlaylists, type PlaylistInfo } from '@/api/user'
+import { getMyPlaylists, createPlaylist, type PlaylistInfo } from '@/api/user'
 
 const route = useRoute()
 const router = useRouter()
@@ -44,19 +45,54 @@ const loadPlaylists = async () => {
   }
 }
 
-// 登录态变化时重新加载
 watch(
   () => userStore.isLoggedIn,
   (loggedIn) => {
-    if (loggedIn) {
-      loadPlaylists()
-    } else {
-      playlists.value = []
-    }
+    if (loggedIn) loadPlaylists()
+    else playlists.value = []
   },
 )
 
 onMounted(loadPlaylists)
+
+// ---- 创建播放列表弹窗 ----
+const showCreateModal = ref(false)
+const createTitle = ref('')
+const createDesc = ref('')
+const creating = ref(false)
+
+const openCreateModal = () => {
+  if (!userStore.isLoggedIn) {
+    authModal.requireLogin()
+    return
+  }
+  createTitle.value = ''
+  createDesc.value = ''
+  showCreateModal.value = true
+}
+
+const closeCreateModal = () => {
+  showCreateModal.value = false
+}
+
+const submitCreate = async () => {
+  const title = createTitle.value.trim()
+  if (!title) {
+    showToast('请输入播放列表名称')
+    return
+  }
+  creating.value = true
+  try {
+    await createPlaylist({ title, description: createDesc.value.trim() || undefined })
+    showToast('创建成功')
+    showCreateModal.value = false
+    await loadPlaylists()
+  } catch {
+    showToast('创建失败，请重试')
+  } finally {
+    creating.value = false
+  }
+}
 
 // ---- 导航 ----
 const isActive = (item: NavItem): boolean => {
@@ -65,22 +101,6 @@ const isActive = (item: NavItem): boolean => {
 }
 
 const navigate = (item: NavItem) => router.push({ name: item.name, query: item.query })
-
-const onPlaylistClick = () => {
-  if (!userStore.isLoggedIn) {
-    authModal.requireLogin()
-    return
-  }
-  router.push({ name: 'profile' })
-}
-
-const onCreatePlaylist = () => {
-  if (!userStore.isLoggedIn) {
-    authModal.requireLogin()
-    return
-  }
-  router.push({ name: 'profile' })
-}
 </script>
 
 <template>
@@ -156,7 +176,7 @@ const onCreatePlaylist = () => {
             :key="pl.id"
             type="button"
             class="w-full flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-white/5 transition-colors"
-            @click="onPlaylistClick"
+            @click="router.push({ name: 'playlist-detail', params: { id: pl.id } })"
           >
             <img
               :src="pl.coverUrl || `https://picsum.photos/40/40?random=${pl.id}`"
@@ -179,7 +199,7 @@ const onCreatePlaylist = () => {
       <button
         type="button"
         class="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/[0.06] border border-white/[0.08] text-sm text-gray-400 hover:bg-white/10 hover:text-white transition-all"
-        @click="onCreatePlaylist"
+        @click="openCreateModal"
       >
         <i class="fa-solid fa-plus text-xs" />
         创建播放列表
@@ -198,5 +218,77 @@ const onCreatePlaylist = () => {
       </div>
       <p class="text-[10px] text-gray-700 mt-1">© 2026 闪视</p>
     </div>
-  </aside>
+    <!-- 创建播放列表弹窗（Teleport 至 body，放在 aside 内不影响布局） -->
+    <Teleport to="body">
+    <Transition
+      enter-active-class="transition duration-150 ease-out"
+      enter-from-class="opacity-0"
+      leave-active-class="transition duration-100 ease-in"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="showCreateModal"
+        class="fixed inset-0 z-50 flex items-center justify-center px-4"
+        @click.self="closeCreateModal"
+      >
+        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" @click="closeCreateModal" />
+        <div class="relative z-10 w-full max-w-sm rounded-2xl bg-[#1a1a22] shadow-2xl" @click.stop>
+          <!-- 标题栏 -->
+          <div class="flex items-center justify-between border-b border-white/[0.06] px-5 py-4">
+            <span class="text-sm font-semibold text-white">新建播放列表</span>
+            <button
+              type="button"
+              class="flex h-7 w-7 items-center justify-center rounded-full text-gray-500 hover:bg-white/10 hover:text-white"
+              @click="closeCreateModal"
+            >
+              <i class="fa-solid fa-xmark text-xs" />
+            </button>
+          </div>
+          <!-- 表单 -->
+          <div class="space-y-3 px-5 py-4">
+            <div>
+              <label class="mb-1.5 block text-xs text-gray-400">名称 <span class="text-primary">*</span></label>
+              <input
+                v-model="createTitle"
+                type="text"
+                maxlength="50"
+                placeholder="给播放列表起个名字"
+                class="w-full rounded-lg bg-white/[0.06] px-3 py-2.5 text-sm text-white outline-none placeholder:text-gray-600 focus:ring-1 focus:ring-violet-500/50"
+                @keydown.enter="submitCreate"
+              />
+            </div>
+            <div>
+              <label class="mb-1.5 block text-xs text-gray-400">描述（选填）</label>
+              <textarea
+                v-model="createDesc"
+                rows="2"
+                maxlength="200"
+                placeholder="描述一下这个播放列表…"
+                class="w-full resize-none rounded-lg bg-white/[0.06] px-3 py-2.5 text-sm text-white outline-none placeholder:text-gray-600 focus:ring-1 focus:ring-violet-500/50"
+              />
+            </div>
+          </div>
+          <!-- 操作按钮 -->
+          <div class="flex gap-2 border-t border-white/[0.06] px-5 py-4">
+            <button
+              type="button"
+              class="flex-1 rounded-lg border border-white/10 py-2.5 text-sm text-gray-400 transition-colors hover:bg-white/5 hover:text-white"
+              @click="closeCreateModal"
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              :disabled="creating || !createTitle.trim()"
+              class="flex-1 rounded-lg bg-violet-600 py-2.5 text-sm font-medium text-white transition-colors hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-40"
+              @click="submitCreate"
+            >
+              {{ creating ? '创建中…' : '创建' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
+</aside>
 </template>

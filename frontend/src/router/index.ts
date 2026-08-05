@@ -50,6 +50,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '搜索', hideBottomNav: true },
   },
   {
+    path: '/playlist/:id',
+    name: 'playlist-detail',
+    component: () => import('@/views/PlaylistDetailView.vue'),
+    meta: { title: '播放列表', hideBottomNav: true, requiresAuth: true },
+  },
+  {
     path: '/topic/:id',
     name: 'topic',
     component: () => import('@/views/TopicView.vue'),
