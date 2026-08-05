@@ -48,7 +48,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <aside class="absolute bottom-6 right-3 z-20 flex w-14 flex-col items-center gap-4 text-white">
+  <aside class="absolute bottom-20 right-3 z-20 flex w-14 flex-col items-center gap-4 text-white">
     <!-- 作者头像 - 更大的圆形设计，带发光效果 -->
     <div class="action-item relative mb-1 h-14 w-14">
       <button
