@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import type { VideoItem } from '@/types/video'
 import { formatCount } from '@/utils/format'
 
@@ -19,6 +20,12 @@ interface Emits {
 
 defineProps<Props>()
 const emit = defineEmits<Emits>()
+
+const moreOpen = ref(false)
+const openPlaylist = () => {
+  moreOpen.value = false
+  emit('playlist')
+}
 </script>
 
 <template>
@@ -138,18 +145,37 @@ const emit = defineEmits<Emits>()
       }}</span>
     </button>
 
-    <!-- 加入播放列表 -->
-    <button
-      type="button"
-      aria-label="加入播放列表"
-      class="action-item flex w-14 flex-col items-center gap-1"
-      @click.stop="emit('playlist')"
-    >
-      <i
-        class="fa-solid fa-list-ul text-[26px] drop-shadow-lg transition-all duration-300 hover:scale-110 hover:text-violet-300 active:scale-90"
-      />
-      <span class="text-xs font-semibold text-shadow-strong">列表</span>
-    </button>
+    <!-- 更多操作 -->
+    <Teleport to="body">
+      <div v-if="moreOpen" class="fixed inset-0 z-[45]" @click="moreOpen = false" />
+    </Teleport>
+    <div class="relative z-[46]">
+      <button
+        type="button"
+        aria-label="更多"
+        class="action-item flex w-14 flex-col items-center gap-1"
+        @click.stop="moreOpen = !moreOpen"
+      >
+        <i
+          class="fa-solid fa-ellipsis text-[26px] drop-shadow-lg transition-all duration-300 hover:scale-110 hover:text-violet-300 active:scale-90"
+        />
+        <span class="text-xs font-semibold text-shadow-strong">更多</span>
+      </button>
+      <!-- 弹出菜单 -->
+      <div
+        v-if="moreOpen"
+        class="absolute bottom-full right-0 mb-3 w-44 overflow-hidden rounded-2xl bg-[#1a1a22] shadow-2xl ring-1 ring-white/10"
+      >
+        <button
+          type="button"
+          class="flex w-full items-center gap-3 px-4 py-3.5 text-sm text-white transition-colors hover:bg-white/10 active:bg-white/20"
+          @click.stop="openPlaylist"
+        >
+          <i class="fa-solid fa-list-ul w-5 text-center text-violet-400" />
+          加入播放列表
+        </button>
+      </div>
+    </div>
 
     <!-- 音乐唱片 - 3D 旋转效果 -->
     <div

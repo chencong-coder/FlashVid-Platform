@@ -65,15 +65,5 @@ const tabWidthPercent = computed(() => 100 / tabs.length)
         }"
       />
     </div>
-
-    <!-- 搜索按钮 - 圆形毛玻璃 -->
-    <button
-      type="button"
-      aria-label="搜索"
-      class="pointer-events-auto absolute right-4 top-[calc(env(safe-area-inset-top)+0.75rem)] flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-lg text-white backdrop-blur-xl transition-all duration-300 hover:bg-white/20 hover:scale-110 active:scale-95"
-      @click="emit('search')"
-    >
-      <i class="fa-solid fa-magnifying-glass" />
-    </button>
   </header>
 </template>

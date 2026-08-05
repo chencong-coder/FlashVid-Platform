@@ -7,7 +7,6 @@ import { searchUsers, type SearchUserItem } from '@/api/user'
 import type { FeedVideo } from '@/api/feed'
 import { formatCount } from '@/utils/format'
 import AddToPlaylistModal from '@/components/AddToPlaylistModal.vue'
-import { useAuthModalStore } from '@/store/authModal'
 
 type Tab = 'videos' | 'users'
 const tabs: { key: Tab; label: string }[] = [
@@ -17,8 +16,6 @@ const tabs: { key: Tab; label: string }[] = [
 
 const route = useRoute()
 const router = useRouter()
-const authModal = useAuthModalStore()
-
 const playlistVideoId = ref<string | null>(null)
 
 const keyword = ref((route.query.q as string) ?? '')
@@ -198,15 +195,6 @@ onMounted(() => {
               loading="lazy"
               class="h-full w-full object-cover"
             />
-            <!-- 加入播放列表按钮 -->
-            <button
-              type="button"
-              aria-label="加入播放列表"
-              class="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm"
-              @click.stop="authModal.requireLogin() && (playlistVideoId = video.id)"
-            >
-              <i class="fa-solid fa-list-ul text-[11px]" />
-            </button>
             <div
               class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-2 pb-2 pt-8"
             >
