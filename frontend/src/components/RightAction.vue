@@ -147,35 +147,35 @@ const openPlaylist = () => {
 
     <!-- 更多操作 -->
     <Teleport to="body">
-      <div v-if="moreOpen" class="fixed inset-0 z-[45]" @click="moreOpen = false" />
-    </Teleport>
-    <div class="relative z-[46]">
-      <button
-        type="button"
-        aria-label="更多"
-        class="action-item flex w-14 flex-col items-center gap-1"
-        @click.stop="moreOpen = !moreOpen"
-      >
-        <i
-          class="fa-solid fa-ellipsis text-[26px] drop-shadow-lg transition-all duration-300 hover:scale-110 hover:text-violet-300 active:scale-90"
-        />
-        <span class="text-xs font-semibold text-shadow-strong">更多</span>
-      </button>
-      <!-- 弹出菜单 -->
-      <div
-        v-if="moreOpen"
-        class="absolute bottom-full right-0 mb-3 w-44 overflow-hidden rounded-2xl bg-[#1a1a22] shadow-2xl ring-1 ring-white/10"
-      >
-        <button
-          type="button"
-          class="flex w-full items-center gap-3 px-4 py-3.5 text-sm text-white transition-colors hover:bg-white/10 active:bg-white/20"
-          @click.stop="openPlaylist"
+      <template v-if="moreOpen">
+        <!-- 遮罩：和菜单同在 body 层级，z-45 -->
+        <div class="fixed inset-0 z-[45]" @click="moreOpen = false" />
+        <!-- 菜单：z-46，实际在遮罩之上 -->
+        <div
+          class="fixed bottom-44 right-4 z-[46] w-44 overflow-hidden rounded-2xl bg-[#1a1a22] shadow-2xl ring-1 ring-white/10"
         >
-          <i class="fa-solid fa-list-ul w-5 text-center text-violet-400" />
-          加入播放列表
-        </button>
-      </div>
-    </div>
+          <button
+            type="button"
+            class="flex w-full items-center gap-3 px-4 py-3.5 text-sm text-white transition-colors hover:bg-white/10 active:bg-white/20"
+            @click.stop="openPlaylist"
+          >
+            <i class="fa-solid fa-list-ul w-5 text-center text-violet-400" />
+            加入播放列表
+          </button>
+        </div>
+      </template>
+    </Teleport>
+    <button
+      type="button"
+      aria-label="更多"
+      class="action-item flex w-14 flex-col items-center gap-1"
+      @click.stop="moreOpen = !moreOpen"
+    >
+      <i
+        class="fa-solid fa-ellipsis text-[26px] drop-shadow-lg transition-all duration-300 hover:scale-110 hover:text-violet-300 active:scale-90"
+      />
+      <span class="text-xs font-semibold text-shadow-strong">更多</span>
+    </button>
 
     <!-- 音乐唱片 - 3D 旋转效果 -->
     <div
