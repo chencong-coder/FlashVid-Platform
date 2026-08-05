@@ -8,6 +8,7 @@ import {
   mapFeedVideo,
   type FeedParams,
   type FeedResponse,
+  type FeedVideo,
 } from '@/api/feed'
 import { followUser, unfollowUser } from '@/api/user'
 import { favoriteVideo, likeVideo, shareVideo, unfavoriteVideo, unlikeVideo } from '@/api/video'
@@ -42,6 +43,7 @@ const fetchFeedPage = async (
   if (feed === 'recommend') return (await getRecommendFeed({ ...params, count })).data.data
   if (feed === 'follow') return (await getFollowFeed({ ...params, count })).data.data
   if (feed === 'friends') return (await getFriendsFeed({ ...params, count })).data.data
+  if (feed === 'profile') return { videos: [], nextCursorToken: '', hasMore: false }
   if (feed === 'topic') {
     if (!topic.id) return { videos: [], nextCursorToken: '', hasMore: false }
     return (await getTopicVideos(topic.id, { ...params, count, sort: topic.sort })).data.data
@@ -72,6 +74,7 @@ export const useVideoStore = defineStore('video', {
       nearby: createFeed(),
       friends: createFeed(),
       topic: createFeed(),
+      profile: createFeed(),
     },
   }),
   actions: {
@@ -112,6 +115,16 @@ export const useVideoStore = defineStore('video', {
         cache.hasMore = false
       } finally {
         cache.loading = false
+      }
+    },
+    // 从个人主页进入播放：预灌当前 tab 的视频列表
+    startProfileFeed(videos: FeedVideo[], startIndex: number): void {
+      this.feeds.profile = {
+        items: videos.map((v) => mapFeedVideo(v, 'recommend')),
+        cursor: '',
+        hasMore: false,
+        loading: false,
+        loaded: true,
       }
     },
     // 从话题页进入播放：预灌已加载的视频 + 游标，避免重复请求，返回起始视频 id

@@ -68,6 +68,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '话题', bottomTab: 'discover', hideBottomNav: true },
   },
   {
+    path: '/profile/play',
+    name: 'profile-play',
+    component: () => import('@/views/feed/ProfilePlayView.vue'),
+    meta: { title: '我的视频', hideBottomNav: true },
+  },
+  {
     path: '/publish',
     name: 'publish',
     component: () => import('@/views/PublishView.vue'),

@@ -75,8 +75,10 @@ const commentTotal = computed(() =>
 )
 
 // TabHeader 只在带 tab 的常规流（follow/recommend/nearby）渲染，
-// 'topic' 属于独立流不会走到这里；收窄类型以匹配 TopNavValue
-const activeTab = computed<TopNavValue>(() => (props.feed === 'topic' ? 'recommend' : props.feed))
+// 'topic'/'profile' 属于独立流不会走到这里；收窄类型以匹配 TopNavValue
+const activeTab = computed<TopNavValue>(() =>
+  props.feed === 'topic' || props.feed === 'profile' ? 'recommend' : props.feed,
+)
 
 const syncActiveVideo = (index: number): void => {
   const boundedIndex = Math.max(0, Math.min(index, videos.value.length - 1))
@@ -556,13 +558,26 @@ onBeforeUnmount(() => {
       @search="searchVisible = true"
     />
 
-    <!-- 独立流（如朋友）：仅显示标题栏 -->
+    <!-- 独立流（朋友/话题/个人主页）：仅显示标题栏或返回按钮 -->
     <header
       v-else
-      class="safe-top pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center justify-center px-4 pb-6 pt-3"
+      class="safe-top pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center px-4 pb-6 pt-3"
+      :class="feed === 'profile' ? 'justify-start' : 'justify-center'"
     >
       <div class="absolute inset-0 bg-gradient-to-b from-black/80 via-black/40 to-transparent" />
+      <!-- 个人主页流：左上角返回按钮 -->
+      <button
+        v-if="feed === 'profile'"
+        type="button"
+        aria-label="返回"
+        class="pointer-events-auto relative flex h-9 w-9 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm"
+        @click="router.back()"
+      >
+        <i class="fa-solid fa-chevron-left text-sm" />
+      </button>
+      <!-- 朋友流：居中标签 -->
       <div
+        v-else
         class="pointer-events-auto relative flex items-center gap-2 rounded-full bg-white/10 px-5 py-2 text-sm font-semibold text-white backdrop-blur-xl"
       >
         <i class="fa-solid fa-user-group text-xs" />

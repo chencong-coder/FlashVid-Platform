@@ -16,12 +16,14 @@ import {
 } from '@/api/user'
 import { useUserStore } from '@/store/user'
 import { useAuthModalStore } from '@/store/authModal'
+import { useVideoStore } from '@/store/video'
 import { formatCount } from '@/utils/format'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const authModal = useAuthModalStore()
+const videoStore = useVideoStore()
 
 type ProfileTab = 'works' | 'likes' | 'favorites'
 const validTabs: ProfileTab[] = ['works', 'likes', 'favorites']
@@ -200,6 +202,12 @@ const closePlaylist = (): void => {
   selectedPlaylist.value = null
   playlistVideos.value = []
 }
+
+// 点击视频封面进入全屏播放流
+const playVideo = (videos: FeedVideo[], index: number): void => {
+  videoStore.startProfileFeed(videos, index)
+  void router.push({ name: 'profile-play', query: { index } })
+}
 </script>
 
 <template>
@@ -359,10 +367,12 @@ const closePlaylist = (): void => {
             <div v-for="n in 9" :key="n" class="aspect-[3/4] animate-pulse bg-neutral-800" />
           </div>
           <div v-else-if="gridItems.length" class="grid grid-cols-3 gap-0.5">
-            <div
-              v-for="item in gridItems"
+            <button
+              v-for="(item, index) in gridItems"
               :key="item.id"
-              class="relative aspect-[3/4] overflow-hidden bg-neutral-900"
+              type="button"
+              class="relative aspect-[3/4] overflow-hidden bg-neutral-900 transition-opacity active:opacity-70"
+              @click="playVideo(gridItems, index)"
             >
               <img
                 :src="item.coverUrl"
@@ -373,7 +383,7 @@ const closePlaylist = (): void => {
               <span class="absolute bottom-1 left-1 text-[10px] text-white">
                 <i class="fa-solid fa-play mr-1" />{{ formatCount(item.stats.likeCount) }}
               </span>
-            </div>
+            </button>
           </div>
           <div v-else class="flex flex-col items-center justify-center py-16 text-neutral-500">
             <i class="fa-regular fa-folder-open mb-3 text-3xl" />
@@ -387,10 +397,12 @@ const closePlaylist = (): void => {
             <div v-for="n in 9" :key="n" class="aspect-[3/4] animate-pulse bg-neutral-800" />
           </div>
           <div v-else-if="gridItems.length" class="grid grid-cols-3 gap-0.5">
-            <div
-              v-for="item in gridItems"
+            <button
+              v-for="(item, index) in gridItems"
               :key="item.id"
-              class="relative aspect-[3/4] overflow-hidden bg-neutral-900"
+              type="button"
+              class="relative aspect-[3/4] overflow-hidden bg-neutral-900 transition-opacity active:opacity-70"
+              @click="playVideo(gridItems, index)"
             >
               <img
                 :src="item.coverUrl"
@@ -401,7 +413,7 @@ const closePlaylist = (): void => {
               <span class="absolute bottom-1 left-1 text-[10px] text-white">
                 <i class="fa-solid fa-play mr-1" />{{ formatCount(item.stats.likeCount) }}
               </span>
-            </div>
+            </button>
           </div>
           <div v-else class="flex flex-col items-center justify-center py-16 text-neutral-500">
             <i class="fa-regular fa-star mb-3 text-3xl" />
@@ -430,10 +442,12 @@ const closePlaylist = (): void => {
               <div v-for="n in 6" :key="n" class="aspect-[3/4] animate-pulse bg-neutral-800" />
             </div>
             <div v-else-if="playlistVideos.length" class="grid grid-cols-3 gap-0.5">
-              <div
-                v-for="item in playlistVideos"
+              <button
+                v-for="(item, index) in playlistVideos"
                 :key="item.id"
-                class="relative aspect-[3/4] overflow-hidden bg-neutral-900"
+                type="button"
+                class="relative aspect-[3/4] overflow-hidden bg-neutral-900 transition-opacity active:opacity-70"
+                @click="playVideo(playlistVideos, index)"
               >
                 <img
                   :src="item.coverUrl"
@@ -444,7 +458,7 @@ const closePlaylist = (): void => {
                 <span class="absolute bottom-1 left-1 text-[10px] text-white">
                   <i class="fa-solid fa-play mr-1" />{{ formatCount(item.stats.likeCount) }}
                 </span>
-              </div>
+              </button>
             </div>
             <div v-else class="flex flex-col items-center justify-center py-16 text-neutral-500">
               <i class="fa-regular fa-film mb-3 text-3xl" />
