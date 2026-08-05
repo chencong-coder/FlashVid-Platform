@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { Popup as VanPopup, showToast } from 'vant'
 
 import {
@@ -17,6 +17,8 @@ interface Props {
   show: boolean
   videoId: string
   total: number
+  // true → 作为 flex 兄弟内联渲染（桌面侧边栏），false → van-popup 底部抽屉（移动端）
+  sidebar?: boolean
 }
 
 interface Emits {
@@ -44,20 +46,19 @@ const inputRef = ref<HTMLInputElement | null>(null)
 // 正在回复的目标（parentId + userId + 展示名）
 const replyTarget = ref<{ commentId: string; userId: string; name: string } | null>(null)
 
-// ── 桌面端右侧停靠面板 / 移动端底部抽屉 ──────────────────────────────
-const isDesktop = ref(false)
-let mq: MediaQueryList | null = null
-const syncViewport = (): void => {
-  isDesktop.value = mq?.matches ?? false
-}
-onMounted(() => {
-  mq = window.matchMedia('(min-width: 1024px)')
-  syncViewport()
-  mq.addEventListener('change', syncViewport)
-})
-onBeforeUnmount(() => {
-  mq?.removeEventListener('change', syncViewport)
-})
+// sidebar=true → <aside> 内联；sidebar=false → van-popup
+const wrapperTag = computed(() => (props.sidebar ? 'aside' : VanPopup))
+const wrapperProps = computed(() =>
+  props.sidebar
+    ? { class: 'flex h-full w-[380px] flex-none flex-col border-l border-white/5 bg-panel text-white' }
+    : {
+        show: props.show,
+        position: 'bottom' as const,
+        round: true,
+        class: 'h-[72dvh] overflow-hidden bg-panel text-white',
+        'onUpdate:show': (v: boolean) => emit('update:show', v),
+      },
+)
 
 // ── 数据加载 ─────────────────────────────────────────────────────────
 const fetchComments = async (reset = false): Promise<void> => {
@@ -185,17 +186,7 @@ watch(
 </script>
 
 <template>
-  <van-popup
-    :show="show"
-    :position="isDesktop ? 'right' : 'bottom'"
-    :round="!isDesktop"
-    :class="
-      isDesktop
-        ? 'h-full w-[380px] max-w-[92vw] overflow-hidden bg-panel text-white'
-        : 'h-[72dvh] overflow-hidden bg-panel text-white'
-    "
-    @update:show="emit('update:show', $event)"
-  >
+  <component :is="wrapperTag" v-bind="wrapperProps">
     <section class="flex h-full flex-col bg-panel">
       <!-- 标题栏 -->
       <header
@@ -404,5 +395,5 @@ watch(
         </div>
       </footer>
     </section>
-  </van-popup>
+  </component>
 </template>

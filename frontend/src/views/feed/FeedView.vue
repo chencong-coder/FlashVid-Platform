@@ -38,6 +38,10 @@ const commentVideoId = ref('')
 const commentsVisible = ref(false)
 const searchVisible = ref(false)
 const playlistVideoId = ref<string | null>(null)
+// 桌面端评论侧边栏检测
+const isDesktop = ref(false)
+let mqDesktop: MediaQueryList | null = null
+const syncDesktop = (): void => { isDesktop.value = mqDesktop?.matches ?? false }
 const dragging = ref(false)
 const wheelLocked = ref(false)
 let scrollEndTimer: number | undefined
@@ -480,6 +484,9 @@ const share = async (): Promise<void> => {
 }
 
 onMounted(async () => {
+  mqDesktop = window.matchMedia('(min-width: 1024px)')
+  syncDesktop()
+  mqDesktop.addEventListener('change', syncDesktop)
   await nextTick()
   bindScrollerEvents()
   if (feedRoot.value) {
@@ -515,18 +522,21 @@ onBeforeUnmount(() => {
   dragSettling = false
   touchSettling = false
   videoStore.setActiveVideo('')
+  mqDesktop?.removeEventListener('change', syncDesktop)
 })
 </script>
 
 <template>
   <main
     ref="feedRoot"
-    class="relative h-full w-full overflow-hidden bg-black"
+    class="flex h-full w-full overflow-hidden bg-black"
     :class="dragging ? 'cursor-grabbing' : 'cursor-grab'"
     @click.capture="handleClickCapture"
     @dragstart.prevent
   >
-    <RecycleScroller
+    <!-- 视频 + 覆盖层（桌面打开评论时 flex-1 自动让出空间） -->
+    <div class="relative h-full min-w-0 flex-1 overflow-hidden">
+      <RecycleScroller
       class="feed-scroller h-full w-full"
       :items="videos"
       :item-size="itemHeight"
@@ -601,8 +611,20 @@ onBeforeUnmount(() => {
         ]"
       />
     </button>
+    </div><!-- /video area -->
 
+    <!-- 桌面端：评论侧边栏（与视频并排，不遮挡） -->
     <CommentDrawer
+      v-if="commentsVisible && isDesktop"
+      sidebar
+      :show="commentsVisible"
+      :video-id="commentVideoId"
+      :total="commentTotal"
+      @update:show="commentsVisible = $event"
+    />
+    <!-- 移动端：底部抽屉弹出 -->
+    <CommentDrawer
+      v-if="!isDesktop"
       v-model:show="commentsVisible"
       :video-id="commentVideoId"
       :total="commentTotal"
