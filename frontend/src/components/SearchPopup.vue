@@ -1,25 +1,31 @@
-<script setup lang="ts">
-import { computed, ref } from 'vue'
+<script setup lang=”ts”>
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { Popup as VanPopup } from 'vant'
 
 interface Props {
   show: boolean
 }
-
 interface Emits {
   (event: 'update:show', value: boolean): void
 }
 
 defineProps<Props>()
 const emit = defineEmits<Emits>()
+const router = useRouter()
 const keyword = ref('')
 
 const hotWords = ['夏日旅行', '城市夜景', '一口气看完', '松弛感生活', '今日穿搭']
-const results = computed(() =>
-  keyword.value.trim()
-    ? [`搜索“${keyword.value.trim()}”相关视频`, `寻找用户 @${keyword.value.trim()}`]
-    : [],
-)
+
+const doSearch = (kw: string) => {
+  const q = kw.trim()
+  if (!q) return
+  keyword.value = ''
+  emit('update:show', false)
+  void router.push({ name: 'search', query: { q } })
+}
+
+const handleEnter = () => doSearch(keyword.value)
 </script>
 
 <template>
@@ -37,8 +43,9 @@ const results = computed(() =>
             v-model="keyword"
             autofocus
             type="search"
-            placeholder="搜索你感兴趣的内容"
+            placeholder="搜索视频、用户"
             class="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-neutral-500"
+            @keydown.enter="handleEnter"
           />
           <button
             v-if="keyword"
@@ -62,7 +69,7 @@ const results = computed(() =>
           :key="word"
           type="button"
           class="flex w-full items-center gap-3 border-b border-white/5 py-4 text-left text-sm"
-          @click="keyword = word"
+          @click="doSearch(word)"
         >
           <span
             class="w-5 text-center font-bold"
@@ -78,13 +85,12 @@ const results = computed(() =>
 
       <div v-else class="pt-4">
         <button
-          v-for="result in results"
-          :key="result"
           type="button"
           class="flex w-full items-center gap-3 border-b border-white/5 py-4 text-left text-sm"
+          @click="doSearch(keyword)"
         >
           <i class="fa-solid fa-magnifying-glass text-neutral-500" />
-          {{ result }}
+          搜索"{{ keyword.trim() }}"
         </button>
       </div>
     </div>
