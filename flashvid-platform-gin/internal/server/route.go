@@ -45,6 +45,9 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 		// 用户推荐（公开接口，OptionalAuth：登录后排除自己和已关注的用户）
 		apiV1.GET("/user/recommend", middleware.OptionalAuth(), user.GetRecommendUsersHandler)
 
+		// 用户搜索（公开接口，无需登录）
+		apiV1.GET("/users/search", user.SearchUsersHandler)
+
 		// 用户相关路由组
 		userR := apiV1.Group("/user")
 		userR.Use(middleware.Auth())

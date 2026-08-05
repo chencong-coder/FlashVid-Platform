@@ -224,6 +224,18 @@ export interface RecommendUser {
 export const getRecommendUsers = (count = 5) =>
   http.get<ApiResponse<{ users: RecommendUser[] }>>('/user/recommend', { params: { count } })
 
+// ===== 搜索用户 =====
+export interface SearchUserItem {
+  userId: string
+  nickname: string
+  avatar: string
+  bio: string
+  followerCount: number
+}
+
+export const searchUsers = (keyword: string, count = 6) =>
+  http.get<ApiResponse<{ users: SearchUserItem[] }>>('/users/search', { params: { keyword, count } })
+
 // ===== 关注 =====
 export const followUser = (userId: string) =>
   http.post<ApiResponse<FollowResp>>(`/user/${userId}/follow`)
