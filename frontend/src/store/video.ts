@@ -14,6 +14,7 @@ import { followUser, unfollowUser } from '@/api/user'
 import { favoriteVideo, likeVideo, shareVideo, unfavoriteVideo, unlikeVideo } from '@/api/video'
 import { getTopicVideos } from '@/api/topic'
 import type { FeedCache, FeedType, GeoLocation, VideoItem } from '@/types/video'
+import { useUserStore } from '@/store/user'
 
 interface VideoState {
   activeVideoId: string
@@ -204,7 +205,14 @@ export const useVideoStore = defineStore('video', {
       applyFollowed(nextFollowed)
       try {
         const res = nextFollowed ? await followUser(authorId) : await unfollowUser(authorId)
-        applyFollowed(res.data.data.isFollowing)
+        const isFollowing = res.data.data.isFollowing
+        applyFollowed(isFollowing)
+        // 同步更新当前登录用户的关注数（±1）
+        const userStore = useUserStore()
+        if (userStore.profile) {
+          const delta = isFollowing ? 1 : -1
+          userStore.profile.following = Math.max(0, userStore.profile.following + delta)
+        }
       } catch {
         applyFollowed(!nextFollowed)
       }

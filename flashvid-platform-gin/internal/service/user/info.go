@@ -6,9 +6,11 @@ import (
 	"flashvid-platform-gin/api"
 	v1 "flashvid-platform-gin/api/user/v1"
 	"flashvid-platform-gin/internal/dao/query"
+	"flashvid-platform-gin/internal/middleware"
 	"flashvid-platform-gin/internal/model"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
@@ -20,13 +22,27 @@ func GetUserInfo(ctx context.Context, userId int64) (*model.UserInfoOutput, api.
 		First()
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			// 用户不存在是预期的业务错误，不返回底层错误
 			return nil, api.CodeUserNotExist, nil
 		}
 		return nil, api.CodeInternalError, err
 	}
 
-	// 2. 返回用户信息
+	// 2. 检查当前登录用户是否关注了目标用户（未登录则为 false）
+	isFollowing := false
+	if ginCtx, ok := ctx.(*gin.Context); ok {
+		if loginUserIdVal, exists := ginCtx.Get(middleware.CtxKeyUserID); exists {
+			if loginUserId, ok := loginUserIdVal.(int64); ok && loginUserId > 0 && loginUserId != userId {
+				followRecord, err := query.Follow.WithContext(ctx).
+					Where(query.Follow.FollowerID.Eq(loginUserId), query.Follow.FollowingID.Eq(userId)).
+					First()
+				if err == nil && followRecord != nil {
+					isFollowing = true
+				}
+			}
+		}
+	}
+
+	// 3. 返回用户信息
 	return &model.UserInfoOutput{
 		UserId:         user.ID,
 		Username:       user.Username,
@@ -43,6 +59,7 @@ func GetUserInfo(ctx context.Context, userId int64) (*model.UserInfoOutput, api.
 		Birthday:       user.Birthday,
 		Email:          user.Email,
 		CreatedAt:      user.CreatedAt,
+		IsFollowing:    isFollowing,
 	}, api.CodeSuccess, nil
 }
 

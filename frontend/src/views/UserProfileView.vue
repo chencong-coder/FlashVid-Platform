@@ -31,6 +31,8 @@ onMounted(async () => {
   try {
     const res = await getUserInfo(userId.value)
     userInfo.value = res.data.data
+    // 初始化关注状态（后端返回 isFollowing 字段）
+    following.value = res.data.data.isFollowing ?? false
   } catch {
     showToast('用户不存在')
     void router.back()

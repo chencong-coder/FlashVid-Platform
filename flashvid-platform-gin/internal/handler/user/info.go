@@ -40,6 +40,7 @@ func GetUserInfoHandler(c *gin.Context) {
 		Birthday:       output.Birthday.Format("2006-01-02"),
 		Email:          output.Email,
 		CreatedAt:      output.CreatedAt.Format("2006-01-02 15:04:05"),
+		IsFollowing:    output.IsFollowing,
 	})
 }
 

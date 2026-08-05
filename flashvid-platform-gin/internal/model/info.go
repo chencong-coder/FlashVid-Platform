@@ -19,6 +19,7 @@ type UserInfoOutput struct {
 	Birthday       time.Time `json:"birthday"`
 	Email          string    `json:"email"`
 	CreatedAt      time.Time `json:"createdAt"`
+	IsFollowing    bool      `json:"isFollowing"` // 当前登录用户是否关注了该用户
 }
 
 // 更新用户输出

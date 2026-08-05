@@ -112,7 +112,8 @@ const profile = computed(() => {
       nickname: userInfo.value.nickname || userInfo.value.username,
       avatar: userInfo.value.avatar,
       bio: userInfo.value.bio || '',
-      followingCount: userInfo.value.followingCount,
+      // 优先使用 store 里实时更新的关注数（togglFollow 会维护），fallback 到接口初始值
+      followingCount: userStore.profile?.following ?? userInfo.value.followingCount,
       followersCount: userInfo.value.followersCount,
       likesCount: userInfo.value.likesCount,
     }

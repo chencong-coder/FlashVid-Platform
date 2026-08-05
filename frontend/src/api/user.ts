@@ -22,6 +22,7 @@ export interface UserInfo {
   birthday: string
   email: string
   createdAt: string
+  isFollowing?: boolean  // 当前登录用户是否已关注（查看他人主页时由后端返回）
 }
 
 export interface UpdateUserResult extends Omit<UserInfo, 'createdAt'> {

@@ -17,6 +17,7 @@ type UserInfoResp struct {
 	Birthday       string `json:"birthday"`       // 生日（格式：YYYY-MM-DD）
 	Email          string `json:"email"`          // 邮箱
 	CreatedAt      string `json:"createdAt"`      // 创建时间（格式：YYYY-MM-DD HH:mm:ss）
+	IsFollowing    bool   `json:"isFollowing"`    // 当前登录用户是否已关注
 }
 
 // 更新用户信息请求
