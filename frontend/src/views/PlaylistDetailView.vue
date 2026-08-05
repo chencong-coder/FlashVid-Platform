@@ -193,7 +193,6 @@ const formatDuration = (s: number): string => {
           <i class="fa-solid fa-pen text-xs" />
         </button>
         <button
-          v-if="videos.length > 0"
           type="button"
           class="px-3 py-1 rounded-full bg-white/[0.07] text-xs text-gray-300 hover:bg-white/15 hover:text-white transition-colors"
           @click="manageMode = true"
