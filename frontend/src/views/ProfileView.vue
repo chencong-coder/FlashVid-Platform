@@ -112,8 +112,8 @@ const profile = computed(() => {
       nickname: userInfo.value.nickname || userInfo.value.username,
       avatar: userInfo.value.avatar,
       bio: userInfo.value.bio || '',
-      // 优先使用 store 里实时更新的关注数（togglFollow 会维护），fallback 到接口初始值
-      followingCount: userStore.profile?.following ?? userInfo.value.followingCount,
+      // 始终读 userInfo（API 真实值）；follow/unfollow 后由下方 watch 同步过来
+      followingCount: userInfo.value.followingCount,
       followersCount: userInfo.value.followersCount,
       likesCount: userInfo.value.likesCount,
     }
@@ -138,6 +138,17 @@ const profile = computed(() => {
     likesCount: 0,
   }
 })
+
+// follow/unfollow 后 store.following 会被 video.ts 的 toggleFollow 更新；
+// 此 watch 把变化同步到 userInfo，让 profile computed 不用直接读 store（避免 0 覆盖真实值）
+watch(
+  () => userStore.profile?.following,
+  (newVal) => {
+    if (newVal !== undefined && userInfo.value) {
+      userInfo.value = { ...userInfo.value, followingCount: newVal }
+    }
+  },
+)
 
 const gridItems = computed<FeedVideo[]>(() => {
   if (activeTab.value === 'likes') return likesVideos.value

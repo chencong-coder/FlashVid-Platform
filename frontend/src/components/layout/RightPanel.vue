@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { showToast } from 'vant'
 import { getTopics, type TopicItem } from '@/api/topic'
 import { getRecommendUsers, followUser, unfollowUser, type RecommendUser } from '@/api/user'
 import { useAuthModalStore } from '@/store/authModal'
@@ -64,12 +65,20 @@ const toggleFollow = async (userId: string) => {
     if (followingSet.value.has(userId)) {
       await unfollowUser(userId)
       followingSet.value = new Set([...followingSet.value].filter((id) => id !== userId))
+      // 同步到自己的关注数
+      if (userStore.profile) {
+        userStore.profile.following = Math.max(0, userStore.profile.following - 1)
+      }
     } else {
       await followUser(userId)
       followingSet.value = new Set([...followingSet.value, userId])
+      // 同步到自己的关注数
+      if (userStore.profile) {
+        userStore.profile.following = userStore.profile.following + 1
+      }
     }
   } catch {
-    // 忽略网络错误，状态保持不变
+    showToast('操作失败，请重试')
   }
 }
 

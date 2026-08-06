@@ -266,6 +266,8 @@ func CreateComment(ctx context.Context, userId int64, videoId int64, content str
 		Avatar:   author.Avatar,
 	}
 	// 4. 事务：创建评论 + 更新计数
+	// 提前捕获当前时间：GORM gen-dao Create() 不会回写 default:CURRENT_TIMESTAMP 字段
+	now := time.Now()
 	newComment := &model.Comment{
 		VideoID:       videoId,
 		UserID:        userId,
@@ -273,6 +275,7 @@ func CreateComment(ctx context.Context, userId int64, videoId int64, content str
 		ReplyToUserID: replyToUserId,
 		Content:       content,
 		Status:        1,
+		CreatedAt:     now,
 	}
 	err = query.Q.Transaction(func(tx *query.Query) error {
 		// 插入评论
