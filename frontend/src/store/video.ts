@@ -23,6 +23,8 @@ interface VideoState {
   topicId: string
   topicSort: 'popular' | 'latest'
   feeds: Record<FeedType, FeedCache>
+  // 最近一次关注状态变更，供其他组件（如推荐面板）订阅实时更新
+  lastFollowChange: { authorId: string; followed: boolean } | null
 }
 
 const createFeed = (): FeedCache => ({
@@ -77,6 +79,7 @@ export const useVideoStore = defineStore('video', {
       topic: createFeed(),
       profile: createFeed(),
     },
+    lastFollowChange: null,
   }),
   actions: {
     setActiveVideo(videoId: string): void {
@@ -213,9 +216,19 @@ export const useVideoStore = defineStore('video', {
           const delta = isFollowing ? 1 : -1
           userStore.profile.following = Math.max(0, userStore.profile.following + delta)
         }
+        // 广播关注状态变更，供推荐面板等组件订阅
+        this.lastFollowChange = { authorId, followed: isFollowing }
       } catch {
         applyFollowed(!nextFollowed)
       }
+    },
+    // 外部页面（个人主页/推荐面板）关注状态变更后，同步到所有 feed 里同作者的视频
+    syncAuthorFollowed(authorId: string, followed: boolean): void {
+      Object.values(this.feeds).forEach((cache) => {
+        cache.items.forEach((item) => {
+          if (item.author.id === authorId) item.author.followed = followed
+        })
+      })
     },
     findVideo(feed: FeedType, videoId: string): VideoItem | undefined {
       return this.feeds[feed].items.find((item) => item.id === videoId)

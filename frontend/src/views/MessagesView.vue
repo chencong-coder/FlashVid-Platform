@@ -1,21 +1,47 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 import LoginGate from '@/components/LoginGate.vue'
 import { getConversations, type ConversationInfo } from '@/api/message'
 import { parseApiDate } from '@/utils/date'
 import { useUserStore } from '@/store/user'
+import { useNotificationStore } from '@/store/notification'
 
 const userStore = useUserStore()
+const notifStore = useNotificationStore()
 const router = useRouter()
 
-const shortcuts = [
-  { label: '粉丝', icon: 'fa-user-plus', color: 'bg-primary' },
-  { label: '赞和收藏', icon: 'fa-heart', color: 'bg-amber-500' },
-  { label: '@我的', icon: 'fa-at', color: 'bg-cyan-500' },
-  { label: '评论', icon: 'fa-comment-dots', color: 'bg-emerald-500' },
-]
+const shortcuts = computed(() => [
+  {
+    label: '粉丝',
+    icon: 'fa-user-plus',
+    color: 'bg-primary',
+    count: notifStore.unreadCounts.followers,
+    route: '/notifications/followers',
+  },
+  {
+    label: '赞和收藏',
+    icon: 'fa-heart',
+    color: 'bg-amber-500',
+    count: notifStore.unreadCounts.likesAndFavs,
+    route: '/notifications/likes-favs',
+  },
+  {
+    label: '@我的',
+    icon: 'fa-at',
+    color: 'bg-cyan-500',
+    count: notifStore.unreadCounts.mentions,
+    route: '/notifications/mentions',
+  },
+  {
+    label: '评论',
+    icon: 'fa-comment-dots',
+    color: 'bg-emerald-500',
+    count: notifStore.unreadCounts.comments,
+    route: '/notifications/comments',
+  },
+])
 
 const conversations = ref<ConversationInfo[]>([])
 const loading = ref(false)
@@ -66,7 +92,10 @@ function openChat(conv: ConversationInfo) {
 }
 
 onMounted(() => {
-  if (userStore.isLoggedIn) void loadConversations()
+  if (userStore.isLoggedIn) {
+    void loadConversations()
+    void notifStore.fetchUnreadCounts()
+  }
 })
 </script>
 
@@ -86,12 +115,19 @@ onMounted(() => {
         :key="item.label"
         type="button"
         class="flex flex-col items-center gap-2 text-xs"
+        @click="router.push(item.route)"
       >
-        <span
-          class="flex h-11 w-11 items-center justify-center rounded-full text-lg text-white"
-          :class="item.color"
-          ><i class="fa-solid" :class="item.icon"
-        /></span>
+        <span class="relative">
+          <span
+            class="flex h-11 w-11 items-center justify-center rounded-full text-lg text-white"
+            :class="item.color"
+            ><i class="fa-solid" :class="item.icon"
+          /></span>
+          <span
+            v-if="item.count > 0"
+            class="absolute -right-1 -top-1 flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-medium leading-[18px] text-white"
+          >{{ item.count > 99 ? '+99+' : `+${item.count}` }}</span>
+        </span>
         {{ item.label }}
       </button>
     </section>

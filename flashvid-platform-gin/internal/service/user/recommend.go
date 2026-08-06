@@ -14,7 +14,6 @@ func GetRecommendUsers(ctx context.Context, loginUserID int64, count int) ([]mod
 		Limit(count)
 
 	if loginUserID > 0 {
-		// 查询当前用户已关注的 ID 列表
 		followings, err := query.Follow.WithContext(ctx).
 			Where(query.Follow.FollowerID.Eq(loginUserID)).
 			Find()
@@ -24,7 +23,7 @@ func GetRecommendUsers(ctx context.Context, loginUserID int64, count int) ([]mod
 		excludeIDs := make([]int64, 0, len(followings)+1)
 		excludeIDs = append(excludeIDs, loginUserID) // 排除自己
 		for _, f := range followings {
-			excludeIDs = append(excludeIDs, f.FollowingID) // 排除已关注的用户
+			excludeIDs = append(excludeIDs, f.FollowingID) // 排除已关注
 		}
 		q = q.Where(query.User.ID.NotIn(excludeIDs...))
 	}

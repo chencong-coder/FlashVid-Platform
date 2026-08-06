@@ -1,15 +1,17 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { getTopics, type TopicItem } from '@/api/topic'
 import { getRecommendUsers, followUser, unfollowUser, type RecommendUser } from '@/api/user'
 import { useAuthModalStore } from '@/store/authModal'
 import { useUserStore } from '@/store/user'
+import { useVideoStore } from '@/store/video'
 
 const router = useRouter()
 const authModal = useAuthModalStore()
 const userStore = useUserStore()
+const videoStore = useVideoStore()
 
 // ---- 正在流行 ----
 const trendingTopics = ref<TopicItem[]>([])
@@ -76,6 +78,18 @@ const toggleFollow = async (userId: string) => {
       if (userStore.profile) {
         userStore.profile.following = userStore.profile.following + 1
       }
+      // 关注成功后从推荐列表移除该用户，并补充新推荐
+      suggestedUsers.value = suggestedUsers.value.filter((u) => u.userId !== userId)
+      // 补充一个新推荐用户
+      try {
+        const res = await getRecommendUsers(1)
+        const newUsers = res.data.data?.users ?? []
+        if (newUsers.length > 0) {
+          suggestedUsers.value.push(newUsers[0])
+        }
+      } catch {
+        // 静默失败，不影响关注操作
+      }
     }
   } catch {
     showToast('操作失败，请重试')
@@ -86,6 +100,25 @@ const refresh = () => {
   loadTopics()
   loadSuggestions()
 }
+
+// 监听视频流里的关注操作，及时同步推荐列表
+watch(
+  () => videoStore.lastFollowChange,
+  (change) => {
+    if (!change || !change.followed) return
+    const idx = suggestedUsers.value.findIndex((u) => u.userId === change.authorId)
+    if (idx === -1) return
+    // 移除已关注的用户
+    suggestedUsers.value.splice(idx, 1)
+    // 补充一个新推荐
+    getRecommendUsers(1)
+      .then((res) => {
+        const newUsers = res.data.data?.users ?? []
+        if (newUsers.length > 0) suggestedUsers.value.push(newUsers[0])
+      })
+      .catch(() => {})
+  },
+)
 
 onMounted(() => {
   loadTopics()

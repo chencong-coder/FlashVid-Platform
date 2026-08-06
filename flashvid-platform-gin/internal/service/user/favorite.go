@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"flashvid-platform-gin/internal/dao/query"
+	"flashvid-platform-gin/internal/service/feed"
 	"gorm.io/gorm"
 )
 
@@ -169,7 +170,13 @@ func GetUserFavorites(ctx context.Context, userId int64, page, pageSize int) (*m
 		TotalPages: int(totalPages),
 	}
 
-	// 11. 返回结果
+	// 11. 回填当前登录用户的互动状态（isLiked/isFavorited/isFollowing）
+	// userId 即当前登录用户（收藏列表为私有接口），收藏列表里 isFavorited 必为 true
+	if err = feed.AttachViewerState(ctx, userId, favoritesList); err != nil {
+		return nil, api.CodeInternalError, err
+	}
+
+	// 12. 返回结果
 	return &model.VideoListOutput{
 		Videos:     favoritesList,
 		Pagination: pagination,

@@ -6,10 +6,11 @@ import (
 	"flashvid-platform-gin/internal/model"
 )
 
-// attachViewerState 批量填充当前登录用户对视频的互动状态：
+// AttachViewerState 批量填充当前登录用户对视频的互动状态：
 // 是否点赞（isLiked）、是否收藏（isFavorited）、是否已关注作者（isFollowing）。
 // viewerID <= 0 表示未登录，直接返回（所有状态保持 false）。
-func attachViewerState(ctx context.Context, viewerID int64, videos []model.VideoInfo) error {
+// 导出供 feed 之外的服务（如个人主页的作品/喜欢/收藏列表）复用，作为回填互动状态的唯一实现。
+func AttachViewerState(ctx context.Context, viewerID int64, videos []model.VideoInfo) error {
 	if viewerID <= 0 || len(videos) == 0 {
 		return nil
 	}

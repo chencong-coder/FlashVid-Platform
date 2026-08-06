@@ -17,6 +17,7 @@ info:
     - 音乐模块：音乐列表、搜索音乐
     - 私信模块：会话列表、对话消息、发送私信、标记已读、删除消息、未读总数
     - 播放列表模块：获取列表、创建、更新、删除、获取列表内视频、添加/移除视频
+    - 通知模块：通知列表、各类型未读数、标记已读
 
     ## 认证方式
     使用 JWT Token 认证，在请求头中添加：
@@ -72,6 +73,8 @@ tags:
     description: 用户私信相关操作
   - name: 播放列表
     description: 播放列表管理
+  - name: 通知
+    description: 系统通知（关注/点赞/收藏/评论/回复）
 
 paths:
   # ==================== 认证模块 ====================
@@ -2462,6 +2465,155 @@ paths:
         - BearerAuth: []
 
 
+  # ==================== 通知模块 ====================
+  /notifications:
+    get:
+      tags:
+        - 通知
+      summary: 获取通知列表
+      description: |
+        获取当前用户的通知列表（offset 分页）。可按 action_types 筛选：
+        - 1 = 关注
+        - 2 = 点赞视频
+        - 3 = 收藏视频
+        - 4 = 评论视频
+        - 5 = 回复评论
+        需要登录。
+      operationId: getNotifications
+      parameters:
+        - name: action_types
+          in: query
+          description: 按操作类型筛选，可传多个值（e.g. action_types=2&action_types=3），不传则返回全部
+          schema:
+            type: array
+            items:
+              type: integer
+              enum: [1, 2, 3, 4, 5]
+          style: form
+          explode: true
+        - name: page
+          in: query
+          required: true
+          description: 页码（从1开始）
+          schema:
+            type: integer
+            minimum: 1
+            example: 1
+        - name: page_size
+          in: query
+          required: true
+          description: 每页数量（1-100）
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            example: 20
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          list:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Notification'
+                          total:
+                            type: integer
+                            format: int64
+                            description: 符合条件的总条数
+                            example: 42
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      security:
+        - BearerAuth: []
+
+  /notifications/unread-counts:
+    get:
+      tags:
+        - 通知
+      summary: 获取各类型未读数
+      description: 返回四个分类的未读通知数，用于消息页图标红点显示。需要登录。
+      operationId: getNotificationUnreadCounts
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Response'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          followers:
+                            type: integer
+                            format: int64
+                            description: 新粉丝未读数（action_type=1）
+                            example: 3
+                          likesAndFavs:
+                            type: integer
+                            format: int64
+                            description: 赞和收藏未读数（action_type=2,3）
+                            example: 15
+                          mentions:
+                            type: integer
+                            format: int64
+                            description: '@我的'未读数（action_type=6）
+                            example: 0
+                          comments:
+                            type: integer
+                            format: int64
+                            description: 评论/回复未读数（action_type=4,5）
+                            example: 7
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      security:
+        - BearerAuth: []
+
+  /notifications/read:
+    put:
+      tags:
+        - 通知
+      summary: 标记通知已读
+      description: 将指定类型（或全部）的未读通知标记为已读。需要登录。
+      operationId: markNotificationsAsRead
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                actionTypes:
+                  type: array
+                  description: 要标记的操作类型列表，空数组表示标记全部
+                  items:
+                    type: integer
+                    enum: [1, 2, 3, 4, 5, 6]
+                  example: [2, 3]
+      responses:
+        '200':
+          description: 标记成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      security:
+        - BearerAuth: []
+
+
 components:
   securitySchemes:
     BearerAuth:
@@ -3081,6 +3233,62 @@ components:
         createdAt:
           type: string
           description: 发送时间
+          example: '2024-01-01 12:00:00'
+
+    Notification:
+      type: object
+      description: 通知（关注/点赞/收藏/评论/回复）
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: 通知ID
+          example: 1
+        actorId:
+          type: integer
+          format: int64
+          description: 触发通知的用户ID
+          example: 456
+        actorName:
+          type: string
+          description: 触发者昵称
+          example: 张三
+        actorAvatar:
+          type: string
+          format: uri
+          description: 触发者头像URL
+          example: http://localhost:8089/static/image/avatar.jpg
+        actionType:
+          type: integer
+          description: 操作类型：1=关注 2=点赞视频 3=收藏视频 4=评论视频 5=回复评论
+          enum: [1, 2, 3, 4, 5]
+          example: 2
+        targetId:
+          type: integer
+          format: int64
+          description: 目标对象ID（关注时为被关注用户ID，其余为视频/评论ID）
+          example: 12345
+        targetTitle:
+          type: string
+          description: 目标视频标题（点赞/收藏/评论时）
+          example: 我的第一个短视频
+        targetCover:
+          type: string
+          format: uri
+          description: 目标视频封面URL
+          example: http://localhost:8089/static/image/cover.jpg
+        content:
+          type: string
+          description: 附加内容（评论/回复时为内容预览，最多100字）
+          example: 这个视频太棒了！
+        isRead:
+          type: integer
+          description: 是否已读：0=未读 1=已读
+          enum: [0, 1]
+          example: 0
+        createdAt:
+          type: string
+          description: 通知时间（格式：2006-01-02 15:04:05）
           example: '2024-01-01 12:00:00'
 
 

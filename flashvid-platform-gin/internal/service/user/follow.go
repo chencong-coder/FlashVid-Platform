@@ -8,6 +8,7 @@ import (
 	"flashvid-platform-gin/api"
 	"flashvid-platform-gin/internal/dao/query"
 	"flashvid-platform-gin/internal/model"
+	notifSvc "flashvid-platform-gin/internal/service/notification"
 	"gorm.io/gorm"
 )
 
@@ -33,7 +34,7 @@ func FollowUser(ctx context.Context, loginUserId int64, followUserId int64) (boo
 	if existing != nil {
 		return true, api.CodeSuccess, nil
 	}
-	// 3. 事务：创建关注记录 + 更新双方计数
+	// 3. 事务：创建关注记录 + 更新双方计数 + 写通知
 	// 提前捕获时间：GORM gen-dao Create() 不会回写 default:CURRENT_TIMESTAMP 字段
 	now := time.Now()
 	txErr := query.Q.Transaction(func(tx *query.Query) error {
@@ -56,6 +57,14 @@ func FollowUser(ctx context.Context, loginUserId int64, followUserId int64) (boo
 			UpdateSimple(tx.User.FollowerCount.Add(1)); err != nil {
 			return err
 		}
+		// 通知被关注者
+		notifSvc.CreateNotification(ctx, tx, &model.Notification{
+			UserID:     followUserId,
+			ActorID:    loginUserId,
+			ActionType: 1, // 关注
+			TargetType: 1, // 目标是用户
+			TargetID:   followUserId,
+		})
 		return nil
 	})
 	if txErr != nil {
@@ -86,10 +95,10 @@ func UnfollowUser(ctx context.Context, loginUserId int64, followUserId int64) (b
 	if existing == nil {
 		return false, api.CodeSuccess, nil
 	}
-	// 3. 事务：硬删除关注记录 + 更新双方计数
-	// 硬删除（Unscoped）：避免软删后再次关注时触发 unique 约束冲突
+	// 3. 事务：删除关注记录 + 更新双方计数
+	// Follow 已无 soft-delete，直接物理删除，不再需要 Unscoped
 	txErr := query.Q.Transaction(func(tx *query.Query) error {
-		if _, err := tx.Follow.WithContext(ctx).Unscoped().
+		if _, err := tx.Follow.WithContext(ctx).
 			Where(tx.Follow.FollowerID.Eq(loginUserId), tx.Follow.FollowingID.Eq(followUserId)).
 			Delete(); err != nil {
 			return err

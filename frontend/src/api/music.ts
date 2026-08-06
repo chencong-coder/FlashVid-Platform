@@ -38,3 +38,16 @@ export const searchMusic = (keyword: string, page?: number, pageSize?: number) =
   http.get<ApiResponse<MusicListResp>>('/music/search', {
     params: { keyword, page, pageSize },
   })
+
+export interface CreateMusicPayload {
+  name: string
+  artist?: string
+  album?: string
+  coverUrl?: string
+  musicUrl: string  // 已上传的音频 URL
+  duration?: number
+}
+
+// 创建音乐记录（需登录，先用 uploadFile 上传音频拿到 URL，再调此接口）
+export const createMusic = (payload: CreateMusicPayload) =>
+  http.post<ApiResponse<{ music: MusicItem }>>('/music', payload)

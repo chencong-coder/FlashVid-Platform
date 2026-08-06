@@ -3,7 +3,6 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   Uploader as VanUploader,
-  Popup as VanPopup,
   showToast,
   type UploaderBeforeRead,
   type UploaderFileListItem,
@@ -11,7 +10,8 @@ import {
 
 import { uploadFile } from '@/api/upload'
 import { createVideo } from '@/api/video'
-import { getMusicList, searchMusic, type MusicItem } from '@/api/music'
+import { getMusicList, searchMusic, createMusic, type MusicItem } from '@/api/music'
+import { getTopics, searchTopics, type TopicItem } from '@/api/topic'
 import { useAuthModalStore } from '@/store/authModal'
 
 const router = useRouter()
@@ -101,9 +101,95 @@ const clearMusic = (): void => {
   selectedMusic.value = null
 }
 
+const localMusicUploading = ref(false)
+
+const uploadLocalMusic = async (event: Event): Promise<void> => {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  // 重置 input，允许重复选同一文件
+  input.value = ''
+
+  localMusicUploading.value = true
+  try {
+    const uploadRes = await uploadFile(file, 'audio')
+    const musicUrl: string = uploadRes.data.data?.url ?? uploadRes.data.data
+    const name = file.name.replace(/\.[^.]+$/, '') // 去掉扩展名
+    const res = await createMusic({ name, musicUrl })
+    const newMusic = res.data.data?.music
+    if (!newMusic) throw new Error('创建失败')
+    chooseMusic(newMusic)
+    showToast('音乐添加成功')
+  } catch {
+    showToast('上传失败，请重试')
+  } finally {
+    localMusicUploading.value = false
+  }
+}
+
 const musicLabel = computed(() =>
   selectedMusic.value ? `${selectedMusic.value.name} - ${selectedMusic.value.artist}` : '添加背景音乐',
 )
+
+// ---- 话题选择 ----
+const MAX_TOPICS = 5
+const selectedTopics = ref<TopicItem[]>([])
+const topicPickerVisible = ref(false)
+const topicList = ref<TopicItem[]>([])
+const topicLoading = ref(false)
+const topicKeyword = ref('')
+
+const openTopicPicker = async (): Promise<void> => {
+  topicPickerVisible.value = true
+  if (topicList.value.length === 0) await loadTopicList()
+}
+
+const loadTopicList = async (): Promise<void> => {
+  topicLoading.value = true
+  try {
+    const keyword = topicKeyword.value.trim()
+    const res = keyword
+      ? await searchTopics(keyword, undefined, 50)
+      : await getTopics({ sort: 'hot', count: 50 })
+    topicList.value = res.data.data?.topics ?? []
+  } catch {
+    topicList.value = []
+    showToast('话题加载失败')
+  } finally {
+    topicLoading.value = false
+  }
+}
+
+const isTopicSelected = (topicId: string): boolean =>
+  selectedTopics.value.some((t) => t.id === topicId)
+
+const toggleTopic = (topic: TopicItem): void => {
+  const idx = selectedTopics.value.findIndex((t) => t.id === topic.id)
+  if (idx !== -1) {
+    selectedTopics.value.splice(idx, 1)
+  } else {
+    if (selectedTopics.value.length >= MAX_TOPICS) {
+      showToast(`最多选 ${MAX_TOPICS} 个话题`)
+      return
+    }
+    selectedTopics.value.push(topic)
+  }
+}
+
+const removeTopic = (topicId: string): void => {
+  selectedTopics.value = selectedTopics.value.filter((t) => t.id !== topicId)
+}
+
+/** 从描述中提取 #话题 标签 */
+const extractTopicsFromCaption = (text: string): string[] => {
+  const regex = /#([一-龥a-zA-Z0-9_]{1,20})/g
+  const names: string[] = []
+  let m: RegExpExecArray | null
+  while ((m = regex.exec(text)) !== null) {
+    names.push(m[1])
+  }
+  return [...new Set(names)] // 去重
+}
 
 /** 从视频文件截取第一帧作为封面 */
 const extractCover = (videoFile: File): Promise<File> =>
@@ -215,6 +301,12 @@ const publish = async (): Promise<void> => {
     // 3. 发布视频
     statusText.value = '发布中...'
     uploadProgress.value = 90
+
+    // 合并手动选择的话题 + 描述中提取的话题标签
+    const manualTopics = selectedTopics.value.map((t) => t.name)
+    const captionTopics = extractTopicsFromCaption(caption.value)
+    const allTopics = [...new Set([...manualTopics, ...captionTopics])].slice(0, 5) // 去重 + 限制 5 个
+
     const createRes = await createVideo({
       title: title.value.trim(),
       description: caption.value.trim() || undefined,
@@ -222,6 +314,7 @@ const publish = async (): Promise<void> => {
       coverUrl,
       duration,
       musicId: selectedMusic.value?.id,
+      topicNames: allTopics.length > 0 ? allTopics : undefined,
     })
     if (createRes.data.code === 0) {
       uploadProgress.value = 100
@@ -323,8 +416,80 @@ const publish = async (): Promise<void> => {
         class="w-full resize-none bg-transparent text-sm leading-6 text-white outline-none placeholder:text-neutral-500"
       />
       <div class="flex gap-4 text-sm font-medium">
-        <button type="button"># 话题</button>
+        <button type="button" class="text-primary" @click="openTopicPicker"># 话题</button>
         <button type="button">@ 朋友</button>
+      </div>
+
+      <!-- 已选话题 -->
+      <div v-if="selectedTopics.length > 0" class="mt-3 flex flex-wrap gap-2">
+        <button
+          v-for="topic in selectedTopics"
+          :key="topic.id"
+          type="button"
+          class="flex items-center gap-1.5 rounded-full bg-primary/20 px-3 py-1 text-xs font-medium text-primary"
+          @click="removeTopic(topic.id)"
+        >
+          <span># {{ topic.name }}</span>
+          <i class="fa-solid fa-xmark text-[10px]" />
+        </button>
+      </div>
+
+      <!-- 话题下拉面板 -->
+      <div v-if="topicPickerVisible" class="fixed inset-0 z-10" @click="topicPickerVisible = false" />
+      <div
+        v-if="topicPickerVisible"
+        class="relative z-20 mt-2 overflow-hidden rounded-xl border border-white/10 bg-[#1a1a2e] text-white"
+      >
+        <!-- 搜索栏 -->
+        <div class="flex items-center gap-2 border-b border-white/10 px-3 py-2">
+          <i class="fa-solid fa-magnifying-glass text-xs text-neutral-500" />
+          <input
+            v-model="topicKeyword"
+            type="text"
+            placeholder="搜索话题"
+            class="flex-1 bg-transparent text-sm outline-none placeholder:text-neutral-500"
+            @keyup.enter="loadTopicList"
+          />
+          <button
+            v-if="topicKeyword"
+            type="button"
+            class="text-xs text-neutral-400"
+            @click="loadTopicList"
+          >
+            搜索
+          </button>
+          <button type="button" class="ml-1 text-neutral-500" @click="topicPickerVisible = false">
+            <i class="fa-solid fa-xmark text-xs" />
+          </button>
+        </div>
+        <!-- 列表 -->
+        <div class="no-scrollbar max-h-64 overflow-y-auto">
+          <div v-if="topicLoading" class="flex justify-center py-6">
+            <i class="fa-solid fa-circle-notch animate-spin text-xl text-neutral-500" />
+          </div>
+          <div v-else-if="topicList.length === 0" class="py-8 text-center text-sm text-neutral-500">
+            暂无话题
+          </div>
+          <button
+            v-for="(topic, idx) in topicList"
+            v-else
+            :key="topic.id"
+            type="button"
+            class="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/5"
+            :class="isTopicSelected(topic.id) ? 'bg-white/5' : ''"
+            @click="toggleTopic(topic)"
+          >
+            <span class="w-5 text-center text-sm font-bold" :class="idx < 3 ? 'text-primary' : 'text-neutral-500'">
+              {{ idx + 1 }}
+            </span>
+            <span class="flex-1 truncate text-sm">{{ topic.name }}</span>
+            <span class="text-xs text-neutral-500">{{ topic.videoCount }} 视频</span>
+            <i v-if="isTopicSelected(topic.id)" class="fa-solid fa-circle-check ml-2 text-primary" />
+          </button>
+        </div>
+        <div class="border-t border-white/10 px-4 py-2 text-xs text-neutral-500">
+          已选 {{ selectedTopics.length }}/{{ MAX_TOPICS }}
+        </div>
       </div>
     </section>
 
@@ -348,6 +513,85 @@ const publish = async (): Promise<void> => {
           <i class="fa-solid fa-chevron-right text-xs" />
         </span>
       </button>
+
+      <!-- 音乐下拉面板 -->
+      <div v-if="musicPickerVisible" class="fixed inset-0 z-10" @click="musicPickerVisible = false" />
+      <div
+        v-if="musicPickerVisible"
+        class="relative z-20 mb-2 overflow-hidden rounded-xl border border-white/10 bg-[#1a1a2e] text-white"
+      >
+        <!-- 搜索栏 -->
+        <div class="flex items-center gap-2 border-b border-white/10 px-3 py-2">
+          <i class="fa-solid fa-magnifying-glass text-xs text-neutral-500" />
+          <input
+            v-model="musicKeyword"
+            type="text"
+            placeholder="搜索歌曲或艺术家"
+            class="flex-1 bg-transparent text-sm outline-none placeholder:text-neutral-500"
+            @keyup.enter="loadMusic"
+          />
+          <button
+            v-if="musicKeyword"
+            type="button"
+            class="text-xs text-neutral-400"
+            @click="loadMusic"
+          >
+            搜索
+          </button>
+          <button type="button" class="ml-1 text-neutral-500" @click="musicPickerVisible = false">
+            <i class="fa-solid fa-xmark text-xs" />
+          </button>
+        </div>
+        <!-- 本地上传 -->
+        <div class="border-b border-white/10 px-3 py-2">
+          <label
+            class="flex cursor-pointer items-center gap-2 text-sm hover:opacity-80"
+            :class="localMusicUploading ? 'pointer-events-none text-neutral-500' : 'text-primary'"
+          >
+            <i
+              class="fa-solid text-xs"
+              :class="localMusicUploading ? 'fa-circle-notch animate-spin' : 'fa-upload'"
+            />
+            <span>{{ localMusicUploading ? '上传中…' : '从本地选取' }}</span>
+            <input
+              type="file"
+              accept=".mp3,.wav,.aac,.ogg,.m4a"
+              class="hidden"
+              :disabled="localMusicUploading"
+              @change="uploadLocalMusic"
+            />
+          </label>
+        </div>
+        <!-- 列表 -->
+        <div class="no-scrollbar max-h-64 overflow-y-auto">
+          <div v-if="musicLoading" class="flex justify-center py-6">
+            <i class="fa-solid fa-circle-notch animate-spin text-xl text-neutral-500" />
+          </div>
+          <div v-else-if="musicList.length === 0" class="py-8 text-center text-sm text-neutral-500">
+            暂无音乐
+          </div>
+          <button
+            v-for="music in musicList"
+            v-else
+            :key="music.id"
+            type="button"
+            class="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-white/5"
+            :class="selectedMusic?.id === music.id ? 'bg-white/5' : ''"
+            @click="chooseMusic(music)"
+          >
+            <img
+              :src="music.coverUrl || `https://picsum.photos/40/40?random=${music.id}`"
+              :alt="music.name"
+              class="h-10 w-10 shrink-0 rounded-md object-cover"
+            />
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm font-medium">{{ music.name }}</p>
+              <p class="truncate text-xs text-neutral-500">{{ music.artist }}</p>
+            </div>
+            <i v-if="selectedMusic?.id === music.id" class="fa-solid fa-circle-check text-primary" />
+          </button>
+        </div>
+      </div>
     </section>
 
     <section class="text-sm">
@@ -380,77 +624,5 @@ const publish = async (): Promise<void> => {
       {{ publishing ? statusText || '发布中...' : '发布' }}
     </button>
 
-    <!-- 音乐选择弹窗 -->
-    <van-popup
-      :show="musicPickerVisible"
-      @update:show="(v) => (musicPickerVisible = v)"
-      position="bottom"
-      round
-      :style="{ height: '70%', background: '#1c1c1e' }"
-    >
-      <div class="flex h-full flex-col text-white">
-        <header class="flex h-12 items-center justify-between border-b border-white/10 px-4">
-          <span class="text-base font-semibold">选择背景音乐</span>
-          <button type="button" aria-label="关闭" @click="musicPickerVisible = false">
-            <i class="fa-solid fa-xmark text-lg text-neutral-400" />
-          </button>
-        </header>
-
-        <div class="px-4 py-3">
-          <div class="flex items-center gap-2 rounded-full bg-white/5 px-4 py-2">
-            <i class="fa-solid fa-magnifying-glass text-xs text-neutral-500" />
-            <input
-              v-model="musicKeyword"
-              type="text"
-              placeholder="搜索歌曲或艺术家"
-              class="flex-1 bg-transparent text-sm outline-none placeholder:text-neutral-500"
-              @keyup.enter="loadMusic"
-            />
-            <button
-              v-if="musicKeyword"
-              type="button"
-              class="text-xs text-neutral-400"
-              @click="loadMusic"
-            >
-              搜索
-            </button>
-          </div>
-        </div>
-
-        <div class="no-scrollbar flex-1 overflow-y-auto px-2 pb-4">
-          <div v-if="musicLoading" class="flex justify-center py-10">
-            <i class="fa-solid fa-circle-notch animate-spin text-2xl text-neutral-500" />
-          </div>
-
-          <div v-else-if="musicList.length === 0" class="py-12 text-center text-sm text-neutral-500">
-            暂无音乐
-          </div>
-
-          <button
-            v-for="music in musicList"
-            v-else
-            :key="music.id"
-            type="button"
-            class="flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left active:bg-white/5"
-            :class="selectedMusic?.id === music.id ? 'bg-white/5' : ''"
-            @click="chooseMusic(music)"
-          >
-            <img
-              :src="music.coverUrl || `https://picsum.photos/48/48?random=${music.id}`"
-              :alt="music.name"
-              class="h-11 w-11 shrink-0 rounded-md object-cover"
-            />
-            <div class="min-w-0 flex-1">
-              <p class="truncate text-sm font-medium">{{ music.name }}</p>
-              <p class="truncate text-xs text-neutral-500">{{ music.artist }}</p>
-            </div>
-            <i
-              v-if="selectedMusic?.id === music.id"
-              class="fa-solid fa-circle-check text-primary"
-            />
-          </button>
-        </div>
-      </div>
-    </van-popup>
   </main>
 </template>

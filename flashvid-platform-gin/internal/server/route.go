@@ -7,6 +7,7 @@ import (
 	"flashvid-platform-gin/internal/handler/interaction"
 	"flashvid-platform-gin/internal/handler/message"
 	"flashvid-platform-gin/internal/handler/music"
+	"flashvid-platform-gin/internal/handler/notification"
 	"flashvid-platform-gin/internal/handler/playlist"
 	"flashvid-platform-gin/internal/handler/topic"
 	"flashvid-platform-gin/internal/handler/upload"
@@ -148,8 +149,9 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 		// 音乐相关路由组
 		musicR := apiV1.Group("/music")
 		{
-			musicR.GET("", music.GetMusicListHandler)       // 获取音乐列表
-			musicR.GET("/search", music.SearchMusicHandler) // 搜索音乐
+			musicR.GET("", music.GetMusicListHandler)               // 获取音乐列表
+			musicR.GET("/search", music.SearchMusicHandler)         // 搜索音乐
+			musicR.POST("", middleware.Auth(), music.CreateMusicHandler) // 创建音乐（需登录）
 		}
 
 		// 上传相关路由组（需要登录）
@@ -169,6 +171,15 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 			msgR.GET("/messages/unread-count", message.GetUnreadCountHandler)                   // 未读总数（必须在 /:id 之前注册）
 			msgR.POST("/messages", message.SendMessageHandler)                                  // 发送私信
 			msgR.DELETE("/messages/:id", message.DeleteMessageHandler)                          // 删除消息
+		}
+
+		// 通知相关路由组（全部需要登录）
+		notifR := apiV1.Group("/notifications")
+		notifR.Use(middleware.Auth())
+		{
+			notifR.GET("", notification.GetNotificationsHandler)              // 通知列表
+			notifR.GET("/unread-counts", notification.GetUnreadCountsHandler) // 各类型未读数
+			notifR.PUT("/read", notification.MarkAsReadHandler)               // 标记已读
 		}
 
 		// 播放列表相关路由组（全部需要登录）

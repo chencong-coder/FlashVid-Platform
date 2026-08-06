@@ -142,7 +142,7 @@ func GetFeedRecommend(ctx context.Context, userID int64, cursor string, count in
 		})
 	}
 	// 附加当前登录用户的互动状态（点赞/收藏/关注作者）
-	if err = attachViewerState(ctx, userID, outputVideos); err != nil {
+	if err = AttachViewerState(ctx, userID, outputVideos); err != nil {
 		return nil, api.CodeInternalError, err
 	}
 	// 4. 返回视频流和下一个游标
@@ -316,7 +316,7 @@ func GetFeedFollow(ctx context.Context, userId int64, cursor string, count int) 
 		})
 	}
 	// 5. 附加当前用户的互动状态（点赞/收藏/关注）
-	if err = attachViewerState(ctx, userId, outputVideos); err != nil {
+	if err = AttachViewerState(ctx, userId, outputVideos); err != nil {
 		return nil, api.CodeInternalError, err
 	}
 	// 6. 返回视频流和下一个游标
@@ -510,7 +510,7 @@ func GetFeedFriends(ctx context.Context, userId int64, cursor string, count int)
 		})
 	}
 	// 6. 附加当前用户的互动状态（点赞/收藏/关注）
-	if err = attachViewerState(ctx, userId, outputVideos); err != nil {
+	if err = AttachViewerState(ctx, userId, outputVideos); err != nil {
 		return nil, api.CodeInternalError, err
 	}
 	// 7. 返回视频流和下一个游标
@@ -687,7 +687,7 @@ func GetFeedNearby(ctx context.Context, userID int64, latitude, longitude float6
 		})
 	}
 	// 附加当前登录用户的互动状态（点赞/收藏/关注作者）
-	if err = attachViewerState(ctx, userID, outputVideos); err != nil {
+	if err = AttachViewerState(ctx, userID, outputVideos); err != nil {
 		return nil, api.CodeInternalError, err
 	}
 	// 4. 返回视频流和下一个游标

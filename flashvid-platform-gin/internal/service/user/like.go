@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"flashvid-platform-gin/internal/dao/query"
+	"flashvid-platform-gin/internal/service/feed"
 	"gorm.io/gorm"
 )
 
@@ -301,7 +302,12 @@ func GetUserLikes1(ctx context.Context, userId int64, page, pageSize int) (*mode
 		TotalPages: int(totalPages),
 	}
 
-	// 11. 返回结果
+	// 11. 回填当前登录用户的互动状态（isLiked/isFavorited/isFollowing）
+	if err = feed.AttachViewerState(ctx, userId, likesList); err != nil {
+		return nil, api.CodeInternalError, err
+	}
+
+	// 12. 返回结果
 	return &model.VideoListOutput{
 		Videos:     likesList,
 		Pagination: pagination,

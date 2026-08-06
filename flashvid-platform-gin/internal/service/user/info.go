@@ -32,10 +32,10 @@ func GetUserInfo(ctx context.Context, userId int64) (*model.UserInfoOutput, api.
 	if ginCtx, ok := ctx.(*gin.Context); ok {
 		if loginUserIdVal, exists := ginCtx.Get(middleware.CtxKeyUserID); exists {
 			if loginUserId, ok := loginUserIdVal.(int64); ok && loginUserId > 0 && loginUserId != userId {
-				followRecord, err := query.Follow.WithContext(ctx).
+				cnt, err := query.Follow.WithContext(ctx).
 					Where(query.Follow.FollowerID.Eq(loginUserId), query.Follow.FollowingID.Eq(userId)).
-					First()
-				if err == nil && followRecord != nil {
+					Count()
+				if err == nil && cnt > 0 {
 					isFollowing = true
 				}
 			}

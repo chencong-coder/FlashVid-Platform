@@ -1059,6 +1059,110 @@ DELETE /api/v1/playlists/:id/videos/:videoId
 
 **说明**：视频不在列表中时返回 `CodeVideoNotInList`；移除后自动更新 videoCount。
 
+### 2.11 通知模块
+
+通知系统记录用户关注你、点赞/收藏你的视频、评论/回复你的行为。前端消息页四个快捷入口（粉丝/赞和收藏/@我的/评论）通过 `/unread-counts` 显示红点数量，点击后跳转到通知列表页。
+
+> 全部接口需要登录（Authorization: Bearer \<token\>）。
+
+**ActionType 枚举**：
+
+| 值 | 含义 |
+|---|------|
+| 1 | 关注 |
+| 2 | 点赞视频 |
+| 3 | 收藏视频 |
+| 4 | 评论视频 |
+| 5 | 回复评论 |
+
+**前端分类映射**：
+
+| 入口 | actionTypes |
+|-----|------------|
+| 粉丝 | [1] |
+| 赞和收藏 | [2, 3] |
+| @我的 | [6] |
+| 评论 | [4, 5] |
+
+#### 2.11.1 获取通知列表
+```
+GET /api/v1/notifications
+```
+
+**请求参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|-----|------|-----|------|
+| action_types | int[] | 否 | 按类型筛选，可多传（e.g. action_types=2&action_types=3） |
+| page | int | 是 | 页码，从1开始 |
+| page_size | int | 是 | 每页数量，1-100 |
+
+**响应**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "list": [
+      {
+        "id": 1,
+        "actorId": 456,
+        "actorName": "张三",
+        "actorAvatar": "http://localhost:8089/static/image/avatar.jpg",
+        "actionType": 2,
+        "targetId": 12345,
+        "targetTitle": "我的第一个短视频",
+        "targetCover": "http://localhost:8089/static/image/cover.jpg",
+        "content": "",
+        "isRead": 0,
+        "createdAt": "2024-01-01 12:00:00"
+      }
+    ],
+    "total": 42
+  }
+}
+```
+
+#### 2.11.2 获取各类型未读数
+```
+GET /api/v1/notifications/unread-counts
+```
+
+**响应**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "followers": 3,
+    "likesAndFavs": 15,
+    "mentions": 0,
+    "comments": 7
+  }
+}
+```
+
+#### 2.11.3 标记通知已读
+```
+PUT /api/v1/notifications/read
+```
+
+**请求参数**：
+```json
+{
+  "actionTypes": [2, 3]   // 空数组则标记所有类型
+}
+```
+
+**响应**：
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": null
+}
+```
+
 ## 3. 认证与鉴权
 
 ### 3.1 JWT Token

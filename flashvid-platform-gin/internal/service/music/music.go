@@ -3,6 +3,7 @@ package music
 import (
 	"context"
 	"flashvid-platform-gin/api"
+	v1 "flashvid-platform-gin/api/music/v1"
 	"flashvid-platform-gin/internal/dao/query"
 	"flashvid-platform-gin/internal/model"
 )
@@ -54,7 +55,35 @@ func GetMusicList(ctx context.Context, sort string, page, pageSize int) (*model.
 	}, api.CodeSuccess, nil
 }
 
-// SearchMusic 搜索音乐（按名称或艺术家）
+// CreateMusic 创建音乐记录（用户上传本地音频后调用）
+func CreateMusic(ctx context.Context, req v1.CreateMusicReq) (*model.MusicInfo, api.ResCode, error) {
+	m := &model.Music{
+		Name:     req.Name,
+		Artist:   req.Artist,
+		Album:    req.Album,
+		CoverURL: req.CoverURL,
+		MusicURL: req.MusicURL,
+		Duration: req.Duration,
+		Status:   1,
+	}
+	if err := query.Music.WithContext(ctx).Create(m); err != nil {
+		return nil, api.CodeInternalError, err
+	}
+	info := &model.MusicInfo{
+		ID:        m.ID,
+		Name:      m.Name,
+		Artist:    m.Artist,
+		Album:     m.Album,
+		CoverURL:  m.CoverURL,
+		MusicURL:  m.MusicURL,
+		Duration:  m.Duration,
+		UseCount:  m.UseCount,
+		CreatedAt: m.CreatedAt.Format("2006-01-02 15:04:05"),
+	}
+	return info, api.CodeSuccess, nil
+}
+
+// searchMusic 搜索音乐（按名称或歌手模糊匹配）
 func SearchMusic(ctx context.Context, keyword string, page, pageSize int) (*model.MusicListOutput, api.ResCode, error) {
 	searchPattern := "%" + keyword + "%"
 

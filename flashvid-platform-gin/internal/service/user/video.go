@@ -4,8 +4,11 @@ import (
 	"context"
 	"flashvid-platform-gin/api"
 	"flashvid-platform-gin/internal/dao/query"
+	"flashvid-platform-gin/internal/middleware"
 	"flashvid-platform-gin/internal/model"
+	"flashvid-platform-gin/internal/service/feed"
 	"errors"
+	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
@@ -117,6 +120,18 @@ func GetUserVideos(ctx context.Context, userId int64, page, pageSize int) (*mode
 		Total:      videoCount,
 		TotalPages: int(totalPages),
 	}
+	// 6.5 回填当前登录用户的互动状态（是否点赞/收藏/关注作者）
+	//   注意：这里的 userId 是主页所有者（路径参数），观看者需从 gin 上下文取登录用户
+	if ginCtx, ok := ctx.(*gin.Context); ok {
+		if viewerIDVal, exists := ginCtx.Get(middleware.CtxKeyUserID); exists {
+			if viewerID, ok := viewerIDVal.(int64); ok && viewerID > 0 {
+				if err = feed.AttachViewerState(ctx, viewerID, videoInfos); err != nil {
+					return nil, api.CodeInternalError, err
+				}
+			}
+		}
+	}
+
 	// 7.封装返回结果
 	return &model.VideoListOutput{
 		Videos:     videoInfos,

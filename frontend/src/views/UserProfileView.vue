@@ -7,12 +7,14 @@ import type { UserInfo } from '@/api/user'
 import { followUser, getUserInfo, getUserVideos, unfollowUser } from '@/api/user'
 import { useAuthModalStore } from '@/store/authModal'
 import { useUserStore } from '@/store/user'
+import { useVideoStore } from '@/store/video'
 import { formatCount } from '@/utils/format'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const authModal = useAuthModalStore()
+const videoStore = useVideoStore()
 
 const userId = computed(() => String(route.params.id))
 const userInfo = ref<UserInfo | null>(null)
@@ -58,16 +60,23 @@ const loadVideos = async () => {
 const toggleFollow = async () => {
   if (!authModal.requireLogin()) return
   followLoading.value = true
+  const wasFollowing = following.value
   try {
-    if (following.value) {
-      await unfollowUser(userId.value)
-      following.value = false
-      if (userInfo.value) userInfo.value.followersCount -= 1
+    if (wasFollowing) {
+      const res = await unfollowUser(userId.value)
+      following.value = res.data.data.isFollowing
+      if (userInfo.value) {
+        userInfo.value.followersCount = Math.max(0, userInfo.value.followersCount - 1)
+      }
     } else {
-      await followUser(userId.value)
-      following.value = true
-      if (userInfo.value) userInfo.value.followersCount += 1
+      const res = await followUser(userId.value)
+      following.value = res.data.data.isFollowing
+      if (userInfo.value) {
+        userInfo.value.followersCount += 1
+      }
     }
+    // 同步到视频流：让 feed 里同作者视频的关注状态实时更新
+    videoStore.syncAuthorFollowed(userId.value, following.value)
   } catch {
     showToast('操作失败，请重试')
   } finally {

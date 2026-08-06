@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, onUnmounted } from 'vue'
+import { computed, ref, onUnmounted } from 'vue'
 import type { VideoItem } from '@/types/video'
 import { formatCount } from '@/utils/format'
+import { useUserStore } from '@/store/user'
 
 interface Props {
   video: VideoItem
@@ -23,8 +24,14 @@ interface Emits {
   (event: 'playlist', anchor: Anchor | null): void
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
+
+const userStore = useUserStore()
+// 自己的视频：头像不显示关注按钮，跟已关注状态一样（干净圆形头像）
+const isSelf = computed(() => !!userStore.profile && userStore.profile.id === props.video.author.id)
+// 需要显示关注按钮：未关注且不是自己
+const showFollowBtn = computed(() => !props.video.author.followed && !isSelf.value)
 
 const moreOpen = ref(false)
 // ref to the "更多" wrapper div — used to compute anchor position for the playlist panel
@@ -70,7 +77,7 @@ onUnmounted(() => {
       <button
         type="button"
         aria-label="查看用户主页"
-        class="h-14 w-14 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 p-0.5 transition-transform duration-300 hover:scale-110 active:scale-95"
+        class="h-14 w-14 rounded-full transition-transform duration-300 hover:scale-110 active:scale-95"
         @click.stop="emit('profile')"
       >
         <img
@@ -81,7 +88,7 @@ onUnmounted(() => {
         />
       </button>
       <button
-        v-if="!video.author.followed"
+        v-if="showFollowBtn"
         type="button"
         aria-label="关注作者"
         class="absolute -bottom-1 left-1/2 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full bg-gradient-to-br from-pink-500 to-rose-500 text-xs shadow-lg transition-transform duration-300 hover:scale-110"
@@ -89,12 +96,6 @@ onUnmounted(() => {
       >
         <i class="fa-solid fa-plus" />
       </button>
-      <span
-        v-else
-        class="absolute -bottom-1 left-1/2 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full bg-white text-xs text-rose-500 shadow-lg"
-      >
-        <i class="fa-solid fa-check" />
-      </span>
     </div>
 
     <!-- 点赞按钮 - 带心跳动画 -->

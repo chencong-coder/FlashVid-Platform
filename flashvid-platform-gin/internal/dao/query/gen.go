@@ -25,6 +25,7 @@ var (
 	LoginLog      *loginLog
 	Message       *message
 	Music         *music
+	Notification  *notification
 	Playlist      *playlist
 	PlaylistVideo *playlistVideo
 	Topic         *topic
@@ -44,6 +45,7 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	LoginLog = &Q.LoginLog
 	Message = &Q.Message
 	Music = &Q.Music
+	Notification = &Q.Notification
 	Playlist = &Q.Playlist
 	PlaylistVideo = &Q.PlaylistVideo
 	Topic = &Q.Topic
@@ -64,6 +66,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		LoginLog:      newLoginLog(db, opts...),
 		Message:       newMessage(db, opts...),
 		Music:         newMusic(db, opts...),
+		Notification:  newNotification(db, opts...),
 		Playlist:      newPlaylist(db, opts...),
 		PlaylistVideo: newPlaylistVideo(db, opts...),
 		Topic:         newTopic(db, opts...),
@@ -85,6 +88,7 @@ type Query struct {
 	LoginLog      loginLog
 	Message       message
 	Music         music
+	Notification  notification
 	Playlist      playlist
 	PlaylistVideo playlistVideo
 	Topic         topic
@@ -107,6 +111,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		LoginLog:      q.LoginLog.clone(db),
 		Message:       q.Message.clone(db),
 		Music:         q.Music.clone(db),
+		Notification:  q.Notification.clone(db),
 		Playlist:      q.Playlist.clone(db),
 		PlaylistVideo: q.PlaylistVideo.clone(db),
 		Topic:         q.Topic.clone(db),
@@ -136,6 +141,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		LoginLog:      q.LoginLog.replaceDB(db),
 		Message:       q.Message.replaceDB(db),
 		Music:         q.Music.replaceDB(db),
+		Notification:  q.Notification.replaceDB(db),
 		Playlist:      q.Playlist.replaceDB(db),
 		PlaylistVideo: q.PlaylistVideo.replaceDB(db),
 		Topic:         q.Topic.replaceDB(db),

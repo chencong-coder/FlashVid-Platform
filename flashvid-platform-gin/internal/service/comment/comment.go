@@ -7,6 +7,7 @@ import (
 	v1 "flashvid-platform-gin/api/comment/v1"
 	"flashvid-platform-gin/internal/dao/query"
 	"flashvid-platform-gin/internal/model"
+	notifSvc "flashvid-platform-gin/internal/service/notification"
 	"time"
 
 	"gorm.io/gorm"
@@ -228,6 +229,15 @@ func GetReplies(ctx context.Context, userId int64, commentId int64) ([]model.Rep
 	return replyInfos, api.CodeSuccess, nil
 }
 
+// truncate 截断字符串到指定字节数（按 rune 截，避免 UTF-8 乱码）
+func truncate(s string, n int) string {
+	runes := []rune(s)
+	if len(runes) <= n {
+		return s
+	}
+	return string(runes[:n])
+}
+
 // CreateComment 发表评论（一级评论或回复）
 func CreateComment(ctx context.Context, userId int64, videoId int64, content string, parentId int64, replyToUserId int64) (*model.CommentInfo, *model.ReplyInfo, api.ResCode, error) {
 	// 1. 检查视频是否存在
@@ -293,7 +303,32 @@ func CreateComment(ctx context.Context, userId int64, videoId int64, content str
 				Where(tx.Video.ID.Eq(videoId)).
 				UpdateSimple(tx.Video.CommentCount.Add(1))
 		}
-		return err
+		if err != nil {
+			return err
+		}
+		// 通知视频作者（评论者非作者本人）
+		if video.UserID != userId {
+			notifSvc.CreateNotification(ctx, tx, &model.Notification{
+				UserID:     video.UserID,
+				ActorID:    userId,
+				ActionType: 4, // 评论视频
+				TargetType: 3, // 评论
+				TargetID:   newComment.ID,
+				Content:    truncate(content, 100),
+			})
+		}
+		// 通知被回复者（回复场景，被回复者非评论者本人）
+		if replyToUserId > 0 && replyToUserId != userId && replyToUserId != video.UserID {
+			notifSvc.CreateNotification(ctx, tx, &model.Notification{
+				UserID:     replyToUserId,
+				ActorID:    userId,
+				ActionType: 5, // 回复评论
+				TargetType: 3, // 评论
+				TargetID:   newComment.ID,
+				Content:    truncate(content, 100),
+			})
+		}
+		return nil
 	})
 	if err != nil {
 		return nil, nil, api.CodeInternalError, err

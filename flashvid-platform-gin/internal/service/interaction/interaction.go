@@ -8,6 +8,7 @@ import (
 	v1 "flashvid-platform-gin/api/interaction/v1"
 	"flashvid-platform-gin/internal/dao/query"
 	"flashvid-platform-gin/internal/model"
+	notifSvc "flashvid-platform-gin/internal/service/notification"
 	"gorm.io/gorm"
 )
 
@@ -56,6 +57,16 @@ func LikeVideo(ctx context.Context, userId int64, videoId int64) (*v1.LikeVideoR
 		if err != nil {
 			return err
 		}
+		// 通知视频作者（不通知自己）
+		if video.UserID != userId {
+			notifSvc.CreateNotification(ctx, tx, &model.Notification{
+				UserID:     video.UserID,
+				ActorID:    userId,
+				ActionType: 2, // 点赞视频
+				TargetType: 2, // 视频
+				TargetID:   videoId,
+			})
+		}
 		return nil
 	})
 	if err != nil {
@@ -97,8 +108,8 @@ func UnlikeVideo(ctx context.Context, userId int64, videoId int64) (*v1.LikeVide
 	}
 	// 3. 如果已经点赞，则删除点赞记录并更新点赞数 事务包裹
 	err = query.Q.Transaction(func(tx *query.Query) error {
-		// 硬删除点赞记录（Like有soft-delete，必须Unscoped，否则re-like时unique constraint violation）
-		_, err = tx.Like.WithContext(ctx).Unscoped().
+		// 删除点赞记录（Like 已无 soft-delete，直接物理删除）
+		_, err = tx.Like.WithContext(ctx).
 			Where(
 				query.Like.UserID.Eq(userId),
 				query.Like.TargetType.Eq(1),
@@ -145,7 +156,7 @@ func FavoriteVideo(ctx context.Context, userId int64, videoId int64) (*v1.Favori
 		// 已收藏，幂等：直接返回成功
 		return &v1.FavoriteVideoResp{IsFavorited: true, FavoriteCount: video.FavoriteCount}, api.CodeSuccess, nil
 	}
-	// 3. 事务：创建收藏记录 + 收藏数 +1
+	// 3. 事务：创建收藏记录 + 收藏数 +1 + 通知
 	err = query.Q.Transaction(func(tx *query.Query) error {
 		if err := tx.Favorite.WithContext(ctx).Create(&model.Favorite{
 			UserID:  userId,
@@ -156,6 +167,16 @@ func FavoriteVideo(ctx context.Context, userId int64, videoId int64) (*v1.Favori
 		if _, err := tx.Video.WithContext(ctx).Where(tx.Video.ID.Eq(videoId)).
 			UpdateSimple(tx.Video.FavoriteCount.Add(1)); err != nil {
 			return err
+		}
+		// 通知视频作者（不通知自己）
+		if video.UserID != userId {
+			notifSvc.CreateNotification(ctx, tx, &model.Notification{
+				UserID:     video.UserID,
+				ActorID:    userId,
+				ActionType: 3, // 收藏视频
+				TargetType: 2, // 视频
+				TargetID:   videoId,
+			})
 		}
 		return nil
 	})
@@ -229,8 +250,8 @@ func UnfavoriteVideo(ctx context.Context, userId int64, videoId int64) (*v1.Favo
 				}
 			}
 		}
-		// 3-e. 硬删除收藏记录（Favorite有soft-delete，必须Unscoped，否则re-favorite时unique constraint violation）
-		if _, err := tx.Favorite.WithContext(ctx).Unscoped().
+		// 3-e. 删除收藏记录（Favorite 已无 soft-delete，直接物理删除）
+		if _, err := tx.Favorite.WithContext(ctx).
 			Where(tx.Favorite.UserID.Eq(userId), tx.Favorite.VideoID.Eq(videoId)).
 			Delete(); err != nil {
 			return err

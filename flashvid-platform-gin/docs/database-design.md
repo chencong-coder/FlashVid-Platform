@@ -326,6 +326,34 @@ CREATE TABLE `playlist_videos` (
 - 按 `created_at DESC` 排序展示
 - 不设 `deleted_at`，移除即物理删除，通过 `playlist_videos` + 事务更新 `playlists.video_count` 保证一致性
 
+### 2.15 通知表 (notifications)
+
+```sql
+CREATE TABLE `notifications` (
+  `id`          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '通知ID',
+  `user_id`     BIGINT NOT NULL COMMENT '通知接收者ID',
+  `actor_id`    BIGINT NOT NULL COMMENT '触发者ID',
+  `action_type` TINYINT NOT NULL COMMENT '操作类型：1=关注 2=点赞视频 3=收藏视频 4=评论视频 5=回复评论',
+  `target_type` TINYINT NOT NULL COMMENT '目标类型：1=用户 2=视频 3=评论',
+  `target_id`   BIGINT NOT NULL COMMENT '目标对象ID',
+  `content`     VARCHAR(500) NOT NULL DEFAULT '' COMMENT '附加内容（评论/回复时为文本预览，最多100字）',
+  `is_read`     TINYINT NOT NULL DEFAULT 0 COMMENT '是否已读：0=未读 1=已读',
+  `created_at`  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_user_created` (`user_id`, `created_at`),
+  KEY `idx_user_action_read` (`user_id`, `action_type`, `is_read`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='通知表';
+```
+
+**设计说明**：
+- 无软删除，通知只增不减（可按需加 `deleted_at`）
+- `action_type` 枚举：1=关注 2=点赞视频 3=收藏视频 4=评论视频 5=回复评论
+- `target_type` 枚举：1=用户（关注时） 2=视频（点赞/收藏/评论时） 3=评论（回复时）
+- `idx_user_created` 用于列表翻页（按时间倒序）
+- `idx_user_action_read` 用于 `GROUP BY action_type WHERE is_read=0` 统计未读数
+- 写入时机：关注/点赞/收藏/评论操作事务内同步写入，不自我通知（actor=receiver 时跳过）
+- content 字段通过 `truncate(s, 100)` 按 rune 截断，避免 UTF-8 截断乱码
+
 ## 3. 索引优化策略
 
 ### 3.1 复合索引

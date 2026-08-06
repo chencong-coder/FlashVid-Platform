@@ -44,6 +44,23 @@ func GetMusicListHandler(c *gin.Context) {
 	})
 }
 
+// CreateMusicHandler 创建音乐接口（需登录）
+func CreateMusicHandler(c *gin.Context) {
+	var req v1.CreateMusicReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		api.ResponseError(c, api.CodeInvalidParam)
+		return
+	}
+
+	info, resCode, err := music.CreateMusic(c, req)
+	if err != nil {
+		api.ResponseError(c, resCode)
+		return
+	}
+
+	api.ResponseSuccess(c, v1.CreateMusicResp{Music: *info})
+}
+
 // SearchMusicHandler 搜索音乐接口
 func SearchMusicHandler(c *gin.Context) {
 	// 1. 获取请求参数

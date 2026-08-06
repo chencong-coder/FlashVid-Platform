@@ -33,7 +33,6 @@ func newLike(db *gorm.DB, opts ...gen.DOOption) like {
 	_like.TargetType = field.NewInt32(tableName, "target_type")
 	_like.TargetID = field.NewInt64(tableName, "target_id")
 	_like.CreatedAt = field.NewTime(tableName, "created_at")
-	_like.DeletedAt = field.NewField(tableName, "deleted_at")
 
 	_like.fillFieldMap()
 
@@ -50,7 +49,6 @@ type like struct {
 	TargetType field.Int32 // 点赞类型：1-视频，2-评论
 	TargetID   field.Int64 // 目标ID
 	CreatedAt  field.Time  // 创建时间
-	DeletedAt  field.Field // 删除时间
 
 	fieldMap map[string]field.Expr
 }
@@ -72,7 +70,6 @@ func (l *like) updateTableName(table string) *like {
 	l.TargetType = field.NewInt32(table, "target_type")
 	l.TargetID = field.NewInt64(table, "target_id")
 	l.CreatedAt = field.NewTime(table, "created_at")
-	l.DeletedAt = field.NewField(table, "deleted_at")
 
 	l.fillFieldMap()
 
@@ -97,13 +94,12 @@ func (l *like) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (l *like) fillFieldMap() {
-	l.fieldMap = make(map[string]field.Expr, 6)
+	l.fieldMap = make(map[string]field.Expr, 5)
 	l.fieldMap["id"] = l.ID
 	l.fieldMap["user_id"] = l.UserID
 	l.fieldMap["target_type"] = l.TargetType
 	l.fieldMap["target_id"] = l.TargetID
 	l.fieldMap["created_at"] = l.CreatedAt
-	l.fieldMap["deleted_at"] = l.DeletedAt
 }
 
 func (l like) clone(db *gorm.DB) like {
