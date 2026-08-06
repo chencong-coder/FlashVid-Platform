@@ -35,8 +35,8 @@ func LikeVideo(ctx context.Context, userId int64, videoId int64) (*v1.LikeVideoR
 		return nil, api.CodeInternalError, err
 	}
 	if countLike > 0 {
-		// 已经点赞，返回特定错误码告知前端
-		return nil, api.CodeAlreadyLiked, errors.New("已经点赞过该视频")
+		// 已经点赞，幂等：直接返回成功
+		return &v1.LikeVideoResp{IsLiked: true, LikeCount: video.LikeCount}, api.CodeSuccess, nil
 	}
 	// 3. 如果未点赞，则创建点赞记录并更新点赞数 事务包裹
 	like := &model.Like{
@@ -92,18 +92,18 @@ func UnlikeVideo(ctx context.Context, userId int64, videoId int64) (*v1.LikeVide
 		return nil, api.CodeInternalError, err
 	}
 	if countLike == 0 {
-		// 如果没点赞，返回特定错误码告知前端
-		return nil, api.CodeAlreadyUnliked, errors.New("已经取消点赞过该视频")
+		// 已经取消点赞，幂等：直接返回成功
+		return &v1.LikeVideoResp{IsLiked: false, LikeCount: video.LikeCount}, api.CodeSuccess, nil
 	}
 	// 3. 如果已经点赞，则删除点赞记录并更新点赞数 事务包裹
 	err = query.Q.Transaction(func(tx *query.Query) error {
-		// 删除点赞记录
-		_, err = tx.Like.WithContext(ctx).
+		// 硬删除点赞记录（Like有soft-delete，必须Unscoped，否则re-like时unique constraint violation）
+		_, err = tx.Like.WithContext(ctx).Unscoped().
 			Where(
-				query.Like.UserID.Eq(userId), 
+				query.Like.UserID.Eq(userId),
 				query.Like.TargetType.Eq(1),
 				query.Like.TargetID.Eq(videoId),
-				).
+			).
 			Delete()
 		if err != nil {
 			return err
@@ -142,7 +142,8 @@ func FavoriteVideo(ctx context.Context, userId int64, videoId int64) (*v1.Favori
 		return nil, api.CodeInternalError, err
 	}
 	if count > 0 {
-		return nil, api.CodeAlreadyFavorited, errors.New("已收藏过该视频")
+		// 已收藏，幂等：直接返回成功
+		return &v1.FavoriteVideoResp{IsFavorited: true, FavoriteCount: video.FavoriteCount}, api.CodeSuccess, nil
 	}
 	// 3. 事务：创建收藏记录 + 收藏数 +1
 	err = query.Q.Transaction(func(tx *query.Query) error {
@@ -183,7 +184,8 @@ func UnfavoriteVideo(ctx context.Context, userId int64, videoId int64) (*v1.Favo
 		return nil, api.CodeInternalError, err
 	}
 	if count == 0 {
-		return nil, api.CodeNotFavorited, errors.New("未收藏过该视频")
+		// 未收藏，幂等：直接返回成功
+		return &v1.FavoriteVideoResp{IsFavorited: false, FavoriteCount: video.FavoriteCount}, api.CodeSuccess, nil
 	}
 	// 3. 事务：级联删除 playlist_videos + 删除收藏记录 + 收藏数 -1
 	err = query.Q.Transaction(func(tx *query.Query) error {
@@ -227,8 +229,8 @@ func UnfavoriteVideo(ctx context.Context, userId int64, videoId int64) (*v1.Favo
 				}
 			}
 		}
-		// 3-e. 删除收藏记录
-		if _, err := tx.Favorite.WithContext(ctx).
+		// 3-e. 硬删除收藏记录（Favorite有soft-delete，必须Unscoped，否则re-favorite时unique constraint violation）
+		if _, err := tx.Favorite.WithContext(ctx).Unscoped().
 			Where(tx.Favorite.UserID.Eq(userId), tx.Favorite.VideoID.Eq(videoId)).
 			Delete(); err != nil {
 			return err

@@ -8,6 +8,11 @@ interface Props {
   playing: boolean
 }
 
+interface Anchor {
+  right: number
+  bottom: number
+}
+
 interface Emits {
   (event: 'follow'): void
   (event: 'profile'): void
@@ -15,13 +20,15 @@ interface Emits {
   (event: 'comment'): void
   (event: 'favorite'): void
   (event: 'share'): void
-  (event: 'playlist'): void
+  (event: 'playlist', anchor: Anchor | null): void
 }
 
 defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 const moreOpen = ref(false)
+// ref to the "更多" wrapper div — used to compute anchor position for the playlist panel
+const moreRef = ref<HTMLElement | null>(null)
 
 const closeMore = () => { moreOpen.value = false }
 
@@ -39,7 +46,16 @@ const toggleMore = () => {
 
 const openPlaylist = () => {
   moreOpen.value = false
-  emit('playlist')
+  const rect = moreRef.value?.getBoundingClientRect() ?? null
+  const anchor: Anchor | null = rect
+    ? {
+        // 面板右边缘 = 按钮左边缘往左 8px
+        right: window.innerWidth - rect.left + 8,
+        // 面板底边缘 = 按钮底边缘对齐
+        bottom: window.innerHeight - rect.bottom,
+      }
+    : null
+  emit('playlist', anchor)
 }
 
 onUnmounted(() => {
@@ -165,7 +181,7 @@ onUnmounted(() => {
     </button>
 
     <!-- 更多操作 -->
-    <div class="relative">
+    <div ref="moreRef" class="relative">
       <button
         type="button"
         aria-label="更多"

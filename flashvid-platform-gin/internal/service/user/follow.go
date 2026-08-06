@@ -2,16 +2,18 @@ package user
 
 import (
 	"context"
+	"errors"
+	"time"
+
 	"flashvid-platform-gin/api"
 	"flashvid-platform-gin/internal/dao/query"
-	"errors"
-	"gorm.io/gorm"
 	"flashvid-platform-gin/internal/model"
+	"gorm.io/gorm"
 )
 
-// FollowUser 关注用户
+// FollowUser 关注用户（幂等：已关注直接返回成功；事务内同步更新计数）
 func FollowUser(ctx context.Context, loginUserId int64, followUserId int64) (bool, api.ResCode, error) {
-	// 1. 检测用户是否存在
+	// 1. 检测目标用户是否存在
 	_, err := query.User.WithContext(ctx).
 		Where(query.User.ID.Eq(followUserId)).
 		First()
@@ -21,31 +23,50 @@ func FollowUser(ctx context.Context, loginUserId int64, followUserId int64) (boo
 		}
 		return false, api.CodeInternalError, err
 	}
-	// 2. 检查是否已经关注
-	followed, err := query.Follow.WithContext(ctx).
+	// 2. 检查是否已经关注（幂等：已关注直接返回成功，不报错）
+	existing, err := query.Follow.WithContext(ctx).
 		Where(query.Follow.FollowerID.Eq(loginUserId), query.Follow.FollowingID.Eq(followUserId)).
 		First()
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return false, api.CodeInternalError, err
 	}
-	if followed != nil {
-		// 已经关注，返回特定错误码告知前端
-		return true, api.CodeAlreadyFollowed, errors.New("already following")
+	if existing != nil {
+		return true, api.CodeSuccess, nil
 	}
-	// 3. 如果未关注，则创建关注记录
-	newFollow := &model.Follow{
-		FollowerID:  loginUserId,
-		FollowingID: followUserId,
-	}
-	if err := query.Follow.WithContext(ctx).Create(newFollow); err != nil {
-		return false, api.CodeInternalError, err
+	// 3. 事务：创建关注记录 + 更新双方计数
+	// 提前捕获时间：GORM gen-dao Create() 不会回写 default:CURRENT_TIMESTAMP 字段
+	now := time.Now()
+	txErr := query.Q.Transaction(func(tx *query.Query) error {
+		if err := tx.Follow.WithContext(ctx).Create(&model.Follow{
+			FollowerID:  loginUserId,
+			FollowingID: followUserId,
+			CreatedAt:   now,
+		}); err != nil {
+			return err
+		}
+		// 增加登录用户的关注数
+		if _, err := tx.User.WithContext(ctx).
+			Where(tx.User.ID.Eq(loginUserId)).
+			UpdateSimple(tx.User.FollowingCount.Add(1)); err != nil {
+			return err
+		}
+		// 增加被关注用户的粉丝数
+		if _, err := tx.User.WithContext(ctx).
+			Where(tx.User.ID.Eq(followUserId)).
+			UpdateSimple(tx.User.FollowerCount.Add(1)); err != nil {
+			return err
+		}
+		return nil
+	})
+	if txErr != nil {
+		return false, api.CodeInternalError, txErr
 	}
 	return true, api.CodeSuccess, nil
 }
 
-// UnfollowUser 取消关注用户
+// UnfollowUser 取消关注用户（幂等：未关注直接返回成功；硬删除避免软删后再关注时unique冲突；事务内同步更新计数）
 func UnfollowUser(ctx context.Context, loginUserId int64, followUserId int64) (bool, api.ResCode, error) {
-	// 1. 检测用户是否存在
+	// 1. 检测目标用户是否存在
 	_, err := query.User.WithContext(ctx).
 		Where(query.User.ID.Eq(followUserId)).
 		First()
@@ -55,23 +76,40 @@ func UnfollowUser(ctx context.Context, loginUserId int64, followUserId int64) (b
 		}
 		return false, api.CodeInternalError, err
 	}
-	// 2. 检查是否已经关注
-	followed, err := query.Follow.WithContext(ctx).
+	// 2. 检查是否确实关注了（幂等：未关注直接返回成功，不报错）
+	existing, err := query.Follow.WithContext(ctx).
 		Where(query.Follow.FollowerID.Eq(loginUserId), query.Follow.FollowingID.Eq(followUserId)).
 		First()
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return false, api.CodeInternalError, err
 	}
-	if followed == nil {
-		// 未关注，返回特定错误码告知前端
-		return false, api.CodeNotFollowed, errors.New("not following")
+	if existing == nil {
+		return false, api.CodeSuccess, nil
 	}
-	// 3. 如果已经关注，则删除关注记录
-	_, err = query.Follow.WithContext(ctx).
-		Where(query.Follow.FollowerID.Eq(loginUserId), query.Follow.FollowingID.Eq(followUserId)).
-		Delete()
-	if err != nil {
-		return false, api.CodeInternalError, err
+	// 3. 事务：硬删除关注记录 + 更新双方计数
+	// 硬删除（Unscoped）：避免软删后再次关注时触发 unique 约束冲突
+	txErr := query.Q.Transaction(func(tx *query.Query) error {
+		if _, err := tx.Follow.WithContext(ctx).Unscoped().
+			Where(tx.Follow.FollowerID.Eq(loginUserId), tx.Follow.FollowingID.Eq(followUserId)).
+			Delete(); err != nil {
+			return err
+		}
+		// 减少登录用户的关注数（WHERE following_count > 0 防止变负）
+		if _, err := tx.User.WithContext(ctx).
+			Where(tx.User.ID.Eq(loginUserId), tx.User.FollowingCount.Gt(0)).
+			UpdateSimple(tx.User.FollowingCount.Add(-1)); err != nil {
+			return err
+		}
+		// 减少被关注用户的粉丝数（WHERE follower_count > 0 防止变负）
+		if _, err := tx.User.WithContext(ctx).
+			Where(tx.User.ID.Eq(followUserId), tx.User.FollowerCount.Gt(0)).
+			UpdateSimple(tx.User.FollowerCount.Add(-1)); err != nil {
+			return err
+		}
+		return nil
+	})
+	if txErr != nil {
+		return false, api.CodeInternalError, txErr
 	}
 	return false, api.CodeSuccess, nil
 }

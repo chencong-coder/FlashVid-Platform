@@ -38,6 +38,7 @@ const commentVideoId = ref('')
 const commentsVisible = ref(false)
 const searchVisible = ref(false)
 const playlistVideoId = ref<string | null>(null)
+const playlistAnchor = ref<{ right: number; bottom: number } | null>(null)
 // 桌面端评论侧边栏检测
 const isDesktop = ref(false)
 let mqDesktop: MediaQueryList | null = null
@@ -460,9 +461,10 @@ const openComments = (videoId: string): void => {
   commentsVisible.value = true
 }
 
-const handlePlaylist = (videoId: string): void => {
+const handlePlaylist = (videoId: string, anchor: { right: number; bottom: number } | null): void => {
   if (!requireInteractionLogin()) return
   playlistVideoId.value = videoId
+  playlistAnchor.value = anchor
 }
 
 const share = async (): Promise<void> => {
@@ -630,6 +632,6 @@ onBeforeUnmount(() => {
       :total="commentTotal"
     />
     <SearchPopup v-model:show="searchVisible" />
-    <AddToPlaylistModal :video-id="playlistVideoId" @close="playlistVideoId = null" />
+    <AddToPlaylistModal :video-id="playlistVideoId" :anchor="playlistAnchor" @close="playlistVideoId = null" />
   </main>
 </template>

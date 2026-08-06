@@ -37,13 +37,9 @@ func FollowUserHandler(c *gin.Context) {
 		api.ResponseError(c, api.CodeCannotFollowSelf)
 		return
 	}
-	// 4. 调用service进行关注操作
+	// 4. 调用service进行关注操作（service已幂等处理"已关注"情况）
 	isFollow, resCode, err := user.FollowUser(c, loginUserIdInt64, followUserId)
 	if err != nil {
-		if resCode == api.CodeAlreadyFollowed {
-			api.ResponseErrorWithMsg(c, resCode, "已经关注该用户")
-			return
-		}
 		api.ResponseError(c, resCode)
 		return
 	}
@@ -81,13 +77,9 @@ func UnfollowUserHandler(c *gin.Context) {
 		api.ResponseError(c, api.CodeCannotFollowSelf)
 		return
 	}
-	// 4. 调用service进行取消关注操作
+	// 4. 调用service进行取消关注操作（service已幂等处理"未关注"情况）
 	isFollow, resCode, err := user.UnfollowUser(c, loginUserIdInt64, followUserId)
 	if err != nil {
-		if resCode == api.CodeNotFollowed {
-			api.ResponseErrorWithMsg(c, resCode, "未关注该用户")
-			return
-		}
 		api.ResponseError(c, resCode)
 		return
 	}

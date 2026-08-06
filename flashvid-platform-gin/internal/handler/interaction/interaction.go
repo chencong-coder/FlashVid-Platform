@@ -31,10 +31,6 @@ func LikeVideoHandler(c *gin.Context) {
 	// 3. 调用service进行点赞操作
 	resp, resCode, err := interaction.LikeVideo(c, userIdInt64, videoId)
 	if err != nil {
-		if resCode == api.CodeAlreadyLiked {
-			api.ResponseErrorWithMsg(c, resCode, "已经点赞过该视频")
-			return
-		}
 		api.ResponseError(c, resCode)
 		return
 	}
@@ -64,10 +60,6 @@ func UnlikeVideoHandler(c *gin.Context) {
 	// 3. 调用service进行点赞操作
 	resp, resCode, err := interaction.UnlikeVideo(c, userIdInt64, videoId)
 	if err != nil {
-		if resCode == api.CodeAlreadyUnliked {
-			api.ResponseErrorWithMsg(c, resCode, "已经取消点赞过该视频")
-			return
-		}
 		api.ResponseError(c, resCode)
 		return
 	}
@@ -97,10 +89,6 @@ func FavoriteVideoHandler(c *gin.Context) {
 	// 3. 调用service进行收藏操作
 	resp, resCode, err := interaction.FavoriteVideo(c, userIdInt64, videoId)
 	if err != nil {
-		if resCode == api.CodeAlreadyFavorited {
-			api.ResponseErrorWithMsg(c, resCode, "已经收藏过该视频")
-			return
-		}
 		api.ResponseError(c, resCode)
 		return
 	}
@@ -130,10 +118,6 @@ func UnfavoriteVideoHandler(c *gin.Context) {
 	// 3. 调用service进行取消收藏操作
 	resp, resCode, err := interaction.UnfavoriteVideo(c, userIdInt64, videoId)
 	if err != nil {
-		if resCode == api.CodeNotFavorited {
-			api.ResponseErrorWithMsg(c, resCode, "未收藏过该视频")
-			return
-		}
 		api.ResponseError(c, resCode)
 		return
 	}
