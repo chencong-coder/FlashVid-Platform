@@ -71,6 +71,10 @@ const toggleFollow = async (userId: string) => {
       if (userStore.profile) {
         userStore.profile.following = Math.max(0, userStore.profile.following - 1)
       }
+      // 同步视频流里的关注按钮状态
+      videoStore.syncAuthorFollowed(userId, false)
+      // 取关后重新加载推荐列表（让被取关的用户有机会重新出现）
+      void loadSuggestions()
     } else {
       await followUser(userId)
       followingSet.value = new Set([...followingSet.value, userId])
@@ -78,6 +82,8 @@ const toggleFollow = async (userId: string) => {
       if (userStore.profile) {
         userStore.profile.following = userStore.profile.following + 1
       }
+      // 同步视频流里的关注按钮状态
+      videoStore.syncAuthorFollowed(userId, true)
       // 关注成功后从推荐列表移除该用户，并补充新推荐
       suggestedUsers.value = suggestedUsers.value.filter((u) => u.userId !== userId)
       // 补充一个新推荐用户
@@ -101,16 +107,20 @@ const refresh = () => {
   loadSuggestions()
 }
 
-// 监听视频流里的关注操作，及时同步推荐列表
+// 监听视频流里的关注/取关操作，及时同步推荐列表
 watch(
   () => videoStore.lastFollowChange,
   (change) => {
-    if (!change || !change.followed) return
+    if (!change) return
+    if (!change.followed) {
+      // 取关：重新拉推荐列表（让被取关的用户有机会重新出现）
+      void loadSuggestions()
+      return
+    }
+    // 关注：从推荐列表移除，并补充一个新推荐
     const idx = suggestedUsers.value.findIndex((u) => u.userId === change.authorId)
     if (idx === -1) return
-    // 移除已关注的用户
     suggestedUsers.value.splice(idx, 1)
-    // 补充一个新推荐
     getRecommendUsers(1)
       .then((res) => {
         const newUsers = res.data.data?.users ?? []
@@ -169,7 +179,7 @@ onMounted(() => {
           :key="topic.id"
           type="button"
           class="w-full flex items-center gap-3 py-2 px-1 rounded-lg hover:bg-white/[0.04] transition-colors"
-          @click="router.push({ name: 'discover' })"
+          @click="router.push({ name: 'topic', params: { id: topic.id } })"
         >
           <span
             class="text-sm font-bold w-4 text-center shrink-0"

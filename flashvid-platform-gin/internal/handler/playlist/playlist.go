@@ -137,18 +137,23 @@ func AddVideoToPlaylistHandler(c *gin.Context) {
 		api.ResponseError(c, api.CodeInvalidUserID)
 		return
 	}
-	// 2. 获取请求参数
-	var req v1.AddVideoToPlaylistReq
-	if err := c.ShouldBindUri(&req); err != nil {
+	// 2. 路径参数 + 请求体分开绑定，避免混用 uri/json tag 触发跨字段 validate 问题
+	var uriReq struct {
+		PlaylistID int64 `uri:"id" binding:"required"`
+	}
+	if err := c.ShouldBindUri(&uriReq); err != nil {
 		api.ResponseError(c, api.CodeInvalidParam)
 		return
 	}
-	if err := c.ShouldBindJSON(&req); err != nil {
+	var bodyReq struct {
+		VideoID int64 `json:"videoId,string" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&bodyReq); err != nil {
 		api.ResponseError(c, api.CodeInvalidParam)
 		return
 	}
 	// 3. 调用 service
-	resCode, err := playlist.AddVideoToPlaylist(c, userID, req.PlaylistID, req.VideoID)
+	resCode, err := playlist.AddVideoToPlaylist(c, userID, uriReq.PlaylistID, bodyReq.VideoID)
 	if err != nil {
 		api.ResponseError(c, resCode)
 		return

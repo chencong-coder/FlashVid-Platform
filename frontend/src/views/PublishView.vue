@@ -29,6 +29,23 @@ const MAX_VIDEO_FILE_SIZE = 500 * 1024 * 1024
 const MAX_COVER_FILE_SIZE = 10 * 1024 * 1024
 const SUPPORTED_VIDEO_EXTENSIONS = new Set(['mp4', 'mov', 'avi', 'mkv'])
 
+const beforeReadCover: UploaderBeforeRead = (file) => {
+  const selectedFiles = Array.isArray(file) ? file : [file]
+
+  for (const selectedFile of selectedFiles) {
+    if (!selectedFile.type.startsWith('image/')) {
+      showToast('封面仅支持图片格式')
+      return false
+    }
+    if (selectedFile.size > MAX_COVER_FILE_SIZE) {
+      showToast('封面大小不能超过 10 MB')
+      return false
+    }
+  }
+
+  return true
+}
+
 const beforeReadVideo: UploaderBeforeRead = (file) => {
   const selectedFiles = Array.isArray(file) ? file : [file]
 
@@ -40,23 +57,6 @@ const beforeReadVideo: UploaderBeforeRead = (file) => {
     }
     if (selectedFile.size > MAX_VIDEO_FILE_SIZE) {
       showToast('视频大小不能超过 500 MB')
-      return false
-    }
-  }
-
-  return true
-}
-
-const beforeReadCover: UploaderBeforeRead = (file) => {
-  const selectedFiles = Array.isArray(file) ? file : [file]
-
-  for (const selectedFile of selectedFiles) {
-    if (!selectedFile.type.startsWith('image/')) {
-      showToast('封面仅支持图片格式')
-      return false
-    }
-    if (selectedFile.size > MAX_COVER_FILE_SIZE) {
-      showToast('封面大小不能超过 10 MB')
       return false
     }
   }
@@ -133,7 +133,6 @@ const musicLabel = computed(() =>
 
 // ---- 话题选择 ----
 const MAX_TOPICS = 5
-const selectedTopics = ref<TopicItem[]>([])
 const topicPickerVisible = ref(false)
 const topicList = ref<TopicItem[]>([])
 const topicLoading = ref(false)
@@ -160,24 +159,32 @@ const loadTopicList = async (): Promise<void> => {
   }
 }
 
-const isTopicSelected = (topicId: string): boolean =>
-  selectedTopics.value.some((t) => t.id === topicId)
+/** 描述里是否已包含某个话题标签（按完整词匹配，避免 #旅行 命中 #旅行风景） */
+const captionHasTopic = (name: string): boolean =>
+  new RegExp(`#${name}(?![一-龥a-zA-Z0-9_])`).test(caption.value)
 
-const toggleTopic = (topic: TopicItem): void => {
-  const idx = selectedTopics.value.findIndex((t) => t.id === topic.id)
-  if (idx !== -1) {
-    selectedTopics.value.splice(idx, 1)
-  } else {
-    if (selectedTopics.value.length >= MAX_TOPICS) {
-      showToast(`最多选 ${MAX_TOPICS} 个话题`)
-      return
-    }
-    selectedTopics.value.push(topic)
+/** 选中话题：把 #话题名 插入到描述文本中 */
+const insertTopic = (name: string): void => {
+  topicPickerVisible.value = false
+  if (captionHasTopic(name)) return
+  if (extractTopicsFromCaption(caption.value).length >= MAX_TOPICS) {
+    showToast(`最多添加 ${MAX_TOPICS} 个话题`)
+    return
   }
+  const current = caption.value
+  const sep = current && !/[\s]$/.test(current) ? ' ' : ''
+  caption.value = `${current}${sep}#${name} `
 }
 
-const removeTopic = (topicId: string): void => {
-  selectedTopics.value = selectedTopics.value.filter((t) => t.id !== topicId)
+/** 用搜索关键词创建并插入一个新话题 */
+const insertKeywordTopic = (): void => {
+  const name = topicKeyword.value.trim()
+  if (!name) return
+  if (name.length > 20) {
+    showToast('话题名最多 20 个字符')
+    return
+  }
+  insertTopic(name)
 }
 
 /** 从描述中提取 #话题 标签 */
@@ -189,6 +196,36 @@ const extractTopicsFromCaption = (text: string): string[] => {
     names.push(m[1])
   }
   return [...new Set(names)] // 去重
+}
+
+// ---- 描述高亮层：把 #话题 染成蓝色 ----
+const captionEl = ref<HTMLTextAreaElement | null>(null)
+const captionBackdrop = ref<HTMLDivElement | null>(null)
+
+interface CaptionSegment {
+  type: 'text' | 'topic'
+  value: string
+}
+const captionSegments = computed<CaptionSegment[]>(() => {
+  const text = caption.value
+  const regex = /#([一-龥a-zA-Z0-9_]{1,20})/g
+  const segments: CaptionSegment[] = []
+  let lastIndex = 0
+  let m: RegExpExecArray | null
+  while ((m = regex.exec(text)) !== null) {
+    if (m.index > lastIndex) segments.push({ type: 'text', value: text.slice(lastIndex, m.index) })
+    segments.push({ type: 'topic', value: m[0] })
+    lastIndex = m.index + m[0].length
+  }
+  if (lastIndex < text.length) segments.push({ type: 'text', value: text.slice(lastIndex) })
+  return segments
+})
+
+/** textarea 滚动时同步背板，保证高亮对齐 */
+const syncCaptionScroll = (): void => {
+  if (captionEl.value && captionBackdrop.value) {
+    captionBackdrop.value.scrollTop = captionEl.value.scrollTop
+  }
 }
 
 /** 从视频文件截取第一帧作为封面 */
@@ -282,7 +319,7 @@ const publish = async (): Promise<void> => {
     const videoUrl = videoRes.data.data.file_url
     const duration = await getVideoDuration(videoFile)
 
-    // 2. 封面：优先用手动选择的封面，否则从视频截帧
+    // 2. 封面：优先用手动选择的封面，否则从视频自动截取首帧
     statusText.value = '处理封面...'
     let coverUrl = videoUrl // 兜底用视频地址
     try {
@@ -302,10 +339,8 @@ const publish = async (): Promise<void> => {
     statusText.value = '发布中...'
     uploadProgress.value = 90
 
-    // 合并手动选择的话题 + 描述中提取的话题标签
-    const manualTopics = selectedTopics.value.map((t) => t.name)
-    const captionTopics = extractTopicsFromCaption(caption.value)
-    const allTopics = [...new Set([...manualTopics, ...captionTopics])].slice(0, 5) // 去重 + 限制 5 个
+    // 从描述中提取 #话题 标签（不存在的话题后端会自动创建）
+    const allTopics = extractTopicsFromCaption(caption.value).slice(0, MAX_TOPICS)
 
     const createRes = await createVideo({
       title: title.value.trim(),
@@ -348,7 +383,7 @@ const publish = async (): Promise<void> => {
       <span class="w-9" />
     </header>
 
-    <!-- 视频 + 封面选择 -->
+    <!-- 视频选择 -->
     <section class="mt-4 flex gap-3">
       <van-uploader
         v-model="files"
@@ -371,7 +406,6 @@ const publish = async (): Promise<void> => {
         </div>
       </van-uploader>
 
-      <!-- 封面（可选，手动选择；不选则自动截帧） -->
       <van-uploader
         v-model="coverFiles"
         accept="image/*"
@@ -380,15 +414,15 @@ const publish = async (): Promise<void> => {
         :max-size="MAX_COVER_FILE_SIZE"
       >
         <div
-          class="flex aspect-[9/13] w-28 flex-col items-center justify-center rounded-md border border-dashed border-white/30 bg-white/5 text-neutral-400"
+          class="flex aspect-[9/13] w-44 flex-col items-center justify-center rounded-md border border-dashed border-white/30 bg-white/5 text-neutral-400"
         >
           <template v-if="coverFiles[0]?.url">
             <img :src="coverFiles[0]?.url" class="h-full w-full rounded-md object-cover" alt="封面" />
           </template>
           <template v-else>
-            <i class="fa-solid fa-image mb-2 text-2xl" />
-            <span class="text-xs font-medium text-white">选择封面</span>
-            <span class="mt-1 text-[10px] leading-4 text-center">可选<br />默认取首帧</span>
+            <i class="fa-regular fa-image mb-3 text-3xl" />
+            <span class="text-sm font-medium text-white">选择封面</span>
+            <span class="mt-2 text-xs">不选则自动截取首帧</span>
           </template>
         </div>
       </van-uploader>
@@ -408,30 +442,31 @@ const publish = async (): Promise<void> => {
     </section>
 
     <section class="mt-3 border-y border-white/10 py-4">
-      <textarea
-        v-model="caption"
-        rows="3"
-        maxlength="500"
-        placeholder="添加作品描述，让更多人看见..."
-        class="w-full resize-none bg-transparent text-sm leading-6 text-white outline-none placeholder:text-neutral-500"
-      />
+      <div class="relative">
+        <!-- 高亮背板：把 #话题 染成蓝色，与 textarea 完全对齐 -->
+        <div
+          ref="captionBackdrop"
+          aria-hidden="true"
+          class="pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words text-sm leading-6 text-white"
+        >
+          <template v-for="(seg, i) in captionSegments">
+            <span v-if="seg.type === 'topic'" :key="`t-${i}`" class="text-yellow-300">{{ seg.value }}</span>
+            <span v-else :key="`s-${i}`">{{ seg.value }}</span>
+          </template>
+        </div>
+        <textarea
+          ref="captionEl"
+          v-model="caption"
+          rows="3"
+          maxlength="500"
+          placeholder="添加作品描述，让更多人看见..."
+          class="relative w-full resize-none bg-transparent text-sm leading-6 text-transparent caret-white outline-none placeholder:text-neutral-500"
+          @scroll="syncCaptionScroll"
+        />
+      </div>
       <div class="flex gap-4 text-sm font-medium">
         <button type="button" class="text-primary" @click="openTopicPicker"># 话题</button>
         <button type="button">@ 朋友</button>
-      </div>
-
-      <!-- 已选话题 -->
-      <div v-if="selectedTopics.length > 0" class="mt-3 flex flex-wrap gap-2">
-        <button
-          v-for="topic in selectedTopics"
-          :key="topic.id"
-          type="button"
-          class="flex items-center gap-1.5 rounded-full bg-primary/20 px-3 py-1 text-xs font-medium text-primary"
-          @click="removeTopic(topic.id)"
-        >
-          <span># {{ topic.name }}</span>
-          <i class="fa-solid fa-xmark text-[10px]" />
-        </button>
       </div>
 
       <!-- 话题下拉面板 -->
@@ -467,28 +502,40 @@ const publish = async (): Promise<void> => {
           <div v-if="topicLoading" class="flex justify-center py-6">
             <i class="fa-solid fa-circle-notch animate-spin text-xl text-neutral-500" />
           </div>
-          <div v-else-if="topicList.length === 0" class="py-8 text-center text-sm text-neutral-500">
-            暂无话题
-          </div>
-          <button
-            v-for="(topic, idx) in topicList"
-            v-else
-            :key="topic.id"
-            type="button"
-            class="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/5"
-            :class="isTopicSelected(topic.id) ? 'bg-white/5' : ''"
-            @click="toggleTopic(topic)"
-          >
-            <span class="w-5 text-center text-sm font-bold" :class="idx < 3 ? 'text-primary' : 'text-neutral-500'">
-              {{ idx + 1 }}
-            </span>
-            <span class="flex-1 truncate text-sm">{{ topic.name }}</span>
-            <span class="text-xs text-neutral-500">{{ topic.videoCount }} 视频</span>
-            <i v-if="isTopicSelected(topic.id)" class="fa-solid fa-circle-check ml-2 text-primary" />
-          </button>
+          <template v-else>
+            <!-- 用搜索关键词创建新话题 -->
+            <button
+              v-if="topicKeyword.trim() && !topicList.some((t) => t.name === topicKeyword.trim())"
+              type="button"
+              class="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/5"
+              @click="insertKeywordTopic"
+            >
+              <i class="fa-solid fa-plus w-5 text-center text-sm text-primary" />
+              <span class="flex-1 truncate text-sm">创建话题 “{{ topicKeyword.trim() }}”</span>
+            </button>
+            <div
+              v-if="topicList.length === 0 && !topicKeyword.trim()"
+              class="py-8 text-center text-sm text-neutral-500"
+            >
+              暂无话题
+            </div>
+            <button
+              v-for="(topic, idx) in topicList"
+              :key="topic.id"
+              type="button"
+              class="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/5"
+              @click="insertTopic(topic.name)"
+            >
+              <span class="w-5 text-center text-sm font-bold" :class="idx < 3 ? 'text-primary' : 'text-neutral-500'">
+                {{ idx + 1 }}
+              </span>
+              <span class="flex-1 truncate text-sm">{{ topic.name }}</span>
+              <span class="text-xs text-neutral-500">{{ topic.videoCount }} 视频</span>
+            </button>
+          </template>
         </div>
         <div class="border-t border-white/10 px-4 py-2 text-xs text-neutral-500">
-          已选 {{ selectedTopics.length }}/{{ MAX_TOPICS }}
+          在描述里输入 # 也可添加话题 · 最多 {{ MAX_TOPICS }} 个
         </div>
       </div>
     </section>

@@ -47,6 +47,7 @@ const fetchFeedPage = async (
   if (feed === 'follow') return (await getFollowFeed({ ...params, count })).data.data
   if (feed === 'friends') return (await getFriendsFeed({ ...params, count })).data.data
   if (feed === 'profile') return { videos: [], nextCursorToken: '', hasMore: false }
+  if (feed === 'playlist') return { videos: [], nextCursorToken: '', hasMore: false }
   if (feed === 'topic') {
     if (!topic.id) return { videos: [], nextCursorToken: '', hasMore: false }
     return (await getTopicVideos(topic.id, { ...params, count, sort: topic.sort })).data.data
@@ -78,6 +79,7 @@ export const useVideoStore = defineStore('video', {
       friends: createFeed(),
       topic: createFeed(),
       profile: createFeed(),
+      playlist: createFeed(),
     },
     lastFollowChange: null,
   }),
@@ -124,6 +126,16 @@ export const useVideoStore = defineStore('video', {
     // 从个人主页进入播放：预灌当前 tab 的视频列表
     startProfileFeed(videos: FeedVideo[], startIndex: number): void {
       this.feeds.profile = {
+        items: videos.map((v) => mapFeedVideo(v, 'recommend')),
+        cursor: '',
+        hasMore: false,
+        loading: false,
+        loaded: true,
+      }
+    },
+    // 从播放列表页进入播放：预灌视频列表，hasMore 由调用方传入
+    startPlaylistFeed(videos: FeedVideo[], _startIndex: number): void {
+      this.feeds.playlist = {
         items: videos.map((v) => mapFeedVideo(v, 'recommend')),
         cursor: '',
         hasMore: false,
@@ -216,6 +228,9 @@ export const useVideoStore = defineStore('video', {
           const delta = isFollowing ? 1 : -1
           userStore.profile.following = Math.max(0, userStore.profile.following + delta)
         }
+        // 关注/取关都可能改变 follow/friends 流的内容，下次进入时强制重载
+        this.feeds.follow.loaded = false
+        this.feeds.friends.loaded = false
         // 广播关注状态变更，供推荐面板等组件订阅
         this.lastFollowChange = { authorId, followed: isFollowing }
       } catch {

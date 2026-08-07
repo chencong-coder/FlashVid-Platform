@@ -7,6 +7,7 @@ import (
 	v1 "flashvid-platform-gin/api/topic/v1"
 	"flashvid-platform-gin/internal/dao/query"
 	"flashvid-platform-gin/internal/model"
+	feedsvc "flashvid-platform-gin/internal/service/feed"
 	"strconv"
 	"time"
 
@@ -113,7 +114,7 @@ func GetTopicByID(ctx context.Context, topicId int64) (*v1.GetTopicByIDResp, api
 }
 
 // GetTopicVideos 根据话题ID获取话题下的视频列表
-func GetTopicVideos(ctx context.Context, topicId int64, sort string, cursor string, count int) (*model.GetTopicVideosOutput, api.ResCode, error) {
+func GetTopicVideos(ctx context.Context, topicId int64, viewerID int64, sort string, cursor string, count int) (*model.GetTopicVideosOutput, api.ResCode, error) {
 	// 1. 查询话题是否存在
 	_, err := query.Topic.WithContext(ctx).
 		Where(
@@ -145,7 +146,7 @@ func GetTopicVideos(ctx context.Context, topicId int64, sort string, cursor stri
 	q := query.Video.WithContext(ctx).
 		Where(
 			query.Video.ID.In(videoIds...),
-			query.Video.Status.Eq(1),
+			query.Video.Status.Eq(2), // 2 = 已发布，与其他 feed 保持一致
 		)
 	if cursor != "" {
 		if sort == "popular" {
@@ -263,7 +264,11 @@ func GetTopicVideos(ctx context.Context, topicId int64, sort string, cursor stri
 			PublishedAt: v.PublishedAt.Format("2006-01-02 15:04:05"),
 		})
 	}
-	// 4. 生成游标
+	// 4. 回填观看者互动状态（点赞/收藏/关注）
+	if err := feedsvc.AttachViewerState(ctx, viewerID, videoList); err != nil {
+		return nil, api.CodeInternalError, err
+	}
+	// 5. 生成游标
 	nextCursor := ""
 	if hasMore {
 		last := videos[len(videos)-1]

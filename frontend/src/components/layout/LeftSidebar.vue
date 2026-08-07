@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { showToast } from 'vant'
+import { showToast, Uploader as VanUploader, type UploaderBeforeRead, type UploaderFileListItem } from 'vant'
 import { useAuthModalStore } from '@/store/authModal'
 import { useUserStore } from '@/store/user'
 import { getMyPlaylists, createPlaylist, type PlaylistInfo } from '@/api/user'
+import { uploadFile } from '@/api/upload'
 
 const route = useRoute()
 const router = useRouter()
@@ -53,6 +54,9 @@ watch(
   },
 )
 
+// 添加视频到播放列表后刷新
+watch(() => userStore.playlistVersion, () => loadPlaylists())
+
 onMounted(loadPlaylists)
 
 // ---- 创建播放列表弹窗 ----
@@ -61,6 +65,23 @@ const createTitle = ref('')
 const createDesc = ref('')
 const creating = ref(false)
 
+// 封面选择
+const coverFiles = ref<UploaderFileListItem[]>([])
+const MAX_COVER_FILE_SIZE = 10 * 1024 * 1024
+const beforeReadCover: UploaderBeforeRead = (file) => {
+  const item = Array.isArray(file) ? file[0] : file
+  if (!item) return false
+  if (!item.type.startsWith('image/')) {
+    showToast('请选择图片文件')
+    return false
+  }
+  if (item.size > MAX_COVER_FILE_SIZE) {
+    showToast('封面不能超过 10MB')
+    return false
+  }
+  return true
+}
+
 const openCreateModal = () => {
   if (!userStore.isLoggedIn) {
     authModal.requireLogin()
@@ -68,6 +89,7 @@ const openCreateModal = () => {
   }
   createTitle.value = ''
   createDesc.value = ''
+  coverFiles.value = []
   showCreateModal.value = true
 }
 
@@ -83,7 +105,17 @@ const submitCreate = async () => {
   }
   creating.value = true
   try {
-    await createPlaylist({ title, description: createDesc.value.trim() || undefined })
+    let coverUrl: string | undefined
+    const coverFile = coverFiles.value[0]?.file
+    if (coverFile instanceof File) {
+      try {
+        const coverRes = await uploadFile(coverFile, 'image')
+        if (coverRes.data.code === 0) coverUrl = coverRes.data.data.file_url
+      } catch {
+        /* 封面上传失败不阻断创建 */
+      }
+    }
+    await createPlaylist({ title, description: createDesc.value.trim() || undefined, coverUrl })
     showToast('创建成功')
     showCreateModal.value = false
     await loadPlaylists()
@@ -179,10 +211,18 @@ const navigate = (item: NavItem) => router.push({ name: item.name, query: item.q
             @click="router.push({ name: 'playlist-detail', params: { id: pl.id } })"
           >
             <img
-              :src="pl.coverUrl || `https://picsum.photos/40/40?random=${pl.id}`"
+              v-if="pl.coverUrl"
+              :src="pl.coverUrl"
               :alt="pl.title"
               class="w-10 h-10 rounded-lg object-cover shrink-0"
             />
+            <div
+              v-else
+              class="w-10 h-10 rounded-lg shrink-0 flex items-center justify-center"
+              :style="{ background: `hsl(${Number(pl.id.slice(-6)) % 360}, 38%, 28%)` }"
+            >
+              <i class="fa-solid fa-list text-white/60 text-xs" />
+            </div>
             <div class="min-w-0 text-left">
               <p class="text-sm text-white font-medium truncate">{{ pl.title }}</p>
               <p class="text-xs text-gray-500">{{ pl.videoCount }} 个视频</p>
@@ -246,6 +286,27 @@ const navigate = (item: NavItem) => router.push({ name: item.name, query: item.q
           </div>
           <!-- 表单 -->
           <div class="space-y-3 px-5 py-4">
+            <div>
+              <label class="mb-1.5 block text-xs text-gray-400">封面（选填）</label>
+              <VanUploader
+                v-model="coverFiles"
+                :max-count="1"
+                :before-read="beforeReadCover"
+                accept="image/*"
+              >
+                <div
+                  class="flex h-24 w-24 flex-col items-center justify-center overflow-hidden rounded-lg border border-dashed border-white/30 bg-white/[0.06] text-gray-400"
+                >
+                  <template v-if="coverFiles[0]?.url">
+                    <img :src="coverFiles[0]?.url" class="h-full w-full object-cover" alt="封面" />
+                  </template>
+                  <template v-else>
+                    <i class="fa-regular fa-image mb-1.5 text-2xl" />
+                    <span class="text-xs">选择封面</span>
+                  </template>
+                </div>
+              </VanUploader>
+            </div>
             <div>
               <label class="mb-1.5 block text-xs text-gray-400">名称 <span class="text-primary">*</span></label>
               <input

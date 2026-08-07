@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { showToast } from 'vant'
 import { videoPlay } from 'vue3-video-play'
 
 import type { VideoItem } from '@/types/video'
+import { searchTopics } from '@/api/topic'
 import RightAction from './RightAction.vue'
 
 interface Props {
@@ -24,6 +27,66 @@ interface Emits {
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
+const router = useRouter()
+
+const TOPIC_RE = /#([一-龥a-zA-Z0-9_]{1,20})/g
+
+/** 把描述拆成 文本 / 话题 片段，话题可点击 */
+interface CaptionSegment {
+  type: 'text' | 'topic'
+  value: string
+}
+const captionSegments = computed<CaptionSegment[]>(() => {
+  const text = props.video.description ?? ''
+  const segments: CaptionSegment[] = []
+  let lastIndex = 0
+  let m: RegExpExecArray | null
+  TOPIC_RE.lastIndex = 0
+  while ((m = TOPIC_RE.exec(text)) !== null) {
+    if (m.index > lastIndex) {
+      segments.push({ type: 'text', value: text.slice(lastIndex, m.index) })
+    }
+    segments.push({ type: 'topic', value: m[1] })
+    lastIndex = m.index + m[0].length
+  }
+  if (lastIndex < text.length) {
+    segments.push({ type: 'text', value: text.slice(lastIndex) })
+  }
+  return segments
+})
+
+/** 描述里已出现的话题名（用于去重，避免 video.topics 再渲染一遍） */
+const captionTopicNames = computed(
+  () => new Set(captionSegments.value.filter((s) => s.type === 'topic').map((s) => s.value)),
+)
+
+/** video.topics 中未被描述覆盖的话题（老数据兜底） */
+const extraTopics = computed(() =>
+  (props.video.topics ?? []).filter((name) => !captionTopicNames.value.has(name)),
+)
+
+let navigatingTopic = false
+
+/** 点话题：按名称解析出 topicId 后跳到话题页 */
+const goTopic = async (name: string): Promise<void> => {
+  if (navigatingTopic) return
+  navigatingTopic = true
+  try {
+    const res = await searchTopics(name, undefined, 20)
+    const topics = res.data.data?.topics ?? []
+    const match = topics.find((t) => t.name === name) ?? topics[0]
+    if (!match) {
+      showToast('话题不存在')
+      return
+    }
+    void router.push({ name: 'topic', params: { id: match.id } })
+  } catch {
+    showToast('话题加载失败')
+  } finally {
+    navigatingTopic = false
+  }
+}
+
 const playerRoot = ref<HTMLElement | null>(null)
 const playing = ref(false)
 const showStatus = ref(false)
@@ -33,7 +96,6 @@ const options = computed(() => ({
   width: '100%',
   height: '100%',
   src: props.video.source,
-  poster: props.video.poster,
   muted: props.muted,
   autoPlay: false,
   loop: true,
@@ -140,10 +202,24 @@ onBeforeUnmount(() => {
         <p
           class="line-clamp-3 text-[15px] leading-relaxed text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]"
         >
-          {{ video.description }}
-          <span v-for="topic in video.topics" :key="topic" class="ml-1 font-semibold text-cyan-300">
+          <template v-for="(seg, i) in captionSegments">
+            <a
+              v-if="seg.type === 'topic'"
+              :key="`t-${i}`"
+              class="cursor-pointer font-semibold text-yellow-300"
+              @click.stop="goTopic(seg.value)"
+              >#{{ seg.value }}</a
+            >
+            <span v-else :key="`s-${i}`">{{ seg.value }}</span>
+          </template>
+          <a
+            v-for="topic in extraTopics"
+            :key="topic"
+            class="ml-1 cursor-pointer font-semibold text-yellow-300"
+            @click.stop="goTopic(topic)"
+          >
             #{{ topic }}
-          </span>
+          </a>
         </p>
       </div>
 
