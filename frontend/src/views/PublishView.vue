@@ -25,6 +25,38 @@ const publishing = ref(false)
 const uploadProgress = ref(0)
 const statusText = ref('')
 
+// ---- 拍摄定位（点按钮才请求 GPS，只存经纬度）----
+const location = ref<{ latitude: number; longitude: number } | null>(null)
+const locating = ref(false)
+
+const requestLocation = (): void => {
+  if (locating.value) return
+  if (!('geolocation' in navigator)) {
+    showToast('当前设备不支持定位')
+    return
+  }
+  locating.value = true
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      location.value = {
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+      }
+      locating.value = false
+      showToast('定位成功')
+    },
+    (err) => {
+      locating.value = false
+      showToast(err.code === err.PERMISSION_DENIED ? '定位权限被拒绝' : '定位失败，请重试')
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+  )
+}
+
+const clearLocation = (): void => {
+  location.value = null
+}
+
 const MAX_VIDEO_FILE_SIZE = 500 * 1024 * 1024
 const MAX_COVER_FILE_SIZE = 10 * 1024 * 1024
 const SUPPORTED_VIDEO_EXTENSIONS = new Set(['mp4', 'mov', 'avi', 'mkv'])
@@ -350,6 +382,8 @@ const publish = async (): Promise<void> => {
       duration,
       musicId: selectedMusic.value?.id,
       topicNames: allTopics.length > 0 ? allTopics : undefined,
+      latitude: location.value?.latitude,
+      longitude: location.value?.longitude,
     })
     if (createRes.data.code === 0) {
       uploadProgress.value = 100
@@ -642,9 +676,22 @@ const publish = async (): Promise<void> => {
     </section>
 
     <section class="text-sm">
-      <button type="button" class="flex w-full items-center justify-between border-t border-white/10 py-4">
-        <span><i class="fa-solid fa-location-dot mr-3 w-4 text-center" />添加位置</span>
-        <i class="fa-solid fa-chevron-right text-xs text-neutral-600" />
+      <button
+        type="button"
+        class="flex w-full items-center justify-between border-t border-white/10 py-4 disabled:opacity-60"
+        :disabled="locating"
+        @click="location ? clearLocation() : requestLocation()"
+      >
+        <span>
+          <i class="fa-solid fa-location-dot mr-3 w-4 text-center" :class="location ? 'text-primary' : ''" />
+          <template v-if="locating">定位中...</template>
+          <template v-else-if="location">已定位 · 点击移除</template>
+          <template v-else>添加位置</template>
+        </span>
+        <span v-if="location" class="text-xs text-neutral-500">
+          {{ location.latitude.toFixed(4) }}, {{ location.longitude.toFixed(4) }}
+        </span>
+        <i v-else class="fa-solid fa-chevron-right text-xs text-neutral-600" />
       </button>
     </section>
 
