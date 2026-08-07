@@ -1,12 +1,21 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { showToast } from 'vant'
+import {
+  Uploader as VanUploader,
+  showToast,
+  type UploaderBeforeRead,
+  type UploaderFileListItem,
+} from 'vant'
 import {
   getMyPlaylists,
   addVideoToPlaylist,
   createPlaylist,
   type PlaylistInfo,
 } from '@/api/user'
+import { uploadFile } from '@/api/upload'
+import { useUserStore } from '@/store/user'
+
+const userStore = useUserStore()
 
 interface Props {
   /** 要添加的视频 ID，null 时面板关闭 */
@@ -27,9 +36,27 @@ const selectedIds = ref<Set<string>>(new Set())
 const saving      = ref(false)
 
 // ── 新建播放列表 ──
-const showCreate = ref(false)
-const newTitle   = ref('')
-const creating   = ref(false)
+const showCreate  = ref(false)
+const newTitle    = ref('')
+const creating    = ref(false)
+const coverFiles  = ref<UploaderFileListItem[]>([])
+
+const MAX_COVER_FILE_SIZE = 10 * 1024 * 1024
+
+const beforeReadCover: UploaderBeforeRead = (file) => {
+  const selectedFiles = Array.isArray(file) ? file : [file]
+  for (const selectedFile of selectedFiles) {
+    if (!selectedFile.type.startsWith('image/')) {
+      showToast('封面仅支持图片格式')
+      return false
+    }
+    if (selectedFile.size > MAX_COVER_FILE_SIZE) {
+      showToast('封面大小不能超过 10 MB')
+      return false
+    }
+  }
+  return true
+}
 
 // 每次打开（videoId 变为非空）都重新加载列表、重置选中
 watch(
@@ -66,17 +93,29 @@ const save = async () => {
 
   saving.value = true
   let ok = 0
+  let lastErrMsg = ''
   for (const plId of selectedIds.value) {
-    try { await addVideoToPlaylist(plId, props.videoId); ok++ }
-    catch { /* 单条失败不中断 */ }
+    try {
+      await addVideoToPlaylist(plId, props.videoId)
+      ok++
+    } catch (e: unknown) {
+      lastErrMsg = (e instanceof Error ? e.message : '') || '添加失败'
+    }
   }
   saving.value = false
-  if (ok > 0) showToast(ok === 1 ? '已添加到播放列表' : `已添加到 ${ok} 个播放列表`)
+  if (ok > 0) {
+    showToast(ok === 1 ? '已添加到播放列表' : `已添加到 ${ok} 个播放列表`)
+    // 通知侧边栏刷新播放列表计数
+    userStore.bumpPlaylistVersion()
+  } else if (lastErrMsg) {
+    showToast(lastErrMsg)
+  }
   emit('close')
 }
 
 const openCreate = () => {
   newTitle.value   = ''
+  coverFiles.value = []
   showCreate.value = true
 }
 
@@ -85,7 +124,18 @@ const submitCreate = async () => {
   if (!title) { showToast('请输入名称'); return }
   creating.value = true
   try {
-    const res   = await createPlaylist({ title })
+    // 上传封面（可选）
+    let coverUrl: string | undefined
+    const coverFile = coverFiles.value[0]?.file
+    if (coverFile instanceof File) {
+      try {
+        const coverRes = await uploadFile(coverFile, 'image')
+        if (coverRes.data.code === 0) coverUrl = coverRes.data.data.file_url
+      } catch {
+        /* 封面失败不阻断创建 */
+      }
+    }
+    const res   = await createPlaylist({ title, coverUrl })
     const newPl = res.data.data.playlist
     playlists.value.unshift(newPl)
     // 创建后自动选中
@@ -171,11 +221,21 @@ const submitCreate = async () => {
                 @click="toggleSelect(pl.id)"
               >
                 <!-- 封面 -->
-                <img
-                  :src="pl.coverUrl || `https://picsum.photos/44/44?random=${pl.id}`"
-                  :alt="pl.title"
-                  class="h-11 w-11 shrink-0 rounded-lg object-cover"
-                />
+                <div class="h-11 w-11 shrink-0 rounded-lg overflow-hidden bg-white/[0.07]">
+                  <img
+                    v-if="pl.coverUrl"
+                    :src="pl.coverUrl"
+                    :alt="pl.title"
+                    class="h-full w-full object-cover"
+                  />
+                  <div
+                    v-else
+                    class="h-full w-full flex items-center justify-center"
+                    :style="{ background: `hsl(${Number(pl.id.slice(-6)) % 360}, 38%, 28%)` }"
+                  >
+                    <i class="fa-solid fa-list text-white/60 text-sm" />
+                  </div>
+                </div>
                 <!-- 标题 + 数量 -->
                 <div class="min-w-0 flex-1 text-left">
                   <p class="truncate text-sm font-medium text-white">{{ pl.title }}</p>
@@ -211,6 +271,29 @@ const submitCreate = async () => {
             v-if="showCreate"
             class="border-t border-white/[0.06] px-4 py-3"
           >
+            <!-- 封面选择（可选） -->
+            <div class="mb-2 flex items-center gap-3">
+              <van-uploader
+                v-model="coverFiles"
+                accept="image/*"
+                :before-read="beforeReadCover"
+                :max-count="1"
+                :max-size="MAX_COVER_FILE_SIZE"
+              >
+                <div
+                  class="flex h-14 w-14 items-center justify-center overflow-hidden rounded-lg border border-dashed border-white/25 bg-white/[0.05] text-gray-400"
+                >
+                  <img
+                    v-if="coverFiles[0]?.url"
+                    :src="coverFiles[0]?.url"
+                    alt="封面"
+                    class="h-full w-full object-cover"
+                  />
+                  <i v-else class="fa-solid fa-image text-lg" />
+                </div>
+              </van-uploader>
+              <span class="text-xs text-gray-500">选择封面（可选）</span>
+            </div>
             <div class="flex gap-2">
               <input
                 v-model="newTitle"

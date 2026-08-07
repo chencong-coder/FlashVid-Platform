@@ -72,7 +72,7 @@ watch(() => userStore.isLoggedIn, loadUnreadCount)
       <!-- User avatar -->
       <button
         type="button"
-        class="w-9 h-9 rounded-full overflow-hidden ring-2 ring-violet-600/50 hover:ring-violet-500 transition-all"
+        class="w-9 h-9 rounded-full overflow-hidden transition-all"
         @click="router.push({ name: 'profile' })"
       >
         <img

@@ -8,6 +8,8 @@ interface UserState {
   token: string
   refreshToken: string
   profile: UserProfile | null
+  /** 每次添加视频到播放列表后递增，供 LeftSidebar 监听并刷新 */
+  playlistVersion: number
 }
 
 const TOKEN_KEY = 'flashvid_token'
@@ -20,6 +22,7 @@ export const useUserStore = defineStore('user', {
     token: storage.get<string>(TOKEN_KEY) ?? '',
     refreshToken: storage.get<string>(REFRESH_TOKEN_KEY) ?? '',
     profile: storage.get<UserProfile>(PROFILE_KEY),
+    playlistVersion: 0,
   }),
   getters: {
     isLoggedIn: (state): boolean => Boolean(state.token),
@@ -57,6 +60,9 @@ export const useUserStore = defineStore('user', {
       storage.remove(TOKEN_KEY)
       storage.remove(REFRESH_TOKEN_KEY)
       storage.remove(PROFILE_KEY)
+    },
+    bumpPlaylistVersion(): void {
+      this.playlistVersion++
     },
   },
 })

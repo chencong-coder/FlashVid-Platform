@@ -1,4 +1,4 @@
-export type FeedType = 'follow' | 'recommend' | 'nearby' | 'friends' | 'topic' | 'profile'
+export type FeedType = 'follow' | 'recommend' | 'nearby' | 'friends' | 'topic' | 'profile' | 'playlist'
 export type TopNavValue = 'follow' | 'recommend' | 'nearby' | 'friends' | 'discover'
 
 export interface VideoAuthor {

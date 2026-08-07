@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	v1 "flashvid-platform-gin/api/topic/v1"
 	"flashvid-platform-gin/api"
+	"flashvid-platform-gin/internal/middleware"
 	"flashvid-platform-gin/internal/service/topic"
 	"strconv"
 )
@@ -64,7 +65,10 @@ func GetTopicVideosHandler(c *gin.Context) {
 		api.ResponseError(c, api.CodeInvalidParam)
 		return
 	}
-	// 2. 获取分页参数
+	// 2. 获取当前登录用户ID（未登录为0，AttachViewerState 会跳过状态回填）
+	loginUserID, _ := c.Get(middleware.CtxKeyUserID)
+	viewerID, _ := loginUserID.(int64)
+	// 3. 获取分页参数
 	var req v1.GetTopicVideosReq
 	if err := c.ShouldBindQuery(&req); err != nil {
 		api.ResponseError(c, api.CodeInvalidParam)
@@ -76,8 +80,8 @@ func GetTopicVideosHandler(c *gin.Context) {
 	if req.Sort == "" {
 		req.Sort = "latest"
 	}
-	// 3. 调用service获取话题下的视频列表	
-	output, resCode, err := topic.GetTopicVideos(c, topicId, req.Sort, req.Cursor, req.Count)
+	// 4. 调用service获取话题下的视频列表
+	output, resCode, err := topic.GetTopicVideos(c, topicId, viewerID, req.Sort, req.Cursor, req.Count)
 	if err != nil {
 		api.ResponseError(c, resCode)
 		return

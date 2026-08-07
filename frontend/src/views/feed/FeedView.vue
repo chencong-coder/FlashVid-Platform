@@ -574,12 +574,12 @@ onBeforeUnmount(() => {
     <header
       v-else
       class="safe-top pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center px-4 pb-6 pt-3"
-      :class="feed === 'profile' ? 'justify-start' : 'justify-center'"
+      :class="feed === 'profile' || feed === 'topic' ? 'justify-start' : 'justify-center'"
     >
       <div class="absolute inset-0 bg-gradient-to-b from-black/80 via-black/40 to-transparent" />
-      <!-- 个人主页流：左上角返回按钮 -->
+      <!-- 个人主页流 / 话题流：左上角返回按钮 -->
       <button
-        v-if="feed === 'profile'"
+        v-if="feed === 'profile' || feed === 'topic'"
         type="button"
         aria-label="返回"
         class="pointer-events-auto relative flex h-9 w-9 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm"
@@ -602,7 +602,7 @@ onBeforeUnmount(() => {
       type="button"
       :aria-label="videoStore.muted ? '打开声音' : '静音'"
       class="safe-top absolute top-4 z-40 flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-white/20 to-white/5 text-base text-white backdrop-blur-xl transition-all duration-300 hover:scale-110 hover:from-white/30 hover:to-white/10 active:scale-95"
-      :class="feed === 'profile' ? 'right-4' : 'left-4'"
+      :class="feed === 'profile' || feed === 'topic' ? 'right-4' : 'left-4'"
       @click="videoStore.toggleMuted"
     >
       <i

@@ -1,5 +1,5 @@
 import type { ApiResponse } from './types'
-import http from './axios'
+import http from './http'
 
 export interface NotificationItem {
   id: number

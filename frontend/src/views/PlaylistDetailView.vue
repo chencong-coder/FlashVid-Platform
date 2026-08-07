@@ -12,9 +12,13 @@ import {
 } from '@/api/user'
 import { deleteVideo } from '@/api/video'
 import type { FeedVideo } from '@/api/feed'
+import { useVideoStore } from '@/store/video'
+import { useUserStore } from '@/store/user'
 
 const route = useRoute()
 const router = useRouter()
+const videoStore = useVideoStore()
+const userStore = useUserStore()
 
 const playlistId = ref(route.params.id as string)
 
@@ -146,8 +150,8 @@ const confirmDeleteVideo = async () => {
     if (playlist.value) playlist.value.videoCount = Math.max(0, playlist.value.videoCount - 1)
     showToast('视频已删除')
     deleteConfirmId.value = null
-  } catch {
-    showToast('删除失败，请重试')
+  } catch (e: unknown) {
+    showToast(e instanceof Error ? e.message : '删除失败，请重试')
   } finally {
     deletingVideoId.value = null
   }
@@ -157,6 +161,12 @@ const formatDuration = (s: number): string => {
   const m = Math.floor(s / 60)
   const sec = s % 60
   return `${m}:${sec.toString().padStart(2, '0')}`
+}
+
+// 点击视频：复用 profile feed，行为与喜欢/收藏完全一致
+const openVideo = (index: number) => {
+  videoStore.startProfileFeed(videos.value, index)
+  router.push({ name: 'profile-play', query: { index } })
 }
 </script>
 
@@ -210,11 +220,21 @@ const formatDuration = (s: number): string => {
 
     <!-- 播放列表简介 -->
     <div v-if="playlist" class="flex items-start gap-4 px-5 py-5 border-b border-white/[0.05]">
-      <img
-        :src="playlist.coverUrl || `https://picsum.photos/80/80?random=${playlist.id}`"
-        :alt="playlist.title"
-        class="w-20 h-20 rounded-xl object-cover shrink-0"
-      />
+      <div class="w-20 h-20 rounded-xl shrink-0 overflow-hidden">
+        <img
+          v-if="playlist.coverUrl"
+          :src="playlist.coverUrl"
+          :alt="playlist.title"
+          class="w-full h-full object-cover"
+        />
+        <div
+          v-else
+          class="w-full h-full flex items-center justify-center"
+          :style="{ background: `hsl(${Number(playlist.id.slice(-6)) % 360}, 38%, 28%)` }"
+        >
+          <i class="fa-solid fa-list text-white/60 text-2xl" />
+        </div>
+      </div>
       <div class="min-w-0 flex-1 pt-1">
         <p class="text-lg font-bold leading-snug truncate">{{ playlist.title }}</p>
         <p v-if="playlist.description" class="mt-1 text-sm text-gray-400 line-clamp-2">{{ playlist.description }}</p>
@@ -241,7 +261,7 @@ const formatDuration = (s: number): string => {
           :key="video.id"
           class="relative rounded-xl overflow-hidden bg-[#1a1a22]"
           :class="manageMode ? 'cursor-default' : 'group cursor-pointer'"
-          @click="!manageMode && router.push({ name: 'user-profile', params: { id: video.author.id } })"
+          @click="!manageMode && openVideo(videos.indexOf(video))"
         >
           <!-- 封面 -->
           <div class="relative aspect-[9/16] bg-black">
@@ -282,6 +302,7 @@ const formatDuration = (s: number): string => {
               <button
                 type="button"
                 class="w-full flex items-center justify-center gap-1.5 rounded-lg bg-red-500/25 py-2 text-[11px] font-medium text-red-300 backdrop-blur-sm hover:bg-red-500/40 transition-colors"
+                v-if="userStore.profile && video.author.id === userStore.profile.id"
                 :disabled="deletingVideoId === video.id"
                 @click.stop="deleteConfirmId = video.id"
               >

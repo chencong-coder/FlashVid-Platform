@@ -57,6 +57,16 @@ const loadVideos = async () => {
   }
 }
 
+const openChat = () => {
+  if (!authModal.requireLogin()) return
+  void router.push({ name: 'chat', params: { userId: userId.value } })
+}
+
+const openVideo = (index: number) => {
+  videoStore.startProfileFeed(videos.value, index)
+  void router.push({ name: 'profile-play', query: { index } })
+}
+
 const toggleFollow = async () => {
   if (!authModal.requireLogin()) return
   followLoading.value = true
@@ -130,21 +140,31 @@ const toggleFollow = async () => {
             <h1 class="text-xl font-bold truncate">{{ userInfo.nickname || userInfo.username }}</h1>
             <p class="mt-0.5 text-xs text-neutral-500">@{{ userInfo.username }}</p>
           </div>
-          <!-- 自己的主页不显示关注按钮 -->
-          <button
-            v-if="!isSelf"
-            type="button"
-            :disabled="followLoading"
-            class="mt-1 shrink-0 rounded-lg px-5 py-2 text-sm font-semibold transition-all disabled:opacity-50"
-            :class="
-              following
-                ? 'border border-white/20 bg-white/10 text-white hover:bg-white/15'
-                : 'bg-primary text-white hover:bg-[#ff3e63]'
-            "
-            @click="toggleFollow"
-          >
-            {{ following ? '已关注' : '关注' }}
-          </button>
+          <!-- 他人主页：关注 + 私信 -->
+          <div v-if="!isSelf" class="mt-1 flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              :disabled="followLoading"
+              class="rounded-lg px-5 py-2 text-sm font-semibold transition-all disabled:opacity-50"
+              :class="
+                following
+                  ? 'border border-white/20 bg-white/10 text-white hover:bg-white/15'
+                  : 'bg-primary text-white hover:bg-[#ff3e63]'
+              "
+              @click="toggleFollow"
+            >
+              {{ following ? '已关注' : '关注' }}
+            </button>
+            <button
+              type="button"
+              aria-label="发私信"
+              class="flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-white transition-colors hover:bg-white/15"
+              @click="openChat"
+            >
+              <i class="fa-solid fa-paper-plane text-sm" />
+            </button>
+          </div>
+          <!-- 自己的主页：编辑资料 -->
           <button
             v-else
             type="button"
@@ -174,9 +194,10 @@ const toggleFollow = async () => {
       </div>
       <div v-else-if="videos.length" class="grid grid-cols-3 gap-0.5 mt-0.5">
         <div
-          v-for="item in videos"
+          v-for="(item, index) in videos"
           :key="item.id"
-          class="relative aspect-[3/4] overflow-hidden bg-neutral-900"
+          class="relative aspect-[3/4] cursor-pointer overflow-hidden bg-neutral-900"
+          @click="openVideo(index)"
         >
           <img
             :src="item.coverUrl"

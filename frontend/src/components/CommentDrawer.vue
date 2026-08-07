@@ -3,6 +3,7 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { Popup as VanPopup, showToast } from 'vant'
 
 import {
+  deleteComment,
   getCommentReplies,
   getVideoComments,
   likeComment,
@@ -10,6 +11,7 @@ import {
   unlikeComment,
 } from '@/api/video'
 import { useAuthModalStore } from '@/store/authModal'
+import { useUserStore } from '@/store/user'
 import type { CommentItem, ReplyItem } from '@/types/video'
 import { formatCount } from '@/utils/format'
 
@@ -28,6 +30,7 @@ interface Emits {
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 const authModal = useAuthModalStore()
+const userStore = useUserStore()
 
 const content = ref('')
 const comments = ref<CommentItem[]>([])
@@ -137,6 +140,22 @@ const toggleLike = async (target: CommentItem | ReplyItem): Promise<void> => {
   } catch {
     target.isLiked = !next
     target.likeCount += next ? -1 : 1
+  }
+}
+
+// ── 删除 ─────────────────────────────────────────────────────────────
+const handleDelete = async (comment: CommentItem, reply?: ReplyItem): Promise<void> => {
+  const id = reply ? reply.id : comment.id
+  try {
+    await deleteComment(id)
+    if (reply) {
+      comment.replies = comment.replies.filter((r: ReplyItem) => r.id !== reply.id)
+      comment.replyCount = Math.max(0, comment.replyCount - 1)
+    } else {
+      comments.value = comments.value.filter((c) => c.id !== comment.id)
+    }
+  } catch {
+    showToast('删除失败')
   }
 }
 
@@ -260,6 +279,14 @@ watch(
               >
                 回复
               </button>
+              <button
+                v-if="comment.user.id === userStore.profile?.id"
+                type="button"
+                class="transition-colors hover:text-red-400"
+                @click="void handleDelete(comment)"
+              >
+                删除
+              </button>
             </div>
 
             <!-- 展开/收起回复 -->
@@ -314,6 +341,14 @@ watch(
                       @click="startReply(comment.id, reply.user.id, reply.user.nickname || reply.user.username)"
                     >
                       回复
+                    </button>
+                    <button
+                      v-if="reply.user.id === userStore.profile?.id"
+                      type="button"
+                      class="transition-colors hover:text-red-400"
+                      @click="void handleDelete(comment, reply)"
+                    >
+                      删除
                     </button>
                   </div>
                 </div>
