@@ -87,7 +87,7 @@ func FavoriteVideoHandler(c *gin.Context) {
 		return
 	}
 	// 3. 调用service进行收藏操作
-	resp, resCode, err := interaction.FavoriteVideo(c, userIdInt64, videoId)
+	resp, resCode, err := interaction.FavoriteVideo1(c, userIdInt64, videoId)
 	if err != nil {
 		api.ResponseError(c, resCode)
 		return
