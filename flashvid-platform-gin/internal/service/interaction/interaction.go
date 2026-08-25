@@ -400,6 +400,11 @@ func FavoriteVideo(ctx context.Context, userId int64, videoId int64) (*v1.Favori
 
 // FavoriteVideo1 收藏视频 Redis 优化版
 func FavoriteVideo1(ctx context.Context, userId int64, videoId int64) (*v1.FavoriteVideoResp, api.ResCode, error) {
+	// 降级检查
+	if rdb == nil {
+		return FavoriteVideo(ctx, userId, videoId)
+	}
+
 	// 1. 检查视频是否存在
 	video, err := query.Video.WithContext(ctx).
 		Where(query.Video.ID.Eq(videoId)).

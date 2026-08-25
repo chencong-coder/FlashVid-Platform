@@ -73,7 +73,7 @@ func syncOnce(ctx context.Context) error {
 		// 更新 MySQL（直接覆盖，因为 Redis 已是最新值）
 		_, err = query.Video.WithContext(ctx).
 			Where(query.Video.ID.Eq(videoID)).
-			UpdateSimple(query.Video.LikeCount.Value(likeCount))
+			UpdateSimple(query.Video.LikeCount.Value(int32(likeCount)))
 		if err != nil {
 			fmt.Printf("[SyncVideoStats] update video %d failed: %v\n", videoID, err)
 			continue
