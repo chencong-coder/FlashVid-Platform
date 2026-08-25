@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
+	"time"
 
 	"flashvid-platform-gin/internal/conf"
 	"flashvid-platform-gin/internal/dao"
 	"flashvid-platform-gin/internal/server"
+	"flashvid-platform-gin/internal/task"
 	"flashvid-platform-gin/pkg/jwt"
 	"flashvid-platform-gin/pkg/logging"
 	"flashvid-platform-gin/pkg/snowflake"
@@ -33,6 +36,12 @@ func main() {
 	jwt.MustInit(cfg)       // 初始化 jwt
 	snowflake.MustInit(cfg) // 初始化 snowflake
 	storage.MustInit(cfg)   // 初始化本地文件存储
+
+	// 启动定时任务：Redis 统计数据同步到 MySQL（每 10 秒）
+	go func() {
+		taskCtx := context.Background()
+		task.SyncVideoStatsFromRedis(taskCtx, 10*time.Second)
+	}()
 
 	// 初始化路由
 	r := server.SetupRoutes(cfg)

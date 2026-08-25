@@ -28,8 +28,8 @@ func LikeVideoHandler(c *gin.Context) {
 		api.ResponseError(c, api.CodeInvalidParam)
 		return
 	}
-	// 3. 调用service进行点赞操作
-	resp, resCode, err := interaction.LikeVideo(c, userIdInt64, videoId)
+	// 3. 调用service进行点赞操作（Redis 优化版）
+	resp, resCode, err := interaction.LikeVideo1(c, userIdInt64, videoId)
 	if err != nil {
 		api.ResponseError(c, resCode)
 		return
@@ -57,8 +57,8 @@ func UnlikeVideoHandler(c *gin.Context) {
 		api.ResponseError(c, api.CodeInvalidParam)
 		return
 	}
-	// 3. 调用service进行点赞操作
-	resp, resCode, err := interaction.UnlikeVideo(c, userIdInt64, videoId)
+	// 3. 调用service进行点赞操作（Redis 优化版）
+	resp, resCode, err := interaction.UnlikeVideo1(c, userIdInt64, videoId)
 	if err != nil {
 		api.ResponseError(c, resCode)
 		return

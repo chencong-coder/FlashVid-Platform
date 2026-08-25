@@ -8,8 +8,10 @@ import (
 	v1 "flashvid-platform-gin/api/interaction/v1"
 	"flashvid-platform-gin/internal/dao/query"
 	"flashvid-platform-gin/internal/model"
+	"flashvid-platform-gin/internal/dao"
 	notifSvc "flashvid-platform-gin/internal/service/notification"
 	"gorm.io/gorm"
+	"strconv"
 )
 
 // LikeVideo 点赞视频
@@ -136,6 +138,213 @@ func UnlikeVideo(ctx context.Context, userId int64, videoId int64) (*v1.LikeVide
 		IsLiked:   false,
 		LikeCount: video.LikeCount - 1,
 	}, api.CodeSuccess, nil
+}
+
+// LikeVideo1 点赞视频（Redis 优化版）
+// 优化点：
+// 1. 点赞状态用 Redis Set 存储，避免 COUNT 查询和软删唯一键冲突
+// 2. 点赞计数用 Redis Hash 累积，定时任务批量刷回 MySQL（解决热点行写）
+// 3. 通知暂保留同步（阶段 3 用 MQ 异步化）
+func LikeVideo1(ctx context.Context, userId int64, videoId int64) (*v1.LikeVideoResp, api.ResCode, error) {
+	rdb := dao.RedisClient
+	if rdb == nil {
+		// 降级：Redis 不可用时走原逻辑
+		return LikeVideo(ctx, userId, videoId)
+	}
+
+	// 1. 检查视频是否存在（仍需查 DB 获取作者信息用于通知）
+	video, err := query.Video.WithContext(ctx).
+		Where(query.Video.ID.Eq(videoId)).
+		First()
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, api.CodeVideoNotExist, err
+		}
+		return nil, api.CodeInternalError, err
+	}
+
+	// 2. Redis Set 检查是否已点赞（替代 COUNT 查询，天然幂等）
+	userLikedKey := fmt.Sprintf("user:%d:liked_videos", userId)
+	videoIdStr := fmt.Sprintf("%d", videoId)
+	alreadyLiked, err := rdb.SIsMember(ctx, userLikedKey, videoIdStr).Result()
+	if err != nil {
+		// Redis 查询失败降级到 DB
+		return LikeVideo(ctx, userId, videoId)
+	}
+	if alreadyLiked {
+		// 已点赞，幂等返回（计数从 Redis 读）
+		count, _ := rdb.HGet(ctx, fmt.Sprintf("video:%d:stats", videoId), "like_count").Int64()
+		if count == 0 {
+			count = int64(video.LikeCount) // Redis 无值时用 DB 兜底
+		}
+		return &v1.LikeVideoResp{IsLiked: true, LikeCount: int32(count)}, api.CodeSuccess, nil
+	}
+
+	// 3. 先用 Redis SADD 做分布式锁（返回 1=成功添加，0=已存在）
+	// 只有成功添加的请求才能继续，避免并发重复创建 likes 记录
+	added, err := rdb.SAdd(ctx, userLikedKey, videoIdStr).Result()
+	if err != nil {
+		// Redis 写入失败降级到 DB
+		return LikeVideo(ctx, userId, videoId)
+	}
+	if added == 0 {
+		// 并发场景下另一个请求已添加，幂等返回
+		count, _ := rdb.HGet(ctx, fmt.Sprintf("video:%d:stats", videoId), "like_count").Int64()
+		if count == 0 {
+			count = int64(video.LikeCount)
+		}
+		return &v1.LikeVideoResp{IsLiked: true, LikeCount: int32(count)}, api.CodeSuccess, nil
+	}
+
+	// 4. SADD 成功，持有分布式锁，执行事务
+	like := &model.Like{
+		UserID:     userId,
+		TargetType: 1,
+		TargetID:   videoId,
+	}
+	err = query.Q.Transaction(func(tx *query.Query) error {
+		// 4.1 创建点赞记录（DB，保留持久化）
+		if err := tx.Like.WithContext(ctx).Create(like); err != nil {
+			return err
+		}
+
+		// 4.2 Redis Hash 累积点赞计数（不直接写 MySQL）
+		videoStatsKey := fmt.Sprintf("video:%d:stats", videoId)
+
+		// 先检查 Hash 是否存在，不存在则用 DB 值初始化
+		exists, _ := rdb.Exists(ctx, videoStatsKey).Result()
+		if exists == 0 {
+			// 首次写入：用 DB 的当前值 + 1
+			rdb.HSet(ctx, videoStatsKey, "like_count", video.LikeCount+1)
+		} else {
+			// Hash 已存在：直接递增
+			_, err := rdb.HIncrBy(ctx, videoStatsKey, "like_count", 1).Result()
+			if err != nil {
+				return fmt.Errorf("redis hincrby failed: %w", err)
+			}
+		}
+
+		// 4.4 通知作者（暂保留同步，阶段 3 改 MQ）
+		if video.UserID != userId {
+			notifSvc.CreateNotification(ctx, tx, &model.Notification{
+				UserID:     video.UserID,
+				ActorID:    userId,
+				ActionType: 2,
+				TargetType: 2,
+				TargetID:   videoId,
+			})
+		}
+
+		return nil
+	})
+	if err != nil {
+		// 事务失败回滚：删除 Redis Set 中的点赞状态（释放分布式锁）
+		rdb.SRem(ctx, userLikedKey, videoIdStr)
+		return nil, api.CodeInternalError, err
+	}
+
+	// 5. 返回响应（计数从 Redis 读）
+	count, _ := rdb.HGet(ctx, fmt.Sprintf("video:%d:stats", videoId), "like_count").Int64()
+	if count == 0 {
+		count = int64(video.LikeCount + 1)
+	}
+	return &v1.LikeVideoResp{
+		IsLiked:   true,
+		LikeCount: int32(count),
+	}, api.CodeSuccess, nil
+}
+
+// UnlikeVideo1 取消点赞（Redis 优化版）
+func UnlikeVideo1(ctx context.Context, userId, videoId int64) (*v1.LikeVideoResp, api.ResCode, error) {
+	rdb := dao.RedisClient
+	if rdb == nil {
+		// 降级：Redis 不可用时走原逻辑
+		return UnlikeVideo(ctx, userId, videoId)
+	}
+	// 1. 参数校验
+	if userId == 0 || videoId == 0 {
+		return nil, api.CodeInvalidParam, fmt.Errorf("invalid userId or videoId")
+	}
+
+	// 2. 视频存在性检查
+	video, err := query.Video.WithContext(ctx).Where(query.Video.ID.Eq(videoId)).First()
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, api.CodeVideoNotExist, err
+		}
+		return nil, api.CodeInternalError, err
+	}
+
+	userLikedKey := fmt.Sprintf("user:%d:liked_videos", userId)
+	videoIdStr := strconv.FormatUint(uint64(videoId), 10)
+
+	// 3. 先用 Redis SREM 做分布式锁（返回 1=成功删除，0=不存在）
+	removed, err := rdb.SRem(ctx, userLikedKey, videoIdStr).Result()
+	if err != nil {
+		// Redis 故障降级到原逻辑
+		return UnlikeVideo(ctx, userId, videoId)
+	}
+	if removed == 0 {
+		// 并发场景下另一个请求已删除，或本来就没点赞，幂等返回
+		count, _ := rdb.HGet(ctx, fmt.Sprintf("video:%d:stats", videoId), "like_count").Int64()
+		if count == 0 {
+			count = int64(video.LikeCount)
+		}
+		return &v1.LikeVideoResp{IsLiked: false, LikeCount: int32(count)}, api.CodeSuccess, nil
+	}
+
+	// 4. SREM 成功，持有分布式锁，执行事务
+	err = query.Q.Transaction(func(tx *query.Query) error {
+		// 4.1 删除点赞记录（物理删除，Like 表无 soft-delete）
+		_, err := tx.Like.WithContext(ctx).Where(
+			query.Like.UserID.Eq(userId),
+			query.Like.TargetType.Eq(1),
+			query.Like.TargetID.Eq(videoId),
+		).Delete()
+		if err != nil {
+			return err
+		}
+
+		// 4.2 Redis Hash 计数器递减
+		videoStatsKey := fmt.Sprintf("video:%d:stats", videoId)
+
+		// 先检查 Hash 是否存在
+		exists, _ := rdb.Exists(ctx, videoStatsKey).Result()
+		if exists == 0 {
+			// 首次写入（取消点赞时 Hash 不存在）：用 DB 的当前值 - 1
+			if video.LikeCount > 0 {
+				rdb.HSet(ctx, videoStatsKey, "like_count", video.LikeCount-1)
+			} else {
+				rdb.HSet(ctx, videoStatsKey, "like_count", 0)
+			}
+		} else {
+			// Hash 已存在：直接递减
+			newCount, err := rdb.HIncrBy(ctx, videoStatsKey, "like_count", -1).Result()
+			if err != nil {
+				return fmt.Errorf("redis hincrby failed: %w", err)
+			}
+			// 防止递减到负数
+			if newCount < 0 {
+				rdb.HSet(ctx, videoStatsKey, "like_count", 0)
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		// 事务失败回滚：重新添加回 Redis Set（释放分布式锁）
+		rdb.SAdd(ctx, userLikedKey, videoIdStr)
+		return nil, api.CodeInternalError, err
+	}
+
+	// 5. 读取最终计数返回
+	finalCount := video.LikeCount
+	if count, err := rdb.HGet(ctx, fmt.Sprintf("video:%d:stats", videoId), "like_count").Int64(); err == nil {
+		finalCount = uint(count)
+	}
+
+	return &v1.LikeVideoResp{IsLiked: false, LikeCount: int32(finalCount)}, api.CodeSuccess, nil
 }
 
 // FavoriteVideo 收藏视频
