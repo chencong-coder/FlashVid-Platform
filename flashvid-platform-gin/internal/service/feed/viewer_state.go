@@ -2,8 +2,11 @@ package feed
 
 import (
 	"context"
+	"flashvid-platform-gin/internal/dao"
 	"flashvid-platform-gin/internal/dao/query"
 	"flashvid-platform-gin/internal/model"
+	"fmt"
+	"strconv"
 )
 
 // AttachViewerState 批量填充当前登录用户对视频的互动状态：
@@ -29,35 +32,60 @@ func AttachViewerState(ctx context.Context, viewerID int64, videos []model.Video
 		authorIDs = append(authorIDs, id)
 	}
 
-	// 1. 查点赞（target_type=1 表示视频）
+	// Redis 客户端
+	rdb := dao.RedisClient
+
+	// 1. 查点赞（优先 Redis，降级 MySQL）
 	likedSet := make(map[int64]struct{})
-	likes, err := query.Like.WithContext(ctx).
-		Where(
-			query.Like.UserID.Eq(viewerID),
-			query.Like.TargetType.Eq(1),
-			query.Like.TargetID.In(videoIDs...),
-		).
-		Find()
-	if err != nil {
-		return err
-	}
-	for _, l := range likes {
-		likedSet[l.TargetID] = struct{}{}
+	if rdb != nil {
+		// Redis 批量查询：SMISMEMBER user:{viewerID}:liked_videos {videoID1} {videoID2} ...
+		userLikedKey := fmt.Sprintf("user:%d:liked_videos", viewerID)
+		videoIDStrs := make([]string, len(videoIDs))
+		for i, vid := range videoIDs {
+			videoIDStrs[i] = strconv.FormatInt(vid, 10)
+		}
+
+		// 使用 SMIsMember 批量检查（Redis 6.2+）
+		// 如果 Redis 版本 < 6.2，回退到循环 SIsMember
+		results, err := rdb.SMIsMember(ctx, userLikedKey, videoIDStrs).Result()
+		if err == nil {
+			for i, isMember := range results {
+				if isMember {
+					likedSet[videoIDs[i]] = struct{}{}
+				}
+			}
+		} else {
+			// Redis 失败降级到 MySQL
+			likedSet = getLikedSetFromDB(ctx, viewerID, videoIDs)
+		}
+	} else {
+		// Redis 不可用，直接查 DB
+		likedSet = getLikedSetFromDB(ctx, viewerID, videoIDs)
 	}
 
-	// 2. 查收藏
+	// 2. 查收藏（优先 Redis，降级 MySQL）
 	favoritedSet := make(map[int64]struct{})
-	favorites, err := query.Favorite.WithContext(ctx).
-		Where(
-			query.Favorite.UserID.Eq(viewerID),
-			query.Favorite.VideoID.In(videoIDs...),
-		).
-		Find()
-	if err != nil {
-		return err
-	}
-	for _, f := range favorites {
-		favoritedSet[f.VideoID] = struct{}{}
+	if rdb != nil {
+		userFavoritedKey := fmt.Sprintf("user:%d:favorited_videos", viewerID)
+		videoIDStrs := make([]string, len(videoIDs))
+		for i, vid := range videoIDs {
+			videoIDStrs[i] = strconv.FormatInt(vid, 10)
+		}
+
+		results, err := rdb.SMIsMember(ctx, userFavoritedKey, videoIDStrs).Result()
+		if err == nil {
+			for i, isMember := range results {
+				if isMember {
+					favoritedSet[videoIDs[i]] = struct{}{}
+				}
+			}
+		} else {
+			// Redis 失败降级到 MySQL
+			favoritedSet = getFavoritedSetFromDB(ctx, viewerID, videoIDs)
+		}
+	} else {
+		// Redis 不可用，直接查 DB
+		favoritedSet = getFavoritedSetFromDB(ctx, viewerID, videoIDs)
 	}
 
 	// 3. 查关注（viewer 关注了哪些作者）
@@ -90,4 +118,41 @@ func AttachViewerState(ctx context.Context, viewerID int64, videos []model.Video
 		}
 	}
 	return nil
+}
+
+// getLikedSetFromDB 从 MySQL 查询点赞状态（Redis 降级逻辑）
+func getLikedSetFromDB(ctx context.Context, viewerID int64, videoIDs []int64) map[int64]struct{} {
+	likedSet := make(map[int64]struct{})
+	likes, err := query.Like.WithContext(ctx).
+		Where(
+			query.Like.UserID.Eq(viewerID),
+			query.Like.TargetType.Eq(1),
+			query.Like.TargetID.In(videoIDs...),
+		).
+		Find()
+	if err != nil {
+		return likedSet
+	}
+	for _, l := range likes {
+		likedSet[l.TargetID] = struct{}{}
+	}
+	return likedSet
+}
+
+// getFavoritedSetFromDB 从 MySQL 查询收藏状态（Redis 降级逻辑）
+func getFavoritedSetFromDB(ctx context.Context, viewerID int64, videoIDs []int64) map[int64]struct{} {
+	favoritedSet := make(map[int64]struct{})
+	favorites, err := query.Favorite.WithContext(ctx).
+		Where(
+			query.Favorite.UserID.Eq(viewerID),
+			query.Favorite.VideoID.In(videoIDs...),
+		).
+		Find()
+	if err != nil {
+		return favoritedSet
+	}
+	for _, f := range favorites {
+		favoritedSet[f.VideoID] = struct{}{}
+	}
+	return favoritedSet
 }
