@@ -9,6 +9,7 @@ import (
 	"flashvid-platform-gin/internal/dao/query"
 	"flashvid-platform-gin/internal/model"
 	"flashvid-platform-gin/internal/dao"
+	"flashvid-platform-gin/pkg/hotrank"
 	notifSvc "flashvid-platform-gin/internal/service/notification"
 	"gorm.io/gorm"
 	"strconv"
@@ -76,11 +77,9 @@ func LikeVideo(ctx context.Context, userId int64, videoId int64) (*v1.LikeVideoR
 	if err != nil {
 		return nil, api.CodeInternalError, err
 	}
-	// 4. 异步更新 Redis 热度（+5）
+	// 4. 异步更新 Redis 热度（重新计算带时间衰减的分数）
 	go func(vid int64) {
-		if rdb != nil {
-			rdb.ZIncrBy(context.Background(), "video:hot", 5, strconv.FormatInt(vid, 10))
-		}
+		hotrank.UpdateVideoHotScore(context.Background(), vid)
 	}(videoId)
 	// 5. 返回响应
 	return &v1.LikeVideoResp{
@@ -141,11 +140,9 @@ func UnlikeVideo(ctx context.Context, userId int64, videoId int64) (*v1.LikeVide
 	if err != nil {
 		return nil, api.CodeInternalError, err
 	}
-	// 4. 异步更新 Redis 热度（-5）
+	// 4. 异步更新 Redis 热度（重新计算带时间衰减的分数）
 	go func(vid int64) {
-		if rdb != nil {
-			rdb.ZIncrBy(context.Background(), "video:hot", -5, strconv.FormatInt(vid, 10))
-		}
+		hotrank.UpdateVideoHotScore(context.Background(), vid)
 	}(videoId)
 	// 5. 返回响应
 	return &v1.LikeVideoResp{
@@ -403,11 +400,9 @@ func FavoriteVideo(ctx context.Context, userId int64, videoId int64) (*v1.Favori
 	if err != nil {
 		return nil, api.CodeInternalError, err
 	}
-	// 4. 异步更新 Redis 热度（+8）
+	// 4. 异步更新 Redis 热度（重新计算带时间衰减的分数）
 	go func(vid int64) {
-		if rdb != nil {
-			rdb.ZIncrBy(context.Background(), "video:hot", 8, strconv.FormatInt(vid, 10))
-		}
+		hotrank.UpdateVideoHotScore(context.Background(), vid)
 	}(videoId)
 	// 5. 返回结果
 	return &v1.FavoriteVideoResp{
@@ -585,11 +580,9 @@ func UnfavoriteVideo(ctx context.Context, userId int64, videoId int64) (*v1.Favo
 	if err != nil {
 		return nil, api.CodeInternalError, err
 	}
-	// 4. 异步更新 Redis 热度（-8）
+	// 4. 异步更新 Redis 热度（重新计算带时间衰减的分数）
 	go func(vid int64) {
-		if rdb != nil {
-			rdb.ZIncrBy(context.Background(), "video:hot", -8, strconv.FormatInt(vid, 10))
-		}
+		hotrank.UpdateVideoHotScore(context.Background(), vid)
 	}(videoId)
 	// 5. 返回结果
 	return &v1.FavoriteVideoResp{

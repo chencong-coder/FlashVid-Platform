@@ -5,11 +5,10 @@ import (
 	"errors"
 	"flashvid-platform-gin/api"
 	v1 "flashvid-platform-gin/api/comment/v1"
-	"flashvid-platform-gin/internal/dao"
 	"flashvid-platform-gin/internal/dao/query"
 	"flashvid-platform-gin/internal/model"
+	"flashvid-platform-gin/pkg/hotrank"
 	notifSvc "flashvid-platform-gin/internal/service/notification"
-	"strconv"
 	"time"
 
 	"gorm.io/gorm"
@@ -335,13 +334,10 @@ func CreateComment(ctx context.Context, userId int64, videoId int64, content str
 	if err != nil {
 		return nil, nil, api.CodeInternalError, err
 	}
-	// 4.1 异步更新 Redis 热度（一级评论 +10）
+	// 4.1 异步更新 Redis 热度（一级评论重新计算带时间衰减的分数）
 	if parentId == 0 {
 		go func(vid int64) {
-			rdb := dao.RedisClient
-			if rdb != nil {
-				rdb.ZIncrBy(context.Background(), "video:hot", 10, strconv.FormatInt(vid, 10))
-			}
+			hotrank.UpdateVideoHotScore(context.Background(), vid)
 		}(videoId)
 	}
 	createdAt := newComment.CreatedAt.Format("2006-01-02 15:04:05")

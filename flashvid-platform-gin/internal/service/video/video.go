@@ -8,6 +8,7 @@ import (
 	"flashvid-platform-gin/internal/dao"
 	"flashvid-platform-gin/internal/dao/query"
 	"flashvid-platform-gin/internal/model"
+	"flashvid-platform-gin/pkg/hotrank"
 	"fmt"
 	"strconv"
 	"time"
@@ -241,10 +242,8 @@ func GetVideo(ctx context.Context, videoId int64) (*model.GetVideoOutput, api.Re
 		query.Video.WithContext(bgCtx).
 			Where(query.Video.ID.Eq(vid)).
 			UpdateSimple(query.Video.ViewCount.Add(1))
-		// Redis 热度 +1
-		if rdb != nil {
-			rdb.ZIncrBy(bgCtx, "video:hot", 1, strconv.FormatInt(vid, 10))
-		}
+		// 重新计算带时间衰减的热度分数
+		hotrank.UpdateVideoHotScore(bgCtx, vid)
 	}(video.ID)
 	// 4. 返回结果
 	return &model.GetVideoOutput{
