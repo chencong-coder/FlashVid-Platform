@@ -6,13 +6,16 @@ import (
 	"flashvid-platform-gin/api"
 	v1 "flashvid-platform-gin/api/topic/v1"
 	"flashvid-platform-gin/internal/dao/query"
+	"flashvid-platform-gin/internal/dao"
 	"flashvid-platform-gin/internal/model"
 	feedsvc "flashvid-platform-gin/internal/service/feed"
 	"strconv"
 	"time"
-
+	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
+
+var rdb = dao.RedisClient
 
 // GetTopics 获取话题列表
 func GetTopics(ctx context.Context, sort string, cursor string, count int) (*model.TopicListOutput, api.ResCode, error) {
@@ -79,6 +82,88 @@ func GetTopics(ctx context.Context, sort string, cursor string, count int) (*mod
 	}, api.CodeSuccess, nil
 }
 
+// GetTopics1 获取话题列表 Redis 优化版 用分数排序
+func GetTopics1(ctx context.Context, sort string, cursor string, count int) (*model.TopicListOutput, api.ResCode, error){
+	if rdb == nil {
+		// 用原来的方法获取话题列表
+		return GetTopics(ctx, sort, cursor, count)
+	}
+	var results []redis.Z
+	var err error
+	// 1. 按照分数排序 获取count条 Redis ZREVRANGEBYSCORE topic:hot +inf cursor LIMIT 0 count
+	redisKey := "topic:hot"
+	maxScore := "+inf"
+	if cursor != "" {
+		maxScore = "(" + cursor
+	}
+	results, err = rdb.ZRevRangeByScoreWithScores(
+			ctx,
+			redisKey,
+			&redis.ZRangeBy{
+				Min:    "-inf",
+				Max:    maxScore,
+				Offset: 0,
+				Count:  int64(count + 1),
+			},
+		).Result()
+	if err != nil {
+		// 2. 如果Redis查询失败，回退到原来的方法获取话题列表
+		return GetTopics(ctx, sort, cursor, count)
+	}
+	// 3. 封装成model.TopicListOutput
+	// 3.1 提取话题ID列表
+		/* type Z struct {
+		Score  float64      // 分数：1500, 3200, 890
+		Member interface{}  // 成员：话题ID "1", "5", "12"（字符串）
+		} */
+	var topicIDs []int64
+	for _, z := range results {
+		id, _ := strconv.ParseInt(z.Member.(string), 10, 64)
+		topicIDs = append(topicIDs, id)
+	}
+	// 3.2 根据话题ID列表获取话题详情
+	topics, err := query.Topic.WithContext(ctx).
+		Where(query.Topic.ID.In(topicIDs...)).
+		Find()
+	if err != nil {
+		return nil, api.CodeInternalError, err
+	}
+	// 3.3 构建话题ID -> 话题详情的映射
+	topicMap := make(map[int64]model.TopicInfo)
+	for _, t := range topics {
+		topicMap[t.ID] = model.TopicInfo{
+			ID:          t.ID,
+			Name:        t.Name,
+			Description: t.Description,
+			CoverURL:    t.CoverURL,
+			ViewCount:   t.ViewCount,
+			VideoCount:  t.VideoCount,
+			CreatedAt:   t.CreatedAt.Format("2006-01-02 15:04:05"),
+		}
+	}
+	// 3.4 构建话题列表，保持Redis中的顺序
+	var topicList []model.TopicInfo
+	for _, z := range results {
+		id, _ := strconv.ParseInt(z.Member.(string), 10, 64)
+		if topic, ok := topicMap[id]; ok {
+			topicList = append(topicList, topic)
+		}
+	}
+	// 4. 生成游标
+	nextCursor := ""
+	hasMore := len(topicList) > count
+	if hasMore {
+		topicList = topicList[:count]
+		nextCursor = strconv.FormatFloat(results[count].Score, 'f', -1, 64)
+	}
+	// 5. 返回结果
+	return &model.TopicListOutput{
+		Topics:          topicList,
+		NextCursorToken: nextCursor,
+		HasMore:         hasMore,
+	}, api.CodeSuccess, nil
+}
+
 // GetTopicByID 根据话题ID获取话题详情
 func GetTopicByID(ctx context.Context, topicId int64) (*v1.GetTopicByIDResp, api.ResCode, error) {
 	// 1. 查询话题详情
@@ -96,6 +181,10 @@ func GetTopicByID(ctx context.Context, topicId int64) (*v1.GetTopicByIDResp, api
 		_, _ = query.Topic.WithContext(context.Background()).
 			Where(query.Topic.ID.Eq(topicId)).
 			UpdateSimple(query.Topic.ViewCount.Add(1))
+		// redis 热度分数
+		if rdb != nil {
+			_, _ = rdb.ZIncrBy(context.Background(), "topic:hot", 1, strconv.FormatInt(topicId, 10)).Result()
+		}
 	}()
 	// 3. 封装成model.TopicInfo
 	topicInfo := model.TopicInfo{

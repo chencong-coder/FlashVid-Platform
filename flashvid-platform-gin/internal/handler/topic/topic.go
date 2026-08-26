@@ -24,7 +24,7 @@ func GetTopicsHandler(c *gin.Context) {
 		req.Sort = "hot"
 	}
 	// 2. 调用service获取话题列表
-	output, resCode, err := topic.GetTopics(c, req.Sort, req.Cursor, req.Count)
+	output, resCode, err := topic.GetTopics1(c, req.Sort, req.Cursor, req.Count)
 	if err != nil {
 		api.ResponseError(c, resCode)
 		return

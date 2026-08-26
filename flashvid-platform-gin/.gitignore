@@ -49,3 +49,5 @@ scripts/seed_comments_music.sql
 # e2e test (local only)
 test/
 bin/
+
+task/

@@ -5,16 +5,18 @@ import (
 	"errors"
 	"flashvid-platform-gin/api"
 	v1 "flashvid-platform-gin/api/video/v1"
+	"flashvid-platform-gin/internal/dao"
 	"flashvid-platform-gin/internal/dao/query"
 	"flashvid-platform-gin/internal/model"
 	"fmt"
 	"strconv"
-
 	"time"
-
+	"github.com/redis/go-redis/v9"
 	"gorm.io/gen/field"
 	"gorm.io/gorm"
 )
+
+var rdb = dao.RedisClient
 
 // CreateVideo 创建视频
 func CreateVideo(ctx context.Context, userId int64, req v1.CreateVideoReq) (*model.CreateVideoOutput, api.ResCode, error) {
@@ -121,6 +123,18 @@ func CreateVideo(ctx context.Context, userId int64, req v1.CreateVideoReq) (*mod
 				for _, t := range newTopics {
 					existingTopicMap[t.Name] = t
 				}
+				// 2-3.2.1 新话题初始化到 Redis（异步）
+				go func(topics []*model.Topic) {
+					if rdb != nil {
+						bgCtx := context.Background()
+						for _, t := range topics {
+							rdb.ZAdd(bgCtx, "topic:hot", redis.Z{
+								Score:  0, // 初始分数为 0
+								Member: strconv.FormatInt(t.ID, 10),
+							})
+						}
+					}
+				}(newTopics)
 			}
 			// 2-3.3 收集所有话题ID，创建视频-话题关联
 			topicIDs := make([]int64, 0, len(names))
@@ -142,6 +156,14 @@ func CreateVideo(ctx context.Context, userId int64, req v1.CreateVideoReq) (*mod
 				UpdateSimple(tx.Topic.VideoCount.Add(1)); err != nil {
 				return err
 			}
+			// 2-3.5 异步更新 Redis 热度（video_count 权重 × 10）
+			go func(ids []int64) {
+				if rdb != nil {
+					for _, topicID := range ids {
+						rdb.ZIncrBy(context.Background(), "topic:hot", 10, strconv.FormatInt(topicID, 10))
+					}
+				}
+			}(topicIDs)
 		}
 		return nil
 	})
