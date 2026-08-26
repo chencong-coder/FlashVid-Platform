@@ -76,6 +76,12 @@ func LikeVideo(ctx context.Context, userId int64, videoId int64) (*v1.LikeVideoR
 	if err != nil {
 		return nil, api.CodeInternalError, err
 	}
+	// 4. 异步更新 Redis 热度（+5）
+	go func(vid int64) {
+		if rdb != nil {
+			rdb.ZIncrBy(context.Background(), "video:hot", 5, strconv.FormatInt(vid, 10))
+		}
+	}(videoId)
 	// 5. 返回响应
 	return &v1.LikeVideoResp{
 		IsLiked:   true,
@@ -135,6 +141,12 @@ func UnlikeVideo(ctx context.Context, userId int64, videoId int64) (*v1.LikeVide
 	if err != nil {
 		return nil, api.CodeInternalError, err
 	}
+	// 4. 异步更新 Redis 热度（-5）
+	go func(vid int64) {
+		if rdb != nil {
+			rdb.ZIncrBy(context.Background(), "video:hot", -5, strconv.FormatInt(vid, 10))
+		}
+	}(videoId)
 	// 5. 返回响应
 	return &v1.LikeVideoResp{
 		IsLiked:   false,
@@ -391,7 +403,13 @@ func FavoriteVideo(ctx context.Context, userId int64, videoId int64) (*v1.Favori
 	if err != nil {
 		return nil, api.CodeInternalError, err
 	}
-	// 4. 返回结果
+	// 4. 异步更新 Redis 热度（+8）
+	go func(vid int64) {
+		if rdb != nil {
+			rdb.ZIncrBy(context.Background(), "video:hot", 8, strconv.FormatInt(vid, 10))
+		}
+	}(videoId)
+	// 5. 返回结果
 	return &v1.FavoriteVideoResp{
 		IsFavorited:   true,
 		FavoriteCount: video.FavoriteCount + 1,
@@ -567,7 +585,13 @@ func UnfavoriteVideo(ctx context.Context, userId int64, videoId int64) (*v1.Favo
 	if err != nil {
 		return nil, api.CodeInternalError, err
 	}
-	// 4. 返回结果
+	// 4. 异步更新 Redis 热度（-8）
+	go func(vid int64) {
+		if rdb != nil {
+			rdb.ZIncrBy(context.Background(), "video:hot", -8, strconv.FormatInt(vid, 10))
+		}
+	}(videoId)
+	// 5. 返回结果
 	return &v1.FavoriteVideoResp{
 		IsFavorited:   false,
 		FavoriteCount: video.FavoriteCount - 1,

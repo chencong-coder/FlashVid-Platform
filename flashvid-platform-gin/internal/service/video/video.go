@@ -170,6 +170,15 @@ func CreateVideo(ctx context.Context, userId int64, req v1.CreateVideoReq) (*mod
 	if err != nil {
 		return nil, api.CodeInternalError, err
 	}
+	// 3. 异步初始化视频到 Redis 视频热榜
+	go func(vid int64) {
+		if rdb != nil {
+			rdb.ZAdd(context.Background(), "video:hot", redis.Z{
+				Score:  0, // 初始分数为 0
+				Member: strconv.FormatInt(vid, 10),
+			})
+		}
+	}(newVideo.ID)
 	// 4. 返回结果
 	return &model.CreateVideoOutput{
 		VideoID: newVideo.ID,
@@ -225,7 +234,19 @@ func GetVideo(ctx context.Context, videoId int64) (*model.GetVideoOutput, api.Re
 			topicNames = append(topicNames, topic.Name)
 		}
 	}
-	// 3. 返回结果
+	// 3. 异步更新观看量和 Redis 热度
+	go func(vid int64) {
+		bgCtx := context.Background()
+		// MySQL 观看量 +1
+		query.Video.WithContext(bgCtx).
+			Where(query.Video.ID.Eq(vid)).
+			UpdateSimple(query.Video.ViewCount.Add(1))
+		// Redis 热度 +1
+		if rdb != nil {
+			rdb.ZIncrBy(bgCtx, "video:hot", 1, strconv.FormatInt(vid, 10))
+		}
+	}(video.ID)
+	// 4. 返回结果
 	return &model.GetVideoOutput{
 		Video: model.VideoInfo{
 			ID:          video.ID,

@@ -23,7 +23,7 @@ func GetFeedRecommendHandler(c *gin.Context) {
 		req.Count = 10
 	}
 	// 3. 调用service获取推荐视频流
-	output, resCode, err := feed.GetFeedRecommend(c, userID, req.Cursor, req.Count)
+	output, resCode, err := feed.GetFeedRecommend1(c, userID, req.Cursor, req.Count)
 	if err != nil {
 		api.ResponseError(c, resCode)
 		return
