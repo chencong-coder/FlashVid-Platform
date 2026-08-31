@@ -12,12 +12,16 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+	"encoding/json"
+	"math/rand"
 	"github.com/redis/go-redis/v9"
+	"golang.org/x/sync/singleflight"
 	"gorm.io/gen/field"
 	"gorm.io/gorm"
 )
 
 var rdb = dao.RedisClient
+var videoGroup singleflight.Group
 
 // CreateVideo 创建视频
 func CreateVideo(ctx context.Context, userId int64, req v1.CreateVideoReq) (*model.CreateVideoOutput, api.ResCode, error) {
@@ -277,6 +281,64 @@ func GetVideo(ctx context.Context, videoId int64) (*model.GetVideoOutput, api.Re
 	}, api.CodeSuccess, nil
 }
 
+// GetVideoWithCache 获取视频详情（带缓存 + 三大问题防护）
+func GetVideoWithCache(ctx context.Context, videoId int64) (*model.GetVideoOutput, api.ResCode, error) {
+	// Redis 不可用时降级到原逻辑
+	if rdb == nil {
+		return GetVideo(ctx, videoId)
+	}
+
+	cacheKey := fmt.Sprintf("video:%d", videoId)
+
+	// 1. 先查 Redis 缓存
+	cached, err := rdb.Get(ctx, cacheKey).Result()
+	if err == nil {
+		// 缓存命中
+		if cached == "null" {
+			// 防穿透：这是一个不存在的视频
+			return nil, api.CodeVideoNotExist, errors.New("视频不存在")
+		}
+		// 反序列化 JSON
+		var output model.GetVideoOutput
+		if json.Unmarshal([]byte(cached), &output) == nil {
+			return &output, api.CodeSuccess, nil
+		}
+		// 解析失败，继续查 DB
+	}
+
+	// 2. 缓存未命中，用 singleflight 防击穿
+	key := fmt.Sprintf("video:%d", videoId)
+	result, err, _ := videoGroup.Do(key, func() (interface{}, error) {
+		// 只有一个请求会执行这里，其他请求等待
+		output, code, err := GetVideo(ctx, videoId)
+		if err != nil {
+			if code == api.CodeVideoNotExist {
+				// 防穿透：缓存空值 60 秒
+				rdb.Set(ctx, cacheKey, "null", 60*time.Second)
+			}
+			return nil, err
+		}
+
+		// 3. 写入缓存（防雪崩：TTL 加随机偏移）
+		data, _ := json.Marshal(output)
+		ttl := 1800 + rand.Intn(300) // 30分钟 ± 5分钟
+		rdb.Set(ctx, cacheKey, data, time.Duration(ttl)*time.Second)
+
+		return output, nil
+	})
+
+	if err != nil {
+		return nil, api.CodeInternalError, err
+	}
+
+	output, ok := result.(*model.GetVideoOutput)
+	if !ok {
+		return nil, api.CodeInternalError, errors.New("类型转换失败")
+	}
+
+	return output, api.CodeSuccess, nil
+}
+
 // DeleteVideo 删除视频
 func DeleteVideo(ctx context.Context, videoId int64, userId int64) (api.ResCode, error) {
 	// 1. 查看视频是否存在
@@ -300,6 +362,13 @@ func DeleteVideo(ctx context.Context, videoId int64, userId int64) (api.ResCode,
 	if err != nil {
 		return api.CodeInternalError, err
 	}
+
+	// 4. 删除 Redis 缓存
+	if rdb != nil {
+		cacheKey := fmt.Sprintf("video:%d", videoId)
+		rdb.Del(ctx, cacheKey)
+	}
+
 	return api.CodeSuccess, nil
 }
 

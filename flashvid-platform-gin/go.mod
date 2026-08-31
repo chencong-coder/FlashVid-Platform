@@ -1,6 +1,6 @@
 module flashvid-platform-gin
 
-go 1.24.3
+go 1.25.0
 
 require (
 	github.com/gin-contrib/cors v1.7.6
@@ -56,7 +56,7 @@ require (
 	golang.org/x/arch v0.18.0 // indirect
 	golang.org/x/mod v0.26.0 // indirect
 	golang.org/x/net v0.42.0 // indirect
-	golang.org/x/sync v0.16.0 // indirect
+	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.34.0 // indirect
 	golang.org/x/text v0.27.0 // indirect
 	golang.org/x/tools v0.35.0 // indirect

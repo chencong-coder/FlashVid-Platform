@@ -49,8 +49,8 @@ func GetVideoHandler(c *gin.Context) {
 		api.ResponseError(c, api.CodeInvalidParam)
 		return
 	}
-	// 2. 调用service获取视频详情
-	output, resCode, err := video.GetVideo(c, videoId)
+	// 2. 调用service获取视频详情（带缓存）
+	output, resCode, err := video.GetVideoWithCache(c, videoId)
 	if err != nil {
 		api.ResponseError(c, resCode)
 		return
