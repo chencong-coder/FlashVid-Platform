@@ -303,29 +303,50 @@ func GetVideoWithCache(ctx context.Context, videoId int64) (*model.GetVideoOutpu
 		if json.Unmarshal([]byte(cached), &output) == nil {
 			return &output, api.CodeSuccess, nil
 		}
-		// 解析失败，继续查 DB
+		// 解析失败，继续回源
+	} else if err != redis.Nil {
+		// Redis网络/服务异常，不是缓存miss，禁止穿透DB，直接降级报错
+		return nil, api.CodeInternalError, fmt.Errorf("redis get failed: %w", err)
 	}
+	// err == redis.Nil：真正缓存未命中，进入singleflight
 
 	// 2. 缓存未命中，用 singleflight 防击穿
-	key := fmt.Sprintf("video:%d", videoId)
-	result, err, _ := videoGroup.Do(key, func() (interface{}, error) {
-		// 只有一个请求会执行这里，其他请求等待
+	result, err, shared := videoGroup.Do(cacheKey, func() (interface{}, error) {
+		// ✅ 回调内部二次检查缓存！！
+		val, innerErr := rdb.Get(ctx, cacheKey).Result()
+		if innerErr == nil {
+			if val == "null" {
+				return nil, errors.New("video not exist")
+			}
+			var out model.GetVideoOutput
+			if json.Unmarshal([]byte(val), &out) == nil {
+				return &out, nil
+			}
+		}
+
+		// 缓存确实没数据，才真正查询DB
 		output, code, err := GetVideo(ctx, videoId)
 		if err != nil {
 			if code == api.CodeVideoNotExist {
 				// 防穿透：缓存空值 60 秒
-				rdb.Set(ctx, cacheKey, "null", 60*time.Second)
+				_ = rdb.Set(ctx, cacheKey, "null", 60*time.Second).Err()
 			}
 			return nil, err
 		}
 
 		// 3. 写入缓存（防雪崩：TTL 加随机偏移）
-		data, _ := json.Marshal(output)
-		ttl := 1800 + rand.Intn(300) // 30分钟 ± 5分钟
-		rdb.Set(ctx, cacheKey, data, time.Duration(ttl)*time.Second)
+		data, err := json.Marshal(output)
+		if err != nil {
+			return nil, fmt.Errorf("marshal output failed: %w", err)
+		}
+		ttl := 1800 + rand.Intn(300) // 30分钟 ±5分钟
+		_ = rdb.Set(ctx, cacheKey, data, time.Duration(ttl)*time.Second).Err()
 
 		return output, nil
 	})
+
+	// 可观测：打印是否复用结果，方便排查击穿
+	_ = shared
 
 	if err != nil {
 		return nil, api.CodeInternalError, err
@@ -338,6 +359,7 @@ func GetVideoWithCache(ctx context.Context, videoId int64) (*model.GetVideoOutpu
 
 	return output, api.CodeSuccess, nil
 }
+
 
 // DeleteVideo 删除视频
 func DeleteVideo(ctx context.Context, videoId int64, userId int64) (api.ResCode, error) {
