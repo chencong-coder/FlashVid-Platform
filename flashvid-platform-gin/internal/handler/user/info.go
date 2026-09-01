@@ -18,7 +18,7 @@ func GetUserInfoHandler(c *gin.Context) {
 		return
 	}
 	// 2. 调用服务层获取用户信息
-	output, rescode, err := user.GetUserInfo(c, userId)
+	output, rescode, err := user.GetUserInfoWithCache(c, userId)
 	if err != nil {
 		api.ResponseError(c, rescode)
 		return

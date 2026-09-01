@@ -2,17 +2,26 @@ package user
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flashvid-platform-gin/api"
 	v1 "flashvid-platform-gin/api/user/v1"
+	"flashvid-platform-gin/internal/dao"
 	"flashvid-platform-gin/internal/dao/query"
 	"flashvid-platform-gin/internal/middleware"
 	"flashvid-platform-gin/internal/model"
+	"fmt"
+	"math/rand"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
+	"golang.org/x/sync/singleflight"
 	"gorm.io/gorm"
 )
+
+var rdb = dao.RedisClient
+var userInfoGroup singleflight.Group
 
 // 获取用户信息服务
 func GetUserInfo(ctx context.Context, userId int64) (*model.UserInfoOutput, api.ResCode, error) {
@@ -61,6 +70,84 @@ func GetUserInfo(ctx context.Context, userId int64) (*model.UserInfoOutput, api.
 		CreatedAt:      user.CreatedAt,
 		IsFollowing:    isFollowing,
 	}, api.CodeSuccess, nil
+}
+
+// GetUserInfoWithCache 获取用户信息服务（带缓存 + 三大问题防护）
+func GetUserInfoWithCache(ctx context.Context, userId int64) (*model.UserInfoOutput, api.ResCode, error) {
+	// redis不可用的时候降级
+	if rdb == nil {
+		return GetUserInfo(ctx, userId)
+	}
+	cacheKey := fmt.Sprintf("user:%d", userId)
+
+	// 1.查redis缓存
+	cacheData, err := rdb.Get(ctx, cacheKey).Result()
+	if err == nil {
+		// 缓存命中
+		if cacheData == "null" {
+			// 缓存中存储了用户不存在的标记
+			return nil, api.CodeUserNotExist, errors.New("user not exist")
+		}
+		// 反序列化缓存数据
+		var output model.UserInfoOutput
+		if json.Unmarshal([]byte(cacheData), &output) == nil {
+			return &output, api.CodeSuccess, nil
+		}
+		// 如果反序列化失败 回源
+	} else if err != redis.Nil {
+		// Redis网络/服务异常，不是缓存miss，禁止穿透DB，直接降级报错
+		return nil, api.CodeInternalError, fmt.Errorf("redis get failed: %w", err)
+	}
+
+	// err == redis.Nil：真正缓存未命中，进入singleflight
+
+	// 2.缓存未命中，使用singleflight防止缓存击穿
+	result, err, shared := userInfoGroup.Do(cacheKey, func() (interface{}, error) {
+		// 回调内部二次检查缓存
+		cacheDateTwice, innerErr := rdb.Get(ctx, cacheKey).Result()
+		if innerErr == nil {
+			if cacheDateTwice == "null" {
+				return nil, errors.New("user not exist")
+			}
+			var outputTwice model.UserInfoOutput
+			if json.Unmarshal([]byte(cacheDateTwice), &outputTwice) == nil {
+				return &outputTwice, nil
+			}
+		}
+
+		// 缓存真没数据 查数据库
+		outputSql, code, err := GetUserInfo(ctx, userId)
+		if err != nil || code != api.CodeSuccess {
+			if code == api.CodeUserNotExist {
+				rdb.Set(ctx, cacheKey, "null", 60*time.Second) // 缓存用户不存在标记，防止缓存穿透
+			}
+			return nil, err
+		}
+
+		// 写缓存 设置ttl防雪崩
+		data, err := json.Marshal(outputSql)
+		if err != nil {
+			return nil, fmt.Errorf("marshal output failed: %w", err)
+		}
+		ttl := 3600 + rand.Intn(600) // 1小时 ± 10分钟随机数，防止缓存雪崩
+		_ = rdb.Set(ctx, cacheKey, data, time.Duration(ttl)*time.Second).Err()
+
+		return outputSql, nil
+	})
+
+	// 可观测：打印是否复用结果，方便排查击穿
+	_ = shared
+
+	if err != nil {
+		return nil, api.CodeInternalError, err
+	}
+
+	output, ok := result.(*model.UserInfoOutput)
+	if !ok {
+		return nil, api.CodeInternalError, errors.New("type assertion failed")
+	}
+
+	return output, api.CodeSuccess, nil
 }
 
 // 更新用户信息服务
@@ -132,7 +219,14 @@ func UpdateUserInfo(ctx context.Context, userId int64, req *v1.UpdateUserInfoReq
 	if err != nil {
 		return nil, api.CodeInternalError, err
 	}
-	// 5. 返回更新后的用户信息
+
+	// 5. 删除 Redis 缓存
+	if rdb != nil {
+		cacheKey := fmt.Sprintf("user:%d", userId)
+		rdb.Del(ctx, cacheKey)
+	}
+
+	// 6. 返回更新后的用户信息
 	updatedUser, err := query.User.WithContext(ctx).
 		Where(query.User.ID.Eq(userId)).
 		First()
