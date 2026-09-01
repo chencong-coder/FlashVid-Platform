@@ -46,7 +46,7 @@ func GetTopicByIDHandler(c *gin.Context) {
 		return
 	}
 	// 2. 调用service获取话题详情
-	output, resCode, err := topic.GetTopicByID(c, topicId)
+	output, resCode, err := topic.GetTopicByIDWithCache(c, topicId)
 	if err != nil {
 		api.ResponseError(c, resCode)
 		return

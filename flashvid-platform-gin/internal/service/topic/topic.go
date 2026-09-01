@@ -5,17 +5,22 @@ import (
 	"errors"
 	"flashvid-platform-gin/api"
 	v1 "flashvid-platform-gin/api/topic/v1"
-	"flashvid-platform-gin/internal/dao/query"
 	"flashvid-platform-gin/internal/dao"
+	"flashvid-platform-gin/internal/dao/query"
 	"flashvid-platform-gin/internal/model"
 	feedsvc "flashvid-platform-gin/internal/service/feed"
+	"fmt"
 	"strconv"
 	"time"
+	"math/rand"
+	"encoding/json"
+	"golang.org/x/sync/singleflight"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
 var rdb = dao.RedisClient
+var topicInfoGroup singleflight.Group
 
 // GetTopics 获取话题列表
 func GetTopics(ctx context.Context, sort string, cursor string, count int) (*model.TopicListOutput, api.ResCode, error) {
@@ -199,6 +204,85 @@ func GetTopicByID(ctx context.Context, topicId int64) (*v1.GetTopicByIDResp, api
 	// 3. 返回结果
 	return &v1.GetTopicByIDResp{
 		Topic: topicInfo,
+	}, api.CodeSuccess, nil
+}
+
+// GetTopicByIDWithCache 根据话题ID获取话题详情（带缓存 + 三大问题防护）
+func GetTopicByIDWithCache(ctx context.Context, topicId int64) (*v1.GetTopicByIDResp, api.ResCode, error) {
+	// 如果redis不可用，降级到原逻辑
+	if rdb == nil {
+		return GetTopicByID(ctx, topicId)
+	}
+
+	cacheKey := fmt.Sprintf("topic:%d", topicId)
+
+	// 1. 先查 Redis 缓存
+	cacheData, err := rdb.Get(ctx, cacheKey).Result()
+	if err == nil {
+		// 缓存命中
+		if cacheData == "null" {
+			return nil, api.CodeTopicNotExist, errors.New("topic not exist")
+		}
+		var topicInfo model.TopicInfo
+		if json.Unmarshal([]byte(cacheData), &topicInfo) == nil {
+			return &v1.GetTopicByIDResp{
+				Topic: topicInfo,
+			}, api.CodeSuccess, nil
+		}
+		// 解析失败，继续回源
+	} else if err != redis.Nil {
+		// Redis 网络/服务异常，禁止穿透 DB
+		return nil, api.CodeInternalError, fmt.Errorf("redis get failed: %w", err)
+	}
+
+	// 2. 缓存未命中，使用 singleflight 防止缓存击穿
+	result, err, shared := topicInfoGroup.Do(cacheKey, func() (interface{}, error) {
+		// 回调内部二次检查缓存
+		cacheDataTwice, innerErr := rdb.Get(ctx, cacheKey).Result()
+		if innerErr == nil {
+			if cacheDataTwice == "null" {
+				return nil, errors.New("topic not exist")
+			}
+			var topicInfoTwice model.TopicInfo
+			if json.Unmarshal([]byte(cacheDataTwice), &topicInfoTwice) == nil {
+				return topicInfoTwice, nil
+			}
+		}
+
+		// 缓存没有命中，查询数据库
+		output, code, err := GetTopicByID(ctx, topicId)
+		if err != nil || code != api.CodeSuccess {
+			if code == api.CodeTopicNotExist {
+				// 缓存空值，防止缓存穿透
+				rdb.Set(ctx, cacheKey, "null", 60*time.Second)
+			}
+			return nil, err
+		}
+
+		// 写入缓存（防雪崩：TTL 随机偏移）
+		data, err := json.Marshal(output.Topic)
+		if err != nil {
+			return nil, fmt.Errorf("marshal output failed: %w", err)
+		}
+		ttl := 3600 + rand.Intn(600) // 1小时 ± 10分钟
+		_ = rdb.Set(ctx, cacheKey, data, time.Duration(ttl)*time.Second).Err()
+
+		return output.Topic, nil
+	})
+
+	_ = shared
+
+	if err != nil {
+		return nil, api.CodeInternalError, err
+	}
+
+	output, ok := result.(model.TopicInfo)
+	if !ok {
+		return nil, api.CodeInternalError, errors.New("type assertion failed")
+	}
+
+	return &v1.GetTopicByIDResp{
+		Topic: output,
 	}, api.CodeSuccess, nil
 }
 
