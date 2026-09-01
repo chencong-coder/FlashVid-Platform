@@ -34,7 +34,7 @@ func GetNotificationsHandler(c *gin.Context) {
 // GetUnreadCountsHandler 获取各类型未读数
 func GetUnreadCountsHandler(c *gin.Context) {
 	userId := c.GetInt64("user_id")
-	counts, err := notifSvc.GetUnreadCounts(c, userId)
+	counts, err := notifSvc.GetUnreadCountsWithCache(c, userId)
 	if err != nil {
 		api.ResponseError(c, api.CodeInternalError)
 		return
