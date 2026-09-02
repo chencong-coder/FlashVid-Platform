@@ -8,6 +8,7 @@ import (
 	"flashvid-platform-gin/internal/dao"
 	"flashvid-platform-gin/internal/dao/query"
 	"flashvid-platform-gin/internal/model"
+	"flashvid-platform-gin/internal/mq"
 	feedsvc "flashvid-platform-gin/internal/service/feed"
 	"fmt"
 	"strconv"
@@ -181,16 +182,14 @@ func GetTopicByID(ctx context.Context, topicId int64) (*v1.GetTopicByIDResp, api
 		}
 		return nil, api.CodeInternalError, err
 	}
-	// 2. 异步更新浏览量
-	go func() {
-		_, _ = query.Topic.WithContext(context.Background()).
-			Where(query.Topic.ID.Eq(topicId)).
-			UpdateSimple(query.Topic.ViewCount.Add(1))
-		// redis 热度分数
-		if rdb != nil {
-			_, _ = rdb.ZIncrBy(context.Background(), "topic:hot", 1, strconv.FormatInt(topicId, 10)).Result()
-		}
-	}()
+	// 2. 异步发送话题浏览事件到 MQ
+	msg := mq.HotrankUpdateMessage{
+		Action:  "update_topic_view",
+		TopicID: topicId,
+	}
+	body, _ := json.Marshal(msg)
+	mq.Publish(context.Background(), "notification.exchange", "hotrank", body)
+
 	// 3. 封装成model.TopicInfo
 	topicInfo := model.TopicInfo{
 		ID:          topic.ID,
@@ -250,24 +249,46 @@ func GetTopicByIDWithCache(ctx context.Context, topicId int64) (*v1.GetTopicByID
 		}
 
 		// 缓存没有命中，查询数据库
-		output, code, err := GetTopicByID(ctx, topicId)
-		if err != nil || code != api.CodeSuccess {
-			if code == api.CodeTopicNotExist {
+		topic, err := query.Topic.WithContext(ctx).
+			Where(query.Topic.ID.Eq(topicId)).
+			First()
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
 				// 缓存空值，防止缓存穿透
 				rdb.Set(ctx, cacheKey, "null", 60*time.Second)
+				return nil, errors.New("topic not exist")
 			}
 			return nil, err
 		}
 
+		// 异步发送话题浏览事件到 MQ
+		msg := mq.HotrankUpdateMessage{
+			Action:  "update_topic_view",
+			TopicID: topicId,
+		}
+		body, _ := json.Marshal(msg)
+		mq.Publish(context.Background(), "notification.exchange", "hotrank", body)
+
+		// 封装成 TopicInfo
+		topicInfo := model.TopicInfo{
+			ID:          topic.ID,
+			Name:        topic.Name,
+			Description: topic.Description,
+			CoverURL:    topic.CoverURL,
+			ViewCount:   topic.ViewCount,
+			VideoCount:  topic.VideoCount,
+			CreatedAt:   topic.CreatedAt.Format("2006-01-02 15:04:05"),
+		}
+
 		// 写入缓存（防雪崩：TTL 随机偏移）
-		data, err := json.Marshal(output.Topic)
+		data, err := json.Marshal(topicInfo)
 		if err != nil {
-			return nil, fmt.Errorf("marshal output failed: %w", err)
+			return nil, fmt.Errorf("marshal topicInfo failed: %w", err)
 		}
 		ttl := 3600 + rand.Intn(600) // 1小时 ± 10分钟
 		_ = rdb.Set(ctx, cacheKey, data, time.Duration(ttl)*time.Second).Err()
 
-		return output.Topic, nil
+		return topicInfo, nil
 	})
 
 	_ = shared

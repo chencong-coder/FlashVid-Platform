@@ -2,6 +2,7 @@ package interaction
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"flashvid-platform-gin/api"
@@ -9,8 +10,8 @@ import (
 	"flashvid-platform-gin/internal/dao/query"
 	"flashvid-platform-gin/internal/model"
 	"flashvid-platform-gin/internal/dao"
+	"flashvid-platform-gin/internal/mq"
 	"flashvid-platform-gin/pkg/hotrank"
-	notifSvc "flashvid-platform-gin/internal/service/notification"
 	"gorm.io/gorm"
 	"strconv"
 )
@@ -62,20 +63,24 @@ func LikeVideo(ctx context.Context, userId int64, videoId int64) (*v1.LikeVideoR
 		if err != nil {
 			return err
 		}
-		// 通知视频作者（不通知自己）
-		if video.UserID != userId {
-			notifSvc.CreateNotification(ctx, tx, &model.Notification{
-				UserID:     video.UserID,
-				ActorID:    userId,
-				ActionType: 2, // 点赞视频
-				TargetType: 2, // 视频
-				TargetID:   videoId,
-			})
-		}
 		return nil
 	})
 	if err != nil {
 		return nil, api.CodeInternalError, err
+	}
+
+	// 4. 异步发送通知消息（不通知自己）
+	if video.UserID != userId {
+		notifMsg := mq.NotificationMessage{
+			UserID:     video.UserID,
+			ActorID:    userId,
+			ActionType: 2, // 点赞视频
+			TargetType: 2, // 视频
+			TargetID:   videoId,
+		}
+		if body, err := json.Marshal(notifMsg); err == nil {
+			mq.Publish(ctx, "notification.exchange", "notification", body)
+		}
 	}
 	// 4. 异步更新 Redis 热度（重新计算带时间衰减的分数）
 	go func(vid int64) {
@@ -235,17 +240,6 @@ func LikeVideo1(ctx context.Context, userId int64, videoId int64) (*v1.LikeVideo
 			}
 		}
 
-		// 4.4 通知作者（暂保留同步，阶段 3 改 MQ）
-		if video.UserID != userId {
-			notifSvc.CreateNotification(ctx, tx, &model.Notification{
-				UserID:     video.UserID,
-				ActorID:    userId,
-				ActionType: 2,
-				TargetType: 2,
-				TargetID:   videoId,
-			})
-		}
-
 		return nil
 	})
 	if err != nil {
@@ -254,7 +248,29 @@ func LikeVideo1(ctx context.Context, userId int64, videoId int64) (*v1.LikeVideo
 		return nil, api.CodeInternalError, err
 	}
 
-	// 5. 返回响应（计数从 Redis 读）
+	// 5. 发送热度更新消息到 MQ
+	message := mq.HotrankUpdateMessage{
+		Action:  "update_video_hot",
+		VideoID: videoId,
+	}
+	body, _ := json.Marshal(message)
+	_ = mq.Publish(ctx, "notification.exchange", "hotrank", body)
+
+	// 6. 异步发送通知消息（不通知自己）
+	if video.UserID != userId {
+		notifMsg := mq.NotificationMessage{
+			UserID:     video.UserID,
+			ActorID:    userId,
+			ActionType: 2, // 点赞视频
+			TargetType: 2, // 视频
+			TargetID:   videoId,
+		}
+		if notifBody, err := json.Marshal(notifMsg); err == nil {
+			mq.Publish(ctx, "notification.exchange", "notification", notifBody)
+		}
+	}
+
+	// 7. 返回响应（计数从 Redis 读）
 	count, err := rdb.HGet(ctx, fmt.Sprintf("video:%d:stats", videoId), "like_count").Int64()
 	if err != nil {
 		// Redis 没有这个 key/field，用 DB 兜底
@@ -346,7 +362,15 @@ func UnlikeVideo1(ctx context.Context, userId, videoId int64) (*v1.LikeVideoResp
 		return nil, api.CodeInternalError, err
 	}
 
-	// 4. 读取最终计数返回
+	// 4. 发送热度更新消息到 MQ
+	message := mq.HotrankUpdateMessage{
+		Action:  "update_video_hot",
+		VideoID: videoId,
+	}
+	body, _ := json.Marshal(message)
+	_ = mq.Publish(ctx, "notification.exchange", "hotrank", body)
+
+	// 5. 读取最终计数返回
 	finalCount := video.LikeCount
 	if count, err := rdb.HGet(ctx, fmt.Sprintf("video:%d:stats", videoId), "like_count").Int64(); err == nil {
 		finalCount = int32(count)
@@ -385,20 +409,24 @@ func FavoriteVideo(ctx context.Context, userId int64, videoId int64) (*v1.Favori
 			UpdateSimple(tx.Video.FavoriteCount.Add(1)); err != nil {
 			return err
 		}
-		// 通知视频作者（不通知自己）
-		if video.UserID != userId {
-			notifSvc.CreateNotification(ctx, tx, &model.Notification{
-				UserID:     video.UserID,
-				ActorID:    userId,
-				ActionType: 3, // 收藏视频
-				TargetType: 2, // 视频
-				TargetID:   videoId,
-			})
-		}
 		return nil
 	})
 	if err != nil {
 		return nil, api.CodeInternalError, err
+	}
+
+	// 4. 异步发送通知消息（不通知自己）
+	if video.UserID != userId {
+		notifMsg := mq.NotificationMessage{
+			UserID:     video.UserID,
+			ActorID:    userId,
+			ActionType: 3, // 收藏视频
+			TargetType: 2, // 视频
+			TargetID:   videoId,
+		}
+		if body, err := json.Marshal(notifMsg); err == nil {
+			mq.Publish(ctx, "notification.exchange", "notification", body)
+		}
 	}
 	// 4. 异步更新 Redis 热度（重新计算带时间衰减的分数）
 	go func(vid int64) {
@@ -473,16 +501,6 @@ func FavoriteVideo1(ctx context.Context, userId int64, videoId int64) (*v1.Favor
 			}
 		}
 
-		// 3.3 通知视频作者（不通知自己）
-		if video.UserID != userId {
-			notifSvc.CreateNotification(ctx, tx, &model.Notification{
-				UserID:     video.UserID,
-				ActorID:    userId,
-				ActionType: 3, // 收藏视频
-				TargetType: 2, // 视频
-				TargetID:   videoId,
-			})
-		}
 		return nil
 	})
 
@@ -492,7 +510,29 @@ func FavoriteVideo1(ctx context.Context, userId int64, videoId int64) (*v1.Favor
 		return nil, api.CodeInternalError, err
 	}
 
-	// 4. 读取最终计数返回
+	// 4. 发送热度更新消息到 MQ
+	message := mq.HotrankUpdateMessage{
+		Action:  "update_video_hot",
+		VideoID: videoId,
+	}
+	body, _ := json.Marshal(message)
+	_ = mq.Publish(ctx, "notification.exchange", "hotrank", body)
+
+	// 5. 异步发送通知消息（不通知自己）
+	if video.UserID != userId {
+		notifMsg := mq.NotificationMessage{
+			UserID:     video.UserID,
+			ActorID:    userId,
+			ActionType: 3, // 收藏视频
+			TargetType: 2, // 视频
+			TargetID:   videoId,
+		}
+		if notifBody, err := json.Marshal(notifMsg); err == nil {
+			mq.Publish(ctx, "notification.exchange", "notification", notifBody)
+		}
+	}
+
+	// 6. 读取最终计数返回
 	favoriteCount, err := rdb.HGet(ctx, fmt.Sprintf("video:%d:stats", videoId), "favorite_count").Int64()
 	if err != nil {
 		// Redis 没有这个 key/field，用 DB 兜底
@@ -659,7 +699,16 @@ func UnfavoriteVideo1(ctx context.Context, userId int64, videoId int64) (*v1.Fav
 		rdb.SAdd(ctx, userFavoritedKey, videoIdStr)
 		return nil, api.CodeInternalError, err
 	}
-	// 4. 返回结果
+
+	// 4. 发送热度更新消息到 MQ
+	message := mq.HotrankUpdateMessage{
+		Action:  "update_video_hot",
+		VideoID: videoId,
+	}
+	body, _ := json.Marshal(message)
+	_ = mq.Publish(ctx, "notification.exchange", "hotrank", body)
+
+	// 5. 返回结果
 	// 如果 Redis Hash 中没有值，则用 DB 的值兜底
 	favoriteCount := video.FavoriteCount
 	if count, err := rdb.HGet(ctx, fmt.Sprintf("video:%d:stats", videoId), "favorite_count").Int64(); err == nil {

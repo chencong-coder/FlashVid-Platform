@@ -169,6 +169,11 @@ func GetFeedRecommend(ctx context.Context, userID int64, cursor string, count in
 
 // GetFeedRecommend1 Redis获取推荐视频流（按热度降序，无需登录）
 func GetFeedRecommend1(ctx context.Context, userID int64, cursor string, count int) (*model.FeedOutput, api.ResCode, error) {
+	// 如果 Redis 不可用，降级到 MySQL 查询
+	if rdb == nil {
+		return GetFeedRecommend(ctx, userID, cursor, count)
+	}
+
 	// 1. 从Redis获取推荐视频流
 	redisKey := "video:hot"
 	maxScore := "+inf"

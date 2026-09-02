@@ -30,11 +30,22 @@ func ConsumeVideoFeed() {
 			continue
 		}
 
-		// 处理消息
+		// 处理消息（带重试计数）
+		retryCount := getRetryCount(&msg)
+		if retryCount >= 3 {
+			zap.L().Error("message retry limit exceeded, sending to DLX",
+				zap.Int64("video_id", event.VideoID),
+				zap.Int64("user_id", event.UserID),
+				zap.Int("retry_count", retryCount))
+			msg.Nack(false, false) // 不重新入队，进入死信队列
+			continue
+		}
+
 		if err := handleVideoFeed(event); err != nil {
 			zap.L().Error("handle video feed failed",
 				zap.Int64("video_id", event.VideoID),
 				zap.Int64("user_id", event.UserID),
+				zap.Int("retry_count", retryCount),
 				zap.Error(err))
 			msg.Nack(false, true) // 失败重新入队
 			continue

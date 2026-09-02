@@ -43,8 +43,8 @@ uploads/
 
 # local-only docs & seed data (never commit)
 docs/upload-module.md
-scripts/seed_videos.sql
-scripts/seed_comments_music.sql
+scripts/*
+
 
 # e2e test (local only)
 test/
@@ -53,3 +53,4 @@ bin/
 task/
 
 cmd/init-hot
+

@@ -10,7 +10,6 @@ import (
 	"flashvid-platform-gin/internal/dao/query"
 	"flashvid-platform-gin/internal/model"
 	"flashvid-platform-gin/internal/mq"
-	"flashvid-platform-gin/pkg/hotrank"
 	"fmt"
 	"math/rand"
 	"strconv"
@@ -226,16 +225,15 @@ func GetVideo(ctx context.Context, videoId int64) (*model.GetVideoOutput, api.Re
 			topicNames = append(topicNames, topic.Name)
 		}
 	}
-	// 3. 异步更新观看量和 Redis 热度
-	go func(vid int64) {
-		bgCtx := context.Background()
-		// MySQL 观看量 +1
-		query.Video.WithContext(bgCtx).
-			Where(query.Video.ID.Eq(vid)).
-			UpdateSimple(query.Video.ViewCount.Add(1))
-		// 重新计算带时间衰减的热度分数
-		hotrank.UpdateVideoHotScore(bgCtx, vid)
-	}(video.ID)
+	// 3. 发送 MQ 消息（播放事件）
+	hotrankMsg := mq.HotrankUpdateMessage{
+		Action:  "update_video_view",
+		VideoID: video.ID,
+		TopicID: 0,
+	}
+	body, _ := json.Marshal(hotrankMsg)
+	mq.Publish(ctx, "notification.exchange", "hotrank", body)
+
 	// 4. 返回结果
 	return &model.GetVideoOutput{
 		Video: model.VideoInfo{
@@ -288,6 +286,15 @@ func GetVideoWithCache(ctx context.Context, videoId int64) (*model.GetVideoOutpu
 		// 反序列化 JSON
 		var output model.GetVideoOutput
 		if json.Unmarshal([]byte(cached), &output) == nil {
+			// 缓存命中，发送播放事件到 MQ
+			hotrankMsg := mq.HotrankUpdateMessage{
+				Action:  "update_video_view",
+				VideoID: videoId,
+				TopicID: 0,
+			}
+			body, _ := json.Marshal(hotrankMsg)
+			mq.Publish(ctx, "notification.exchange", "hotrank", body)
+
 			return &output, api.CodeSuccess, nil
 		}
 		// 解析失败，继续回源
@@ -307,6 +314,15 @@ func GetVideoWithCache(ctx context.Context, videoId int64) (*model.GetVideoOutpu
 			}
 			var out model.GetVideoOutput
 			if json.Unmarshal([]byte(val), &out) == nil {
+				// 二次缓存命中，发送播放事件到 MQ
+				hotrankMsg := mq.HotrankUpdateMessage{
+					Action:  "update_video_view",
+					VideoID: videoId,
+					TopicID: 0,
+				}
+				body, _ := json.Marshal(hotrankMsg)
+				mq.Publish(ctx, "notification.exchange", "hotrank", body)
+
 				return &out, nil
 			}
 		}

@@ -44,6 +44,9 @@ func main() {
 	mq.MustDeclareInfrastructure()
 	defer mq.Close()
 
+	// 等待 RabbitMQ 完全就绪（增加延迟到 1 秒）
+	time.Sleep(1 * time.Second)
+
 	// 启动定时任务：Redis 统计数据同步到 MySQL（每 10 秒）
 	go func() {
 		taskCtx := context.Background()
@@ -55,6 +58,12 @@ func main() {
 
 	// 启动 RabbitMQ 消费者：视频发布 Feed 推送
 	go consumer.ConsumeVideoFeed()
+
+	// 启动 RabbitMQ 消费者：热度更新（点赞/收藏触发）
+	go consumer.ConsumeHotrankUpdate()
+
+	// 启动 RabbitMQ 消费者：通知创建（点赞/收藏触发）
+	go consumer.ConsumeNotification()
 
 	// 初始化路由
 	r := server.SetupRoutes(cfg)
