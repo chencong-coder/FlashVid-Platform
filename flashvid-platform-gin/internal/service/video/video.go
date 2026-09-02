@@ -2,18 +2,20 @@ package video
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flashvid-platform-gin/api"
 	v1 "flashvid-platform-gin/api/video/v1"
 	"flashvid-platform-gin/internal/dao"
 	"flashvid-platform-gin/internal/dao/query"
 	"flashvid-platform-gin/internal/model"
+	"flashvid-platform-gin/internal/mq"
 	"flashvid-platform-gin/pkg/hotrank"
 	"fmt"
+	"math/rand"
 	"strconv"
 	"time"
-	"encoding/json"
-	"math/rand"
+
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/sync/singleflight"
 	"gorm.io/gen/field"
@@ -95,6 +97,7 @@ func CreateVideo(ctx context.Context, userId int64, req v1.CreateVideoReq) (*mod
 		selectFields = append(selectFields, query.Video.Longitude)
 	}
 	// 2-3. 事务：创建视频 + 查询/创建话题 + 创建话题关联 + 更新话题视频数
+	var topicIDs []int64
 	err = query.Q.Transaction(func(tx *query.Query) error {
 		if err := tx.Video.WithContext(ctx).
 			Select(selectFields...).
@@ -128,21 +131,9 @@ func CreateVideo(ctx context.Context, userId int64, req v1.CreateVideoReq) (*mod
 				for _, t := range newTopics {
 					existingTopicMap[t.Name] = t
 				}
-				// 2-3.2.1 新话题初始化到 Redis（异步）
-				go func(topics []*model.Topic) {
-					if rdb != nil {
-						bgCtx := context.Background()
-						for _, t := range topics {
-							rdb.ZAdd(bgCtx, "topic:hot", redis.Z{
-								Score:  0, // 初始分数为 0
-								Member: strconv.FormatInt(t.ID, 10),
-							})
-						}
-					}
-				}(newTopics)
 			}
 			// 2-3.3 收集所有话题ID，创建视频-话题关联
-			topicIDs := make([]int64, 0, len(names))
+			topicIDs = make([]int64, 0, len(names))
 			videoTopics := make([]*model.VideoTopic, 0, len(names))
 			for _, name := range names {
 				t := existingTopicMap[name]
@@ -161,29 +152,25 @@ func CreateVideo(ctx context.Context, userId int64, req v1.CreateVideoReq) (*mod
 				UpdateSimple(tx.Topic.VideoCount.Add(1)); err != nil {
 				return err
 			}
-			// 2-3.5 异步更新 Redis 热度（video_count 权重 × 10）
-			go func(ids []int64) {
-				if rdb != nil {
-					for _, topicID := range ids {
-						rdb.ZIncrBy(context.Background(), "topic:hot", 10, strconv.FormatInt(topicID, 10))
-					}
-				}
-			}(topicIDs)
 		}
 		return nil
 	})
+
 	if err != nil {
 		return nil, api.CodeInternalError, err
 	}
-	// 3. 异步初始化视频到 Redis 视频热榜
-	go func(vid int64) {
-		if rdb != nil {
-			rdb.ZAdd(context.Background(), "video:hot", redis.Z{
-				Score:  0, // 初始分数为 0
-				Member: strconv.FormatInt(vid, 10),
-			})
+
+	// 3. 发送视频发布消息到 MQ（Fanout 广播）
+	if len(topicIDs) > 0 {
+		message := mq.VideoPublishMessage{
+			VideoID:  newVideo.ID,
+			UserID:   userId,
+			TopicIDs: topicIDs,
 		}
-	}(newVideo.ID)
+		body, _ := json.Marshal(message)
+		mq.Publish(ctx, "video.publish.exchange", "", body)
+	}
+
 	// 4. 返回结果
 	return &model.CreateVideoOutput{
 		VideoID: newVideo.ID,

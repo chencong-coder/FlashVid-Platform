@@ -7,7 +7,9 @@ import (
 	"time"
 
 	"flashvid-platform-gin/internal/conf"
+	"flashvid-platform-gin/internal/consumer"
 	"flashvid-platform-gin/internal/dao"
+	"flashvid-platform-gin/internal/mq"
 	"flashvid-platform-gin/internal/server"
 	"flashvid-platform-gin/internal/task"
 	"flashvid-platform-gin/pkg/jwt"
@@ -37,11 +39,22 @@ func main() {
 	snowflake.MustInit(cfg) // 初始化 snowflake
 	storage.MustInit(cfg)   // 初始化本地文件存储
 
+	// 初始化 RabbitMQ
+	mq.MustInitRabbitMQ(cfg)
+	mq.MustDeclareInfrastructure()
+	defer mq.Close()
+
 	// 启动定时任务：Redis 统计数据同步到 MySQL（每 10 秒）
 	go func() {
 		taskCtx := context.Background()
 		task.SyncVideoStatsFromRedis(taskCtx, 10*time.Second)
 	}()
+
+	// 启动 RabbitMQ 消费者：视频发布热度初始化
+	go consumer.ConsumeVideoHotrank()
+
+	// 启动 RabbitMQ 消费者：视频发布 Feed 推送
+	go consumer.ConsumeVideoFeed()
 
 	// 初始化路由
 	r := server.SetupRoutes(cfg)
