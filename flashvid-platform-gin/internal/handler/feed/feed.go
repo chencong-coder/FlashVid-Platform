@@ -58,8 +58,8 @@ func GetFeedFollowHandler(c *gin.Context) {
 	if req.Count < 10 {
 		req.Count = 10
 	}
-	// 3. 调用service获取推荐视频流
-	output, resCode, err := feed.GetFeedFollow(c, userIdInt64, req.Cursor, req.Count)
+	// 3. 调用service获取关注视频流（推模式）
+	output, resCode, err := feed.GetFeedFollow1(c, userIdInt64, req.Cursor, req.Count)
 	if err != nil {
 		api.ResponseError(c, resCode)
 		return

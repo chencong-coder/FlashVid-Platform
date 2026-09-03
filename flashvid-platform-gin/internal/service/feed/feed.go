@@ -350,7 +350,189 @@ func GetFeedRecommend1(ctx context.Context, userID int64, cursor string, count i
 }
 
 
-// GetFeedFollow 获取关注视频流
+// GetFeedFollow1 获取关注视频流（推模式：从 Redis List 读取）
+func GetFeedFollow1(ctx context.Context, userId int64, cursor string, count int) (*model.FeedOutput, api.ResCode, error) {
+	// Redis 不可用时降级到 MySQL 拉模式
+	if rdb == nil {
+		return GetFeedFollow(ctx, userId, cursor, count)
+	}
+
+	feedKey := fmt.Sprintf("feed:follow:%d", userId)
+
+	// 1. 从 Redis List 读取视频 ID（游标分页）
+	start := int64(0)
+	if cursor != "" {
+		parsedStart, err := strconv.ParseInt(cursor, 10, 64)
+		if err != nil {
+			return nil, api.CodeInvalidParam, err
+		}
+		start = parsedStart
+	}
+
+	videoIDStrs, err := rdb.LRange(ctx, feedKey, start, start+int64(count)).Result()
+	if err != nil {
+		return nil, api.CodeInternalError, err
+	}
+	if len(videoIDStrs) == 0 {
+		return &model.FeedOutput{
+			Videos:          []model.VideoInfo{},
+			NextCursorToken: "",
+			HasMore:         false,
+		}, api.CodeSuccess, nil
+	}
+
+	// 2. 转换为 int64
+	videoIDs := make([]int64, 0, len(videoIDStrs))
+	for _, idStr := range videoIDStrs {
+		id, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil {
+			continue
+		}
+		videoIDs = append(videoIDs, id)
+	}
+
+	if len(videoIDs) == 0 {
+		return &model.FeedOutput{
+			Videos:          []model.VideoInfo{},
+			NextCursorToken: "",
+			HasMore:         false,
+		}, api.CodeSuccess, nil
+	}
+
+	// 3. 批量查 MySQL
+	videos, err := query.Video.WithContext(ctx).
+		Where(query.Video.ID.In(videoIDs...), query.Video.Status.Eq(2)).
+		Find()
+	if err != nil {
+		return nil, api.CodeInternalError, err
+	}
+
+	if len(videos) == 0 {
+		return &model.FeedOutput{
+			Videos:          []model.VideoInfo{},
+			NextCursorToken: "",
+			HasMore:         false,
+		}, api.CodeSuccess, nil
+	}
+
+	// 4. 构建 videoID -> Video 映射（保持 Redis List 的顺序）
+	videoMap := make(map[int64]*model.Video)
+	authorIds := make([]int64, 0, len(videos))
+	for _, video := range videos {
+		videoMap[video.ID] = video
+		authorIds = append(authorIds, video.UserID)
+	}
+
+	// 5. 批量查询作者信息
+	authors, err := query.User.WithContext(ctx).
+		Where(query.User.ID.In(authorIds...)).
+		Find()
+	if err != nil {
+		return nil, api.CodeInternalError, err
+	}
+	authorMap := make(map[int64]*model.User)
+	for _, author := range authors {
+		authorMap[author.ID] = author
+	}
+
+	// 6. 批量查询视频话题
+	videoTopics, err := query.VideoTopic.WithContext(ctx).
+		Where(query.VideoTopic.VideoID.In(videoIDs...)).
+		Find()
+	if err != nil {
+		return nil, api.CodeInternalError, err
+	}
+
+	videoTopicMap := make(map[int64][]int64)
+	topicIds := make([]int64, 0)
+	for _, vt := range videoTopics {
+		videoTopicMap[vt.VideoID] = append(videoTopicMap[vt.VideoID], vt.TopicID)
+		topicIds = append(topicIds, vt.TopicID)
+	}
+
+	// 7. 批量查询话题信息
+	topicMap := make(map[int64]string)
+	if len(topicIds) > 0 {
+		topics, err := query.Topic.WithContext(ctx).
+			Where(query.Topic.ID.In(topicIds...)).
+			Find()
+		if err != nil {
+			return nil, api.CodeInternalError, err
+		}
+		for _, topic := range topics {
+			topicMap[topic.ID] = topic.Name
+		}
+	}
+
+	// 8. 按 Redis List 顺序构建输出（保持时间顺序）
+	outputVideos := make([]model.VideoInfo, 0, len(videoIDs))
+	for _, videoID := range videoIDs {
+		video, ok := videoMap[videoID]
+		if !ok {
+			continue // 视频可能已删除
+		}
+		author, ok := authorMap[video.UserID]
+		if !ok {
+			continue // 作者可能已删除
+		}
+
+		topicNames := make([]string, 0)
+		for _, topicID := range videoTopicMap[video.ID] {
+			if name, ok := topicMap[topicID]; ok {
+				topicNames = append(topicNames, name)
+			}
+		}
+
+		outputVideos = append(outputVideos, model.VideoInfo{
+			ID:          video.ID,
+			Title:       video.Title,
+			Description: video.Description,
+			CoverUrl:    video.CoverURL,
+			VideoUrl:    video.VideoURL,
+			Duration:    video.Duration,
+			Width:       video.Width,
+			Height:      video.Height,
+			MusicId:     video.MusicID,
+			City:        video.City,
+			Topics:      topicNames,
+			Author: model.VideoAuthor{
+				ID:       author.ID,
+				Username: author.Username,
+				Nickname: author.Nickname,
+				Avatar:   author.Avatar,
+			},
+			Stats: model.VideoStats{
+				ViewCount:     video.ViewCount,
+				LikeCount:     video.LikeCount,
+				CommentCount:  video.CommentCount,
+				ShareCount:    video.ShareCount,
+				FavoriteCount: video.FavoriteCount,
+			},
+			PublishedAt: video.PublishedAt.Format("2006-01-02 15:04:05"),
+		})
+	}
+
+	// 9. 附加当前用户的互动状态
+	if err = AttachViewerState(ctx, userId, outputVideos); err != nil {
+		return nil, api.CodeInternalError, err
+	}
+
+	// 10. 生成游标和判断是否有更多
+	hasMore := len(videoIDStrs) > count
+	nextCursor := ""
+	if hasMore {
+		outputVideos = outputVideos[:count]
+		nextCursor = strconv.FormatInt(start+int64(count), 10)
+	}
+
+	return &model.FeedOutput{
+		Videos:          outputVideos,
+		NextCursorToken: nextCursor,
+		HasMore:         hasMore,
+	}, api.CodeSuccess, nil
+}
+
+// GetFeedFollow 获取关注视频流（拉模式：MySQL 实时查询，降级方案）
 func GetFeedFollow(ctx context.Context, userId int64, cursor string, count int) (*model.FeedOutput, api.ResCode, error) {
 	var err error
 	var follows []*model.Follow
