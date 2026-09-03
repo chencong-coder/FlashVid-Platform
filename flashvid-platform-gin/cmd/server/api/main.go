@@ -38,9 +38,8 @@ func main() {
 	snowflake.MustInit(cfg) // 初始化 snowflake
 	storage.MustInit(cfg)   // 初始化本地文件存储
 
-	// 初始化 RabbitMQ（仅用于发送消息）
+	// 初始化 RabbitMQ（仅用于发送消息，不声明队列，由 Worker 负责）
 	mq.MustInitRabbitMQ(cfg)
-	mq.MustDeclareInfrastructure()
 	defer mq.Close()
 
 	// 等待 RabbitMQ 完全就绪
