@@ -4,13 +4,13 @@ echo "Starting FlashVid Platform..."
 
 echo ""
 echo "[1/2] Starting API Server..."
-go run cmd/api/main.go &
+go run cmd/server/api/main.go &
 API_PID=$!
 
 sleep 2
 
 echo "[2/2] Starting Worker (Consumers)..."
-go run cmd/worker/main.go &
+go run cmd/server/worker/main.go &
 WORKER_PID=$!
 
 echo ""
