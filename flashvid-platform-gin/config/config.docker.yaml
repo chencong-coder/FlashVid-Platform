@@ -1,0 +1,53 @@
+server:
+  name: "flashvid-platform"
+  mode: "release"
+  port: 8089
+  version: "v0.0.1"
+
+snowflake:
+  start_time: "2026-07-19"
+  machine_id: 1
+
+jwt:
+  access_secret: "夏天夏天悄悄过去留下小秘密"
+  refresh_secret: "压心底压心底不能告诉你"
+  access_expire_seconds: 3600
+  refresh_expire_seconds: 86400
+
+log:
+  level: "info"
+  filename: "log/server.log"
+  max_size: 200
+  max_age: 30
+  max_backups: 7
+
+mysql:
+  host: mysql
+  port: 3306
+  user: "root"
+  password: "chencong"
+  dbname: "flashvid_platform"
+  max_open_conns: 200
+  max_idle_conns: 50
+  max_lifetime: 1h
+
+redis:
+  host: redis
+  port: 6379
+  password: ""
+  db: 0
+  pool_size: 10
+
+storage:
+  local_path: "./uploads"
+  base_url: "http://localhost:8089/static"
+  max_image_size: 10485760
+  max_video_size: 524288000
+  max_audio_size: 52428800
+
+rabbitmq:
+  host: rabbitmq
+  port: 5672
+  user: "admin"
+  password: "password"
+  vhost: "/"

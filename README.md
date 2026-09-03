@@ -128,6 +128,29 @@ FlashVid-Platform/
 
 ## 快速开始
 
+### Docker 部署（推荐）
+
+**一键启动所有服务（MySQL + Redis + RabbitMQ + API + Worker）：**
+
+```bash
+# Linux/Mac
+chmod +x start.sh
+./start.sh
+
+# Windows
+start.bat
+```
+
+访问地址：
+- API Server: http://localhost:8089
+- RabbitMQ 管理界面: http://localhost:15672 (admin/password)
+
+详细文档：[DOCKER.md](./DOCKER.md)
+
+---
+
+### 本地开发
+
 ### 1. 环境准备
 
 ```bash
@@ -145,8 +168,12 @@ docker run -d -p 5672:5672 -p 15672:15672 rabbitmq:3-management
 
 ```bash
 cd flashvid-platform-gin
-go mod download
-go run cmd/server/main.go
+
+# 启动 API Server
+go run cmd/server/api/main.go
+
+# 启动 Worker（新终端）
+go run cmd/server/worker/main.go
 ```
 
 ### 3. 运行压测

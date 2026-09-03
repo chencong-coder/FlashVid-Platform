@@ -1,0 +1,129 @@
+version: '3.8'
+
+services:
+  # MySQL 数据库
+  mysql:
+    image: mysql:8.0
+    container_name: flashvid-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: chencong
+      MYSQL_DATABASE: flashvid_platform
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./flashvid-platform-gin/docs/sql:/docker-entrypoint-initdb.d  # 自动执行初始化 SQL
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-pchencong"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - flashvid-network
+
+  # Redis 缓存
+  redis:
+    image: redis:7.0-alpine
+    container_name: flashvid-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - flashvid-network
+
+  # RabbitMQ 消息队列
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: flashvid-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: password
+      RABBITMQ_DEFAULT_VHOST: /
+    ports:
+      - "5672:5672"    # AMQP 端口
+      - "15672:15672"  # Management UI
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - flashvid-network
+
+  # API Server
+  api:
+    build:
+      context: ./flashvid-platform-gin
+      dockerfile: Dockerfile
+      target: api
+    container_name: flashvid-api
+    environment:
+      - GIN_MODE=release
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+    ports:
+      - "8089:8089"
+    volumes:
+      - ./flashvid-platform-gin/uploads:/app/uploads
+      - ./flashvid-platform-gin/log:/app/log
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - flashvid-network
+
+  # Worker 进程
+  worker:
+    build:
+      context: ./flashvid-platform-gin
+      dockerfile: Dockerfile
+      target: worker
+    container_name: flashvid-worker
+    environment:
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+    volumes:
+      - ./flashvid-platform-gin/log:/app/log
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - flashvid-network
+
+networks:
+  flashvid-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  redis_data:
+  rabbitmq_data:
