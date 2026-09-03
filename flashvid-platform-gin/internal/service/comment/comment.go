@@ -2,13 +2,13 @@ package comment
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flashvid-platform-gin/api"
 	v1 "flashvid-platform-gin/api/comment/v1"
 	"flashvid-platform-gin/internal/dao/query"
 	"flashvid-platform-gin/internal/model"
-	"flashvid-platform-gin/pkg/hotrank"
-	notifSvc "flashvid-platform-gin/internal/service/notification"
+	"flashvid-platform-gin/internal/mq"
 	"time"
 
 	"gorm.io/gorm"
@@ -307,38 +307,50 @@ func CreateComment(ctx context.Context, userId int64, videoId int64, content str
 		if err != nil {
 			return err
 		}
-		// 通知视频作者（评论者非作者本人）
-		if video.UserID != userId {
-			notifSvc.CreateNotification(ctx, tx, &model.Notification{
-				UserID:     video.UserID,
-				ActorID:    userId,
-				ActionType: 4, // 评论视频
-				TargetType: 3, // 评论
-				TargetID:   newComment.ID,
-				Content:    truncate(content, 100),
-			})
-		}
-		// 通知被回复者（回复场景，被回复者非评论者本人）
-		if replyToUserId > 0 && replyToUserId != userId && replyToUserId != video.UserID {
-			notifSvc.CreateNotification(ctx, tx, &model.Notification{
-				UserID:     replyToUserId,
-				ActorID:    userId,
-				ActionType: 5, // 回复评论
-				TargetType: 3, // 评论
-				TargetID:   newComment.ID,
-				Content:    truncate(content, 100),
-			})
-		}
 		return nil
 	})
 	if err != nil {
 		return nil, nil, api.CodeInternalError, err
 	}
-	// 4.1 异步更新 Redis 热度（一级评论重新计算带时间衰减的分数）
+
+	// 4.1 事务成功后，异步处理通知和热度更新（通过 MQ）
+	// 通知视频作者（评论者非作者本人）
+	if video.UserID != userId {
+		notifMsg := mq.NotificationMessage{
+			UserID:     video.UserID,
+			ActorID:    userId,
+			ActionType: 4, // 评论视频
+			TargetType: 3, // 评论
+			TargetID:   newComment.ID,
+			Content:    truncate(content, 100),
+		}
+		body, _ := json.Marshal(notifMsg)
+		mq.Publish(ctx, "notification.exchange", "notification", body)
+	}
+
+	// 通知被回复者（回复场景，被回复者非评论者本人）
+	if replyToUserId > 0 && replyToUserId != userId && replyToUserId != video.UserID {
+		notifMsg := mq.NotificationMessage{
+			UserID:     replyToUserId,
+			ActorID:    userId,
+			ActionType: 5, // 回复评论
+			TargetType: 3, // 评论
+			TargetID:   newComment.ID,
+			Content:    truncate(content, 100),
+		}
+		body, _ := json.Marshal(notifMsg)
+		mq.Publish(ctx, "notification.exchange", "notification", body)
+	}
+
+	// 一级评论：更新 Redis 评论数 + 视频热度（评论权重 +10）
 	if parentId == 0 {
-		go func(vid int64) {
-			hotrank.UpdateVideoHotScore(context.Background(), vid)
-		}(videoId)
+		hotrankMsg := mq.HotrankUpdateMessage{
+			Action:  "update_video_comment",
+			VideoID: videoId,
+			TopicID: 0,
+		}
+		body, _ := json.Marshal(hotrankMsg)
+		mq.Publish(ctx, "notification.exchange", "hotrank", body)
 	}
 	createdAt := newComment.CreatedAt.Format("2006-01-02 15:04:05")
 	// 5. 构建并返回评论数据

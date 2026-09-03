@@ -80,6 +80,15 @@ func handleHotrankUpdate(event mq.HotrankUpdateMessage) error {
 		zap.L().Info("video hot score updated",
 			zap.Int64("video_id", event.VideoID))
 
+	case "update_video_comment":
+		// 评论事件：Redis 评论数 +1 + 更新热度（权重 +10）
+		statsKey := fmt.Sprintf("video:%d:stats", event.VideoID)
+		rdb.HIncrBy(ctx, statsKey, "comment_count", 1)
+
+		hotrank.UpdateVideoHotScore(ctx, event.VideoID)
+		zap.L().Info("video comment count and hot score updated",
+			zap.Int64("video_id", event.VideoID))
+
 	case "update_topic_view":
 		// 更新话题浏览量热度
 		hotrank.UpdateTopicViewCount(ctx, event.TopicID)
