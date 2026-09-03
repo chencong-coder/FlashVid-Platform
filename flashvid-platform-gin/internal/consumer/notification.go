@@ -66,6 +66,7 @@ func handleNotificationCreate(event mq.NotificationMessage) error {
 		ActionType: event.ActionType,
 		TargetType: event.TargetType,
 		TargetID:   event.TargetID,
+		Content:    event.Content, // 评论内容（如果有）
 	}
 
 	if err := query.Q.Notification.WithContext(ctx).Create(notification); err != nil {

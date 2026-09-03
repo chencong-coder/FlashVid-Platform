@@ -16,9 +16,10 @@ type HotrankUpdateMessage struct {
 
 // NotificationMessage 通知消息（未来扩展）
 type NotificationMessage struct {
-	UserID     int64 `json:"user_id"`      // 接收通知的用户
-	ActorID    int64 `json:"actor_id"`     // 触发行为的用户
-	ActionType int32 `json:"action_type"`  // 行为类型：1关注 2点赞 3收藏
-	TargetType int32 `json:"target_type"`  // 目标类型：1用户 2视频
-	TargetID   int64 `json:"target_id"`    // 目标ID
+	UserID     int64  `json:"user_id"`      // 接收通知的用户
+	ActorID    int64  `json:"actor_id"`     // 触发行为的用户
+	ActionType int32  `json:"action_type"`  // 行为类型：1关注 2点赞 3收藏 4评论视频 5回复评论
+	TargetType int32  `json:"target_type"`  // 目标类型：1用户 2视频 3评论
+	TargetID   int64  `json:"target_id"`    // 目标ID
+	Content    string `json:"content,omitempty"` // 通知内容（评论内容截断，其他类型为空）
 }
