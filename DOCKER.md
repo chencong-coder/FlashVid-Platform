@@ -30,6 +30,7 @@ docker-compose up -d --build
 
 | 服务 | 端口 | 说明 |
 |------|------|------|
+| **flashvid-frontend** | 80 | 前端服务（Nginx） |
 | **flashvid-api** | 8089 | API Server（HTTP 接口） |
 | **flashvid-worker** | - | Worker 进程（MQ 消费者） |
 | **mysql** | 3306 | MySQL 8.0 数据库 |
@@ -51,6 +52,7 @@ docker-compose ps
 docker-compose logs -f
 
 # 单个服务
+docker-compose logs -f frontend
 docker-compose logs -f api
 docker-compose logs -f worker
 docker-compose logs -f mysql
@@ -62,6 +64,7 @@ docker-compose logs -f mysql
 docker-compose restart
 
 # 重启单个服务
+docker-compose restart frontend
 docker-compose restart api
 docker-compose restart worker
 ```
@@ -91,6 +94,7 @@ docker-compose down -v
 
 ## 🔍 访问地址
 
+- **前端应用**: http://localhost
 - **API Server**: http://localhost:8089
 - **RabbitMQ 管理界面**: http://localhost:15672
   - 用户名：`admin`
@@ -146,9 +150,11 @@ docker-compose logs rabbitmq | grep "Server startup complete"
 ## 🏗️ 架构说明
 
 ### 多阶段构建
-- **Builder 阶段**：编译 Go 二进制文件（API + Worker）
+- **后端 Builder 阶段**：编译 Go 二进制文件（API + Worker）
 - **API 镜像**：运行 API Server
 - **Worker 镜像**：运行 Worker 消费者
+- **前端 Builder 阶段**：构建 Vue 3 生产包
+- **Frontend 镜像**：Nginx 提供静态文件服务 + API 反向代理
 
 ### 配置文件
 - 本地开发：`config/config.yaml`（localhost）
@@ -156,6 +162,10 @@ docker-compose logs rabbitmq | grep "Server startup complete"
 
 ### 健康检查
 所有依赖服务（MySQL、Redis、RabbitMQ）都配置了健康检查，API 和 Worker 会等待依赖服务就绪后再启动。
+
+### 前端路由
+- 前端通过 Nginx 反向代理 `/api/*` 请求到 `flashvid-api:8089`
+- SPA 路由通过 `try_files` 支持 History 模式
 
 ---
 
@@ -168,14 +178,25 @@ docker-compose logs rabbitmq | grep "Server startup complete"
 docker-compose up -d mysql redis rabbitmq
 ```
 
-2. 本地运行 Go 程序：
+2. 本地运行后端程序：
 ```bash
+cd flashvid-platform-gin
+
 # API Server
 go run cmd/server/api/main.go
 
 # Worker
 go run cmd/server/worker/main.go
 ```
+
+3. 本地运行前端：
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+前端开发服务器：http://localhost:5173
 
 ---
 

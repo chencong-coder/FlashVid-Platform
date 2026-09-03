@@ -150,6 +150,7 @@ start.bat
 
 访问地址：
 - API Server: http://localhost:8089
+- 前端应用: http://localhost
 - RabbitMQ 管理界面: http://localhost:15672 (admin/password)
 
 详细文档：[DOCKER.md](./DOCKER.md)

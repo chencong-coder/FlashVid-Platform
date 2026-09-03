@@ -119,6 +119,20 @@ services:
     networks:
       - flashvid-network
 
+  # 前端服务
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: flashvid-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - flashvid-network
+
 networks:
   flashvid-network:
     driver: bridge

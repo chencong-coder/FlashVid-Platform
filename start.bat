@@ -43,10 +43,12 @@ echo.
 echo ✅ FlashVid 平台启动完成！
 echo.
 echo 📌 访问地址：
+echo   - 前端应用: http://localhost
 echo   - API Server: http://localhost:8089
 echo   - RabbitMQ Management: http://localhost:15672 (admin/password)
 echo.
 echo 📝 查看日志：
+echo   - 前端: docker-compose logs -f frontend
 echo   - API Server: docker-compose logs -f api
 echo   - Worker: docker-compose logs -f worker
 echo   - 所有服务: docker-compose logs -f
