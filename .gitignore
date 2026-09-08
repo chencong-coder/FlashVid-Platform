@@ -7,3 +7,12 @@ dist
 .vite
 .edge-debug
 mobile-home.png
+
+# 编译产物
+*.exe
+*.dll
+*.so
+*.dylib
+
+# 临时文档
+docs/backend-review-guide.md
