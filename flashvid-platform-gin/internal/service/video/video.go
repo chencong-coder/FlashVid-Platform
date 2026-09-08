@@ -225,7 +225,18 @@ func GetVideo(ctx context.Context, videoId int64) (*model.GetVideoOutput, api.Re
 			topicNames = append(topicNames, topic.Name)
 		}
 	}
-	// 3. 发送 MQ 消息（播放事件）
+	// 3. 更新 Redis 观看计数
+	videoStatsKey := fmt.Sprintf("video:%d:stats", video.ID)
+	exists, _ := rdb.Exists(ctx, videoStatsKey).Result()
+	if exists == 0 {
+		// 首次写入：用 DB 的当前值 + 1
+		rdb.HSet(ctx, videoStatsKey, "view_count", video.ViewCount+1)
+	} else {
+		// Hash 已存在：直接递增
+		rdb.HIncrBy(ctx, videoStatsKey, "view_count", 1)
+	}
+
+	// 4. 发送 MQ 消息（播放事件）
 	hotrankMsg := mq.HotrankUpdateMessage{
 		Action:  "update_video_view",
 		VideoID: video.ID,
@@ -234,7 +245,7 @@ func GetVideo(ctx context.Context, videoId int64) (*model.GetVideoOutput, api.Re
 	body, _ := json.Marshal(hotrankMsg)
 	mq.Publish(ctx, "notification.exchange", "hotrank", body)
 
-	// 4. 返回结果
+	// 5. 返回结果
 	return &model.GetVideoOutput{
 		Video: model.VideoInfo{
 			ID:          video.ID,

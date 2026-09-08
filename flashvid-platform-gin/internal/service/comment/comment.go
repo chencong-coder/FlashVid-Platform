@@ -10,9 +10,12 @@ import (
 	"flashvid-platform-gin/internal/model"
 	"flashvid-platform-gin/internal/mq"
 	"time"
-
+	"fmt"
 	"gorm.io/gorm"
+	"flashvid-platform-gin/internal/dao"
 )
+
+var rdb = dao.RedisClient
 
 // 获取评论列表（只返回一级评论，回复需调 GetReplies 接口）
 func GetComments(ctx context.Context, userId int64, videoId int64, count int, cursor string) (*model.CommentListOutput, api.ResCode, error) {
@@ -344,6 +347,18 @@ func CreateComment(ctx context.Context, userId int64, videoId int64, content str
 
 	// 一级评论：更新 Redis 评论数 + 视频热度（评论权重 +10）
 	if parentId == 0 {
+		// 更新 Redis 评论计数
+		videoStatsKey := fmt.Sprintf("video:%d:stats", videoId)
+		exists, _ := rdb.Exists(ctx, videoStatsKey).Result()
+		if exists == 0 {
+			// 首次写入：用 DB 的当前值 + 1
+			rdb.HSet(ctx, videoStatsKey, "comment_count", video.CommentCount+1)
+		} else {
+			// Hash 已存在：直接递增
+			rdb.HIncrBy(ctx, videoStatsKey, "comment_count", 1)
+		}
+
+		// 发送 MQ 消息更新热度
 		hotrankMsg := mq.HotrankUpdateMessage{
 			Action:  "update_video_comment",
 			VideoID: videoId,

@@ -67,16 +67,13 @@ func handleHotrankUpdate(event mq.HotrankUpdateMessage) error {
 
 	switch event.Action {
 	case "update_video_view":
-		// 播放事件：Redis 播放量 +1 + 更新热度 + 同步 MySQL
-		statsKey := fmt.Sprintf("video:%d:stats", event.VideoID)
-		rdb.HIncrBy(ctx, statsKey, "view_count", 1)
-
+		// 播放事件：更新热度 + 同步 MySQL（Redis 计数已在业务层更新）
 		hotrank.UpdateVideoHotScore(ctx, event.VideoID)
 
 		// 同步统计数据到 MySQL
 		syncVideoStatsToMySQL(ctx, event.VideoID)
 
-		zap.L().Info("video view count, hot score updated and stats synced",
+		zap.L().Info("video hot score updated and stats synced",
 			zap.Int64("video_id", event.VideoID))
 
 	case "update_video_hot":
@@ -90,16 +87,13 @@ func handleHotrankUpdate(event mq.HotrankUpdateMessage) error {
 			zap.Int64("video_id", event.VideoID))
 
 	case "update_video_comment":
-		// 评论事件：Redis 评论数 +1 + 更新热度 + 同步 MySQL
-		statsKey := fmt.Sprintf("video:%d:stats", event.VideoID)
-		rdb.HIncrBy(ctx, statsKey, "comment_count", 1)
-
+		// 评论事件：更新热度 + 同步 MySQL（Redis 计数已在业务层更新）
 		hotrank.UpdateVideoHotScore(ctx, event.VideoID)
 
 		// 同步统计数据到 MySQL
 		syncVideoStatsToMySQL(ctx, event.VideoID)
 
-		zap.L().Info("video comment count, hot score updated and stats synced",
+		zap.L().Info("video hot score updated and stats synced",
 			zap.Int64("video_id", event.VideoID))
 
 	case "update_topic_view":
