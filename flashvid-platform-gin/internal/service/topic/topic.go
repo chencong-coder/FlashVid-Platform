@@ -269,13 +269,20 @@ func GetTopicByIDWithCache(ctx context.Context, topicId int64) (*v1.GetTopicByID
 		body, _ := json.Marshal(msg)
 		mq.Publish(context.Background(), "notification.exchange", "hotrank", body)
 
+		// 从 Redis 读取实时浏览量（优先级高于 MySQL）
+		statsKey := fmt.Sprintf("topic:%d:stats", topicId)
+		if viewCount, err := rdb.HGet(ctx, statsKey, "view_count").Int64(); err == nil {
+			topic.ViewCount = int64(viewCount)
+		}
+		// Redis 读取失败则使用 MySQL 的值（兜底）
+
 		// 封装成 TopicInfo
 		topicInfo := model.TopicInfo{
 			ID:          topic.ID,
 			Name:        topic.Name,
 			Description: topic.Description,
 			CoverURL:    topic.CoverURL,
-			ViewCount:   topic.ViewCount,
+			ViewCount:   topic.ViewCount, // 来自 Redis 或 MySQL
 			VideoCount:  topic.VideoCount,
 			CreatedAt:   topic.CreatedAt.Format("2006-01-02 15:04:05"),
 		}
