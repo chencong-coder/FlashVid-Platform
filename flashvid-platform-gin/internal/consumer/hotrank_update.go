@@ -67,12 +67,16 @@ func handleHotrankUpdate(event mq.HotrankUpdateMessage) error {
 
 	switch event.Action {
 	case "update_video_view":
-		// 播放事件：Redis 播放量 +1 + 更新热度
+		// 播放事件：Redis 播放量 +1 + 更新热度 + 同步 MySQL
 		statsKey := fmt.Sprintf("video:%d:stats", event.VideoID)
 		rdb.HIncrBy(ctx, statsKey, "view_count", 1)
 
 		hotrank.UpdateVideoHotScore(ctx, event.VideoID)
-		zap.L().Info("video view count and hot score updated",
+
+		// 同步统计数据到 MySQL
+		syncVideoStatsToMySQL(ctx, event.VideoID)
+
+		zap.L().Info("video view count, hot score updated and stats synced",
 			zap.Int64("video_id", event.VideoID))
 
 	case "update_video_hot":
@@ -86,12 +90,16 @@ func handleHotrankUpdate(event mq.HotrankUpdateMessage) error {
 			zap.Int64("video_id", event.VideoID))
 
 	case "update_video_comment":
-		// 评论事件：Redis 评论数 +1 + 更新热度（权重 +10）
+		// 评论事件：Redis 评论数 +1 + 更新热度 + 同步 MySQL
 		statsKey := fmt.Sprintf("video:%d:stats", event.VideoID)
 		rdb.HIncrBy(ctx, statsKey, "comment_count", 1)
 
 		hotrank.UpdateVideoHotScore(ctx, event.VideoID)
-		zap.L().Info("video comment count and hot score updated",
+
+		// 同步统计数据到 MySQL
+		syncVideoStatsToMySQL(ctx, event.VideoID)
+
+		zap.L().Info("video comment count, hot score updated and stats synced",
 			zap.Int64("video_id", event.VideoID))
 
 	case "update_topic_view":
@@ -111,10 +119,9 @@ func handleHotrankUpdate(event mq.HotrankUpdateMessage) error {
 func syncVideoStatsToMySQL(ctx context.Context, videoID int64) {
 	statsKey := fmt.Sprintf("video:%d:stats", videoID)
 
-	// 读取 Redis 中的点赞数和收藏数
+	// 同步点赞数
 	likeCount, err := rdb.HGet(ctx, statsKey, "like_count").Int64()
 	if err == nil && likeCount >= 0 {
-		// 更新 MySQL 点赞数
 		_, err := query.Video.WithContext(ctx).
 			Where(query.Video.ID.Eq(videoID)).
 			UpdateSimple(query.Video.LikeCount.Value(int32(likeCount)))
@@ -129,9 +136,9 @@ func syncVideoStatsToMySQL(ctx context.Context, videoID int64) {
 		}
 	}
 
+	// 同步收藏数
 	favoriteCount, err := rdb.HGet(ctx, statsKey, "favorite_count").Int64()
 	if err == nil && favoriteCount >= 0 {
-		// 更新 MySQL 收藏数
 		_, err := query.Video.WithContext(ctx).
 			Where(query.Video.ID.Eq(videoID)).
 			UpdateSimple(query.Video.FavoriteCount.Value(int32(favoriteCount)))
@@ -143,6 +150,40 @@ func syncVideoStatsToMySQL(ctx context.Context, videoID int64) {
 			zap.L().Debug("sync favorite_count to mysql",
 				zap.Int64("video_id", videoID),
 				zap.Int64("favorite_count", favoriteCount))
+		}
+	}
+
+	// 同步评论数
+	commentCount, err := rdb.HGet(ctx, statsKey, "comment_count").Int64()
+	if err == nil && commentCount >= 0 {
+		_, err := query.Video.WithContext(ctx).
+			Where(query.Video.ID.Eq(videoID)).
+			UpdateSimple(query.Video.CommentCount.Value(int32(commentCount)))
+		if err != nil {
+			zap.L().Error("sync comment_count to mysql failed",
+				zap.Int64("video_id", videoID),
+				zap.Error(err))
+		} else {
+			zap.L().Debug("sync comment_count to mysql",
+				zap.Int64("video_id", videoID),
+				zap.Int64("comment_count", commentCount))
+		}
+	}
+
+	// 同步播放数
+	viewCount, err := rdb.HGet(ctx, statsKey, "view_count").Int64()
+	if err == nil && viewCount >= 0 {
+		_, err := query.Video.WithContext(ctx).
+			Where(query.Video.ID.Eq(videoID)).
+			UpdateSimple(query.Video.ViewCount.Value(int32(viewCount)))
+		if err != nil {
+			zap.L().Error("sync view_count to mysql failed",
+				zap.Int64("video_id", videoID),
+				zap.Error(err))
+		} else {
+			zap.L().Debug("sync view_count to mysql",
+				zap.Int64("video_id", videoID),
+				zap.Int64("view_count", viewCount))
 		}
 	}
 }
