@@ -195,10 +195,6 @@ chmod +x run_all_benchmarks.sh
 ## 文档
 
 - [Docker 部署指南](./DOCKER.md) - Docker Compose 一键启动完整教程
-- [压测报告](./docs/benchmark-report.md) - 完整性能测试数据 + 架构优化亮点
-- [高并发改造路线图](./docs/high-concurrency-roadmap.md) - 从 0 到 1 的改造过程
-- [Redis 优化方案](./docs/redis-optimization.md) - 缓存设计详解
-- [后端复习 Roadmap](./docs/backend-review-roadmap.md) - 分阶段系统复习后端架构（6 阶段，17-24 小时）
 - [压测脚本说明](./scripts/README.md) - 如何运行压测
 
 ## 简历版本
