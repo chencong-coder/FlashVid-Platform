@@ -31,10 +31,17 @@
 
 ### 1.1 点赞/收藏计数热点写优化 🔥
 - [x] 改造 `internal/service/interaction/interaction.go:56` 点赞计数逻辑
-  - 用 `HINCRBY video:{id} like_count 1` 累计增量到 Redis
-  - 实现定时任务（10 秒 / 次）批量刷回 MySQL
+  - 业务层同步更新 Redis：`HINCRBY video:{id}:stats like_count 1`
+  - 发送 MQ 消息触发热度更新和 MySQL 同步
   - 收藏计数同理改造
   - **实际收益**：点赞 QPS 1395+，收藏 QPS 1208+，平均延迟 50-80ms
+- [x] 改造观看计数和评论计数
+  - `internal/service/video/video.go` - 观看时更新 Redis view_count
+  - `internal/service/comment/comment.go` - 评论时更新 Redis comment_count
+  - 统一架构：所有计数更新都在业务层完成
+- [x] MQ 消费者异步同步 MySQL
+  - `internal/consumer/hotrank_update.go` - 从 Redis 读取计数并批量同步到 MySQL
+  - 避免热点行写竞争，降低 DB 写压力 90%+
 
 ### 1.2 点赞/收藏状态查询优化（解决软删唯一键坑）
 - [x] 改造 `internal/service/interaction/interaction.go:28-34` 查重逻辑

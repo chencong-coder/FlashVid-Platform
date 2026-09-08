@@ -42,6 +42,13 @@
        │
        ▼
 ┌─────────────────────────────────────┐
+│   业务层 (Service)                   │
+│   • 更新 Redis 计数 (同步)           │
+│   • 发送 MQ 消息 (异步)              │
+└──────┬──────────────────────────────┘
+       │
+       ▼
+┌─────────────────────────────────────┐
 │   Redis (分布式锁 + 计数缓存)        │
 │   • Set: 用户点赞/收藏状态           │
 │   • Hash: 视频统计计数               │
@@ -54,12 +61,20 @@
 │   • 插入/删除 likes/favorites 记录   │
 │   • 不更新 video 表计数（异步同步）  │
 └─────────────────────────────────────┘
-       ▲
-       │ ② 定时任务 (10 秒)
        │
+       │ ② 发送 MQ 消息
+       ▼
 ┌─────────────────────────────────────┐
-│   定时同步任务                       │
-│   Redis Hash → MySQL video 表        │
+│   RabbitMQ                          │
+│   • 热度更新事件                     │
+│   • MySQL 同步事件                   │
+└──────┬──────────────────────────────┘
+       │
+       ▼
+┌─────────────────────────────────────┐
+│   MQ 消费者 (Consumer)               │
+│   • 更新热度分数 (Redis ZSet)        │
+│   • 同步计数到 MySQL (video 表)      │
 └─────────────────────────────────────┘
 ```
 
@@ -70,12 +85,18 @@
    - `SADD` 返回 0 = 已存在 → 幂等返回
    - **删除 `SIsMember` 前置检查**，避免竞态窗口
 
-2. **Redis Hash 累积计数**
-   - 点赞/收藏时 `HINCRBY +1/-1`
-   - 定时任务每 10 秒同步到 MySQL
-   - **降低 DB 写压力 90%+**
+2. **业务层同步更新 Redis 计数**
+   - 点赞/收藏/评论/观看时立即更新 Redis Hash
+   - 用户立即看到最新计数（实时性）
+   - **统一架构**：所有计数更新都在业务层完成
 
-3. **计数兜底逻辑**
+3. **MQ 异步同步 MySQL**
+   - 发送 MQ 消息触发热度更新和 MySQL 同步
+   - 消费者从 Redis 读取最新计数并同步到 MySQL
+   - **降低 DB 写压力**：批量更新，避免热点行写
+   - **最终一致性**：100-200ms 延迟可接受
+
+4. **计数兜底逻辑**
    - 检查 `HGet` 的 `err` 而非值是否为 0
    - Redis 无数据时用 DB 值兜底
    - **保证真实零计数也能正确返回**
@@ -231,16 +252,24 @@ go run benchmark_interaction.go
 **优化前**：每次点赞都更新 `video.like_count` 字段
 - 1000 次点赞 = 1000 次 UPDATE video
 
-**优化后**：Redis 累积 + 定时同步
+**优化后**：Redis 累积 + MQ 异步同步
 - 1000 次点赞 = 1000 次 `HINCRBY`（内存操作）
-- 10 秒后批量同步 = 1 次 UPDATE video
-- **写压力降低 99%**
+- MQ 触发批量同步 = N 次 UPDATE video（N << 1000）
+- **写压力降低 90%+**
+
+**架构优势**：
+- 业务层同步更新 Redis（实时性）
+- MQ 消费者异步同步 MySQL（削峰填谷）
+- 避免热点行写竞争
 
 ### 3. 计数准确性保证
 检查 Redis 错误而非值为 0，区分 Redis 无数据场景和真实零计数场景，保证前端显示准确。
 
 ### 4. 最终一致性保证
-事务失败自动回滚 Redis 状态，定时任务同步 Redis 到 MySQL，保证数据最终一致。
+事务失败自动回滚 Redis 状态，MQ 消费者异步同步 Redis 到 MySQL，保证数据最终一致。
+
+### 5. 统一架构设计
+所有统计计数（点赞/收藏/评论/观看）在业务层同步更新 Redis，MQ 消费者只负责热度更新和 MySQL 同步，职责清晰、架构统一。
 
 ---
 
@@ -254,8 +283,9 @@ go run benchmark_interaction.go
 
 **优化方案**:
 - 用 Redis Set 的 `SADD/SREM` 原子操作实现**无锁分布式并发控制**，删除 `SIsMember` 前置检查，避免竞态窗口
-- Redis Hash 累积计数 + 定时任务异步同步 MySQL，**降低 DB 写压力 90%+**
+- **业务层同步更新 Redis 计数**，保证实时性；MQ 异步同步 MySQL，降低 DB 写压力 90%+
 - 事务失败自动回滚 Redis 状态，保证最终一致性
+- 统一架构：所有计数更新（点赞/收藏/评论/观看）都在业务层完成
 
 **性能指标**:
 - 点赞接口 QPS 达到 **1395+**，取消点赞 **1974+**
@@ -273,7 +303,9 @@ go run benchmark_interaction.go
 
 ### 核心代码
 - [internal/service/interaction/interaction.go](../flashvid-platform-gin/internal/service/interaction/interaction.go) - 点赞/收藏业务逻辑
-- [internal/task/sync_stats.go](../flashvid-platform-gin/internal/task/sync_stats.go) - 定时同步任务
+- [internal/service/video/video.go](../flashvid-platform-gin/internal/service/video/video.go) - 视频观看计数更新
+- [internal/service/comment/comment.go](../flashvid-platform-gin/internal/service/comment/comment.go) - 评论计数更新
+- [internal/consumer/hotrank_update.go](../flashvid-platform-gin/internal/consumer/hotrank_update.go) - MQ 消费者：热度更新和 MySQL 同步
 - [internal/handler/interaction/interaction.go](../flashvid-platform-gin/internal/handler/interaction/interaction.go) - HTTP Handler
 
 ### 测试脚本
