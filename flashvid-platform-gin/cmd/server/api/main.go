@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"time"
@@ -10,7 +9,6 @@ import (
 	"flashvid-platform-gin/internal/dao"
 	"flashvid-platform-gin/internal/mq"
 	"flashvid-platform-gin/internal/server"
-	"flashvid-platform-gin/internal/task"
 	"flashvid-platform-gin/pkg/jwt"
 	"flashvid-platform-gin/pkg/logging"
 	"flashvid-platform-gin/pkg/snowflake"
@@ -44,12 +42,6 @@ func main() {
 
 	// 等待 RabbitMQ 完全就绪
 	time.Sleep(1 * time.Second)
-
-	// 启动定时任务：Redis 统计数据同步到 MySQL（每 10 秒）
-	go func() {
-		taskCtx := context.Background()
-		task.SyncVideoStatsFromRedis(taskCtx, 10*time.Second)
-	}()
 
 	// 初始化路由
 	r := server.SetupRoutes(cfg)

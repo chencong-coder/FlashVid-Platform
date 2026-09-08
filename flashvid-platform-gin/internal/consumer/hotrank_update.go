@@ -3,6 +3,7 @@ package consumer
 import (
 	"context"
 	"encoding/json"
+	"flashvid-platform-gin/internal/dao/query"
 	"flashvid-platform-gin/internal/mq"
 	"flashvid-platform-gin/pkg/hotrank"
 	"fmt"
@@ -75,9 +76,13 @@ func handleHotrankUpdate(event mq.HotrankUpdateMessage) error {
 			zap.Int64("video_id", event.VideoID))
 
 	case "update_video_hot":
-		// 点赞/收藏事件：只更新热度（Redis 计数已在 interaction 中更新）
+		// 点赞/收藏事件：更新热度 + 同步 MySQL 计数
 		hotrank.UpdateVideoHotScore(ctx, event.VideoID)
-		zap.L().Info("video hot score updated",
+
+		// 从 Redis 读取最新计数并同步到 MySQL
+		syncVideoStatsToMySQL(ctx, event.VideoID)
+
+		zap.L().Info("video hot score updated and stats synced",
 			zap.Int64("video_id", event.VideoID))
 
 	case "update_video_comment":
@@ -101,3 +106,44 @@ func handleHotrankUpdate(event mq.HotrankUpdateMessage) error {
 
 	return nil
 }
+
+// syncVideoStatsToMySQL 从 Redis 同步视频统计数据到 MySQL
+func syncVideoStatsToMySQL(ctx context.Context, videoID int64) {
+	statsKey := fmt.Sprintf("video:%d:stats", videoID)
+
+	// 读取 Redis 中的点赞数和收藏数
+	likeCount, err := rdb.HGet(ctx, statsKey, "like_count").Int64()
+	if err == nil && likeCount >= 0 {
+		// 更新 MySQL 点赞数
+		_, err := query.Video.WithContext(ctx).
+			Where(query.Video.ID.Eq(videoID)).
+			UpdateSimple(query.Video.LikeCount.Value(int32(likeCount)))
+		if err != nil {
+			zap.L().Error("sync like_count to mysql failed",
+				zap.Int64("video_id", videoID),
+				zap.Error(err))
+		} else {
+			zap.L().Debug("sync like_count to mysql",
+				zap.Int64("video_id", videoID),
+				zap.Int64("like_count", likeCount))
+		}
+	}
+
+	favoriteCount, err := rdb.HGet(ctx, statsKey, "favorite_count").Int64()
+	if err == nil && favoriteCount >= 0 {
+		// 更新 MySQL 收藏数
+		_, err := query.Video.WithContext(ctx).
+			Where(query.Video.ID.Eq(videoID)).
+			UpdateSimple(query.Video.FavoriteCount.Value(int32(favoriteCount)))
+		if err != nil {
+			zap.L().Error("sync favorite_count to mysql failed",
+				zap.Int64("video_id", videoID),
+				zap.Error(err))
+		} else {
+			zap.L().Debug("sync favorite_count to mysql",
+				zap.Int64("video_id", videoID),
+				zap.Int64("favorite_count", favoriteCount))
+		}
+	}
+}
+

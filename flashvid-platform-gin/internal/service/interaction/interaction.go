@@ -362,19 +362,19 @@ func UnlikeVideo1(ctx context.Context, userId, videoId int64) (*v1.LikeVideoResp
 		return nil, api.CodeInternalError, err
 	}
 
-	// 4. 发送热度更新消息到 MQ
+	// 4. 读取最终计数
+	finalCount := video.LikeCount
+	if count, err := rdb.HGet(ctx, fmt.Sprintf("video:%d:stats", videoId), "like_count").Int64(); err == nil {
+		finalCount = int32(count)
+	}
+
+	// 5. 发送热度更新消息到 MQ
 	message := mq.HotrankUpdateMessage{
 		Action:  "update_video_hot",
 		VideoID: videoId,
 	}
 	body, _ := json.Marshal(message)
 	_ = mq.Publish(ctx, "notification.exchange", "hotrank", body)
-
-	// 5. 读取最终计数返回
-	finalCount := video.LikeCount
-	if count, err := rdb.HGet(ctx, fmt.Sprintf("video:%d:stats", videoId), "like_count").Int64(); err == nil {
-		finalCount = int32(count)
-	}
 
 	return &v1.LikeVideoResp{IsLiked: false, LikeCount: int32(finalCount)}, api.CodeSuccess, nil
 }

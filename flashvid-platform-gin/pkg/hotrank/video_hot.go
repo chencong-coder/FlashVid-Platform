@@ -65,10 +65,16 @@ func UpdateVideoHotScore(ctx context.Context, videoId int64) {
 	}
 
 	// 计算带时间衰减的热度分数
-	score := CalculateVideoHotScore(video)
+	baseScore := CalculateVideoHotScore(video)
+
+	// 加入时间戳作为次要排序（保证稳定性）
+	// 相同热度的视频，最新发布的排在前面
+	// 除以 1e13 确保时间戳占据小数部分（0.00000xxxxx），不影响主排序
+	timestamp := float64(video.PublishedAt.Unix()) / 1e13
+	finalScore := baseScore + timestamp
 
 	// 更新 Redis ZSet
-	rdb.ZAdd(ctx, "video:hot", redis.Z{Score: score, Member: strconv.FormatInt(videoId, 10)})
+	rdb.ZAdd(ctx, "video:hot", redis.Z{Score: finalScore, Member: strconv.FormatInt(videoId, 10)})
 }
 
 // parseInt64 安全解析字符串为 int64
