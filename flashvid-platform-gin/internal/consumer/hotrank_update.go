@@ -103,9 +103,13 @@ func handleHotrankUpdate(event mq.HotrankUpdateMessage) error {
 			zap.Int64("video_id", event.VideoID))
 
 	case "update_topic_view":
-		// 更新话题浏览量热度
+		// 更新话题浏览量热度 + 同步 MySQL
 		hotrank.UpdateTopicViewCount(ctx, event.TopicID)
-		zap.L().Info("topic view count updated",
+
+		// 同步话题统计到 MySQL
+		syncTopicStatsToMySQL(ctx, event.TopicID)
+
+		zap.L().Info("topic view count updated and stats synced",
 			zap.Int64("topic_id", event.TopicID))
 
 	default:
@@ -183,6 +187,28 @@ func syncVideoStatsToMySQL(ctx context.Context, videoID int64) {
 		} else {
 			zap.L().Debug("sync view_count to mysql",
 				zap.Int64("video_id", videoID),
+				zap.Int64("view_count", viewCount))
+		}
+	}
+}
+
+// syncTopicStatsToMySQL 从 Redis 同步话题统计数据到 MySQL
+func syncTopicStatsToMySQL(ctx context.Context, topicID int64) {
+	statsKey := fmt.Sprintf("topic:%d:stats", topicID)
+
+	// 同步浏览量
+	viewCount, err := rdb.HGet(ctx, statsKey, "view_count").Int64()
+	if err == nil && viewCount >= 0 {
+		_, err := query.Topic.WithContext(ctx).
+			Where(query.Topic.ID.Eq(topicID)).
+			UpdateSimple(query.Topic.ViewCount.Value(int64(viewCount)))
+		if err != nil {
+			zap.L().Error("sync topic view_count to mysql failed",
+				zap.Int64("topic_id", topicID),
+				zap.Error(err))
+		} else {
+			zap.L().Debug("sync topic view_count to mysql",
+				zap.Int64("topic_id", topicID),
 				zap.Int64("view_count", viewCount))
 		}
 	}
