@@ -14,5 +14,5 @@ mobile-home.png
 *.so
 *.dylib
 
-# 临时文档
-docs/backend-review-guide.md
+# 文档目录暂不上传
+docs/
