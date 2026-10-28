@@ -202,17 +202,17 @@ chmod +x run_all_benchmarks.sh
 ```
 短视频社交平台 后端开发 2026.05 - 至今
 
-项目简介：基于 Go + Gin 分层架构搭建高并发短视频社交平台，覆盖视频发布、互动（点赞/收藏/评论）、Feed 流推荐、话题热榜全流程。
+项目简介：基于 Go + Gin 搭建高并发短视频社交平台，覆盖视频发布、互动、Feed 流推荐、话题热榜全流程
 
-技术栈：Go、Gin、GORM、MySQL、Redis、RabbitMQ
+技术栈：Go、Gin、GORM、MySQL、Redis、RabbitMQ、SSE
 
-• 设计混合推拉模式的 Feed 流架构，关注流/好友流基于粉丝数自适应切换推拉策略，避免大V场景写放大问题的同时保证普通场景读取性能
+• 设计混合推拉 Feed 流架构，基于粉丝数自适应切换策略避免大V写放大；实现冷热分离（热数据 Redis ZSet，冷数据 MySQL 查询），显著降低 Redis 内存占用
 
-• 基于 Redis + RabbitMQ 构建异步化高并发架构： Redis同步更新点赞/收藏/评论/观看计数与状态，保证实时性； RabbitMQ 异步触发通知创建、视频/话题热度更新与 MySQL 批量同步
+• 实现三层缓存架构（本地缓存 + Redis + MySQL），配合 SingleFlight 防击穿，大幅降低接口延迟并减少 Redis 压力
 
-• 基于 Redis 缓存和时间衰减热度算法驱动推荐排序，并实现缓存三大问题防护：空值缓存防穿透、SingleFlight 防击穿、TTL 随机偏移防雪崩
+• 基于 Redis + RabbitMQ 构建异步化架构，Redis 同步更新计数与状态保证实时性，RabbitMQ 异步触发通知创建、热度更新与 MySQL 批量同步
 
-• 实现 API Server 与 Worker 进程分离部署，支持独立扩缩容，并通过 Docker Compose 实现容器化一键部署
+• 基于 SSE 实现通知实时推送替代轮询方案，通知延迟降至秒级；实现分片上传支持大文件断点续传，显著提升上传成功率
 ```
 
 ## 开发者

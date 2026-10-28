@@ -158,7 +158,10 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 		uploadR := apiV1.Group("/upload")
 		uploadR.Use(middleware.Auth())
 		{
-			uploadR.POST("", upload.UploadFileHandler) // 上传文件（图片/视频/音频）
+			uploadR.POST("", upload.UploadFileHandler)                   // 上传文件（图片/视频/音频）
+			uploadR.POST("/init", upload.InitChunkUploadHandler)         // 初始化分片上传
+			uploadR.POST("/chunk", upload.UploadChunkHandler)            // 上传分片
+			uploadR.POST("/complete", upload.CompleteChunkUploadHandler) // 完成分片上传
 		}
 
 		// 私信相关路由组（全部需要登录）
@@ -180,6 +183,7 @@ func SetupRoutes(cfg *viper.Viper) *gin.Engine {
 			notifR.GET("", notification.GetNotificationsHandler)              // 通知列表
 			notifR.GET("/unread-counts", notification.GetUnreadCountsHandler) // 各类型未读数
 			notifR.PUT("/read", notification.MarkAsReadHandler)               // 标记已读
+			notifR.GET("/stream", notification.NotificationStreamHandler)     // SSE 推送流
 		}
 
 		// 播放列表相关路由组（全部需要登录）

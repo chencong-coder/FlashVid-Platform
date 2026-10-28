@@ -4,9 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
+	"flashvid-platform-gin/internal/dao"
 	"flashvid-platform-gin/internal/dao/query"
 	"flashvid-platform-gin/internal/model"
 	"flashvid-platform-gin/internal/mq"
+	notifSvc "flashvid-platform-gin/internal/service/notification"
+	"flashvid-platform-gin/pkg/sse"
+
 	"go.uber.org/zap"
 )
 
@@ -74,14 +79,36 @@ func handleNotificationCreate(event mq.NotificationMessage) error {
 	}
 
 	// 更新 Redis 未读数（如果 Redis 可用）
-	if rdb != nil {
+	if dao.RedisClient != nil {
 		key := fmt.Sprintf("user:%d:unread", event.UserID)
 		field := fmt.Sprintf("%d", event.ActionType)
-		if err := rdb.HIncrBy(ctx, key, field, 1).Err(); err != nil {
+		if err := dao.RedisClient.HIncrBy(ctx, key, field, 1).Err(); err != nil {
 			zap.L().Warn("update redis unread count failed",
 				zap.Int64("user_id", event.UserID),
 				zap.Error(err))
 			// Redis 失败不影响主流程，继续
+		}
+	}
+
+	// 推送 SSE 事件
+	if sse.GlobalManager != nil {
+		counts, err := notifSvc.GetUnreadCountsWithCache(ctx, event.UserID)
+		if err == nil {
+			sseEvent := sse.Event{
+				Type: "notification",
+				Data: map[string]interface{}{
+					"type":    "unread_count_update",
+					"user_id": event.UserID,
+					"data":    counts,
+				},
+			}
+			go func() {
+				if err := sse.GlobalManager.Send(event.UserID, sseEvent); err != nil {
+					zap.L().Debug("send sse event failed",
+						zap.Int64("user_id", event.UserID),
+						zap.Error(err))
+				}
+			}()
 		}
 	}
 

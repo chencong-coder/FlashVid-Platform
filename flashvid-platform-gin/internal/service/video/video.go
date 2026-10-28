@@ -279,12 +279,32 @@ func GetVideo(ctx context.Context, videoId int64) (*model.GetVideoOutput, api.Re
 
 // GetVideoWithCache 获取视频详情（带缓存 + 三大问题防护）
 func GetVideoWithCache(ctx context.Context, videoId int64) (*model.GetVideoOutput, api.ResCode, error) {
-	// Redis 不可用时降级到原逻辑
-	if rdb == nil {
-		return GetVideo(ctx, videoId)
+	cacheKey := fmt.Sprintf("video:%d", videoId)
+
+	// 0. 尝试从本地缓存读取（L1 缓存）
+	if val, found := dao.LocalCacheGet(cacheKey); found {
+		if output, ok := val.(*model.GetVideoOutput); ok {
+			// 本地缓存命中，发送播放事件
+			hotrankMsg := mq.HotrankUpdateMessage{
+				Action:  "update_video_view",
+				VideoID: videoId,
+				TopicID: 0,
+			}
+			body, _ := json.Marshal(hotrankMsg)
+			mq.Publish(ctx, "notification.exchange", "hotrank", body)
+			return output, api.CodeSuccess, nil
+		}
 	}
 
-	cacheKey := fmt.Sprintf("video:%d", videoId)
+	// Redis 不可用时降级到原逻辑
+	if rdb == nil {
+		output, code, err := GetVideo(ctx, videoId)
+		if err == nil {
+			// 写入本地缓存
+			dao.LocalCacheSet(cacheKey, output, 3*time.Second)
+		}
+		return output, code, err
+	}
 
 	// 1. 先查 Redis 缓存
 	cached, err := rdb.Get(ctx, cacheKey).Result()
@@ -297,6 +317,9 @@ func GetVideoWithCache(ctx context.Context, videoId int64) (*model.GetVideoOutpu
 		// 反序列化 JSON
 		var output model.GetVideoOutput
 		if json.Unmarshal([]byte(cached), &output) == nil {
+			// 写回本地缓存
+			dao.LocalCacheSet(cacheKey, &output, 3*time.Second)
+
 			// 缓存命中，发送播放事件到 MQ
 			hotrankMsg := mq.HotrankUpdateMessage{
 				Action:  "update_video_view",
@@ -369,6 +392,20 @@ func GetVideoWithCache(ctx context.Context, videoId int64) (*model.GetVideoOutpu
 	output, ok := result.(*model.GetVideoOutput)
 	if !ok {
 		return nil, api.CodeInternalError, errors.New("类型转换失败")
+	}
+
+	// 写入本地缓存
+	dao.LocalCacheSet(cacheKey, output, 3*time.Second)
+
+	// 发送播放事件（非共享结果时）
+	if !shared {
+		hotrankMsg := mq.HotrankUpdateMessage{
+			Action:  "update_video_view",
+			VideoID: videoId,
+			TopicID: 0,
+		}
+		body, _ := json.Marshal(hotrankMsg)
+		mq.Publish(ctx, "notification.exchange", "hotrank", body)
 	}
 
 	return output, api.CodeSuccess, nil

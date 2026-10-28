@@ -69,3 +69,8 @@ func Save(fileType, originalName string, src io.Reader) (url string, size int64,
 func LocalPath() string {
 	return localPath
 }
+
+// BaseURL 返回静态文件访问基础 URL
+func BaseURL() string {
+	return baseURL
+}

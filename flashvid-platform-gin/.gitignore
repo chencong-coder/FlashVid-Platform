@@ -51,6 +51,7 @@ test/
 bin/
 
 task/
+!/internal/task/
 
 cmd/init-hot
 

@@ -9,9 +9,11 @@ import (
 	"flashvid-platform-gin/internal/dao"
 	"flashvid-platform-gin/internal/mq"
 	"flashvid-platform-gin/internal/server"
+	uploadSvc "flashvid-platform-gin/internal/service/upload"
 	"flashvid-platform-gin/pkg/jwt"
 	"flashvid-platform-gin/pkg/logging"
 	"flashvid-platform-gin/pkg/snowflake"
+	"flashvid-platform-gin/pkg/sse"
 	"flashvid-platform-gin/pkg/storage"
 )
 
@@ -30,11 +32,13 @@ func main() {
 	}
 	defer logger.Sync()
 
-	dao.MustInitMySQL(cfg)  // 初始化 MySQL 连接
-	dao.MustInitRedis(cfg)  // 初始化 Redis
-	jwt.MustInit(cfg)       // 初始化 jwt
-	snowflake.MustInit(cfg) // 初始化 snowflake
-	storage.MustInit(cfg)   // 初始化本地文件存储
+	dao.MustInitMySQL(cfg)      // 初始化 MySQL 连接
+	dao.MustInitRedis(cfg)      // 初始化 Redis
+	dao.MustInitLocalCache(cfg) // 初始化本地缓存
+	jwt.MustInit(cfg)           // 初始化 jwt
+	snowflake.MustInit(cfg)     // 初始化 snowflake
+	storage.MustInit(cfg)       // 初始化本地文件存储
+	uploadSvc.MustInitChunkUpload(cfg) // 初始化分片上传
 
 	// 初始化 RabbitMQ（仅用于发送消息，不声明队列，由 Worker 负责）
 	mq.MustInitRabbitMQ(cfg)
@@ -42,6 +46,9 @@ func main() {
 
 	// 等待 RabbitMQ 完全就绪
 	time.Sleep(1 * time.Second)
+
+	// 初始化 SSE 管理器
+	sse.InitManager()
 
 	// 初始化路由
 	r := server.SetupRoutes(cfg)

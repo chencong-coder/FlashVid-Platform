@@ -12,7 +12,9 @@ import (
 	"flashvid-platform-gin/internal/consumer"
 	"flashvid-platform-gin/internal/dao"
 	"flashvid-platform-gin/internal/mq"
+	"flashvid-platform-gin/internal/task"
 	"flashvid-platform-gin/pkg/logging"
+	uploadSvc "flashvid-platform-gin/internal/service/upload"
 )
 
 var confPath = flag.String("conf", "./config/config.yaml", "配置文件路径")
@@ -35,6 +37,9 @@ func main() {
 	dao.MustInitMySQL(cfg) // 初始化 MySQL 连接
 	dao.MustInitRedis(cfg) // 初始化 Redis
 
+	// 初始化分片上传配置
+	uploadSvc.MustInitChunkUpload(cfg)
+
 	// 初始化 RabbitMQ
 	mq.MustInitRabbitMQ(cfg)
 	mq.MustDeclareInfrastructure()
@@ -42,6 +47,14 @@ func main() {
 
 	// 等待 RabbitMQ 完全就绪
 	time.Sleep(1 * time.Second)
+
+	// 启动后台任务：清理过期分片
+	go task.CleanupExpiredChunks(cfg.GetString("storage.chunk_path"), cfg.GetInt("storage.chunk_expire_hours"))
+	logger.Info("Started task: CleanupExpiredChunks")
+
+	// 启动后台任务：清理冷数据
+	go task.CleanupColdVideosFromRedis(cfg)
+	logger.Info("Started task: CleanupColdVideosFromRedis")
 
 	// 启动 RabbitMQ 消费者：视频发布热度初始化
 	go consumer.ConsumeVideoHotrank()
